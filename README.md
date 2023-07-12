@@ -1,1 +1,1 @@
-# RSAG
+# VSAG (Vector Search for AntGroup)
