@@ -1,5 +1,6 @@
 
 class Test {
 public:
-    void Run();
+    void
+    Run();
 };

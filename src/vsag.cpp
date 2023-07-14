@@ -2,7 +2,8 @@
 
 #include "hnswlib/hnswlib.h"
 
-void Test::Run() {
+void
+Test::Run() {
     int dim = 16;               // Dimension of the elements
     int max_elements = 10000;   // Maximum number of elements, should be known beforehand
     int M = 16;                 // Tightly connected with internal dimensionality of the data
@@ -11,7 +12,8 @@ void Test::Run() {
 
     // Initing index
     hnswlib::L2Space space(dim);
-    hnswlib::HierarchicalNSW<float>* alg_hnsw = new hnswlib::HierarchicalNSW<float>(&space, max_elements, M, ef_construction);
+    hnswlib::HierarchicalNSW<float>* alg_hnsw =
+        new hnswlib::HierarchicalNSW<float>(&space, max_elements, M, ef_construction);
 
     // Generate random data
     std::mt19937 rng;
@@ -30,9 +32,11 @@ void Test::Run() {
     // Query the elements for themselves and measure recall
     float correct = 0;
     for (int i = 0; i < max_elements; i++) {
-        std::priority_queue<std::pair<float, hnswlib::labeltype>> result = alg_hnsw->searchKnn(data + i * dim, 1);
+        std::priority_queue<std::pair<float, hnswlib::labeltype>> result =
+            alg_hnsw->searchKnn(data + i * dim, 1);
         hnswlib::labeltype label = result.top().second;
-        if (label == i) correct++;
+        if (label == i)
+            correct++;
     }
     float recall = correct / max_elements;
     std::cout << "Recall: " << recall << "\n";
@@ -46,9 +50,11 @@ void Test::Run() {
     alg_hnsw = new hnswlib::HierarchicalNSW<float>(&space, hnsw_path);
     correct = 0;
     for (int i = 0; i < max_elements; i++) {
-        std::priority_queue<std::pair<float, hnswlib::labeltype>> result = alg_hnsw->searchKnn(data + i * dim, 1);
+        std::priority_queue<std::pair<float, hnswlib::labeltype>> result =
+            alg_hnsw->searchKnn(data + i * dim, 1);
         hnswlib::labeltype label = result.top().second;
-        if (label == i) correct++;
+        if (label == i)
+            correct++;
     }
     recall = (float)correct / max_elements;
     std::cout << "Recall of deserialized index: " << recall << "\n";
