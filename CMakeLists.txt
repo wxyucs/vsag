@@ -12,5 +12,7 @@ include_directories(include)
 file (GLOB CPP_SRCS "src/*.cpp")
 add_library (vsag SHARED ${CPP_SRCS})
 
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g")
+
 add_executable (example_test examples/cpp/example_test.cpp)
 target_link_libraries (example_test vsag)
