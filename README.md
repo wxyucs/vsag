@@ -1,5 +1,14 @@
 # VSAG (Vector Search for AntGroup)
 
+## 使用方法
+```bash
+# compile this project with debug mode
+$ make debug
+
+# format cpp changes
+$ make format
+```
+
 ## Roadmap
 - 实现包含 HNSW 构建和搜索的功能（v0.1）
   - 设计向量接口（c++）
