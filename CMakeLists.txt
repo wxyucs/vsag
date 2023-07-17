@@ -16,3 +16,6 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g")
 
 add_executable (example_test examples/cpp/example_test.cpp)
 target_link_libraries (example_test vsag)
+
+add_executable (bench_random1m benchs/bench_random1m.cpp)
+target_link_libraries (bench_random1m vsag)
