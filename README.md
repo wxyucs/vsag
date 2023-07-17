@@ -10,14 +10,15 @@ $ make format
 ```
 
 ## Roadmap
-- 实现包含 HNSW 构建和搜索的功能（v0.1）
-  - 设计向量接口（c++）
-  - 集成 HNSW 库
-  - 编写 example 代码
-  - 编写 bench 代码
+- ~~实现包含 HNSW 构建和搜索的功能（v0.1）~~
+  - ~~设计向量接口（c++）~~
+  - ~~集成 HNSW 库~~
+  - ~~编写 example 代码~~
+  - ~~编写 bench 代码~~
 - 支持 INT8 向量类型和距离算法（v0.2）
   - 实现类型扩展
   - 编写 HNSW 的集成测试
+  - 编写 INT8 类型的 bench 代码
 - 提供 k-means 聚类算法（v0.3）
   - 集成 k-means 聚类算法
   - 扩展 k-means 聚类算法支持 INT8 类型
