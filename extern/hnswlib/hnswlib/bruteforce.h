@@ -15,14 +15,14 @@ class BruteforceSearch : public AlgorithmInterface<dist_t> {
     size_t size_per_element_;
 
     size_t data_size_;
-    DISTFUNC <dist_t> fstdistfunc_;
+    DISTFUNC fstdistfunc_;
     void *dist_func_param_;
     std::mutex index_lock;
 
     std::unordered_map<labeltype, size_t > dict_external_to_internal;
 
 
-    BruteforceSearch(SpaceInterface <dist_t> *s)
+    BruteforceSearch(SpaceInterface *s)
         : data_(nullptr),
             maxelements_(0),
             cur_element_count(0),
@@ -32,7 +32,7 @@ class BruteforceSearch : public AlgorithmInterface<dist_t> {
     }
 
 
-    BruteforceSearch(SpaceInterface<dist_t> *s, const std::string &location)
+    BruteforceSearch(SpaceInterface *s, const std::string &location)
         : data_(nullptr),
             maxelements_(0),
             cur_element_count(0),
@@ -43,7 +43,7 @@ class BruteforceSearch : public AlgorithmInterface<dist_t> {
     }
 
 
-    BruteforceSearch(SpaceInterface <dist_t> *s, size_t maxElements) {
+    BruteforceSearch(SpaceInterface *s, size_t maxElements) {
         maxelements_ = maxElements;
         data_size_ = s->get_data_size();
         fstdistfunc_ = s->get_dist_func();
@@ -143,7 +143,7 @@ class BruteforceSearch : public AlgorithmInterface<dist_t> {
     }
 
 
-    void loadIndex(const std::string &location, SpaceInterface<dist_t> *s) {
+    void loadIndex(const std::string &location, SpaceInterface *s) {
         std::ifstream input(location, std::ios::binary);
         std::streampos position;
 

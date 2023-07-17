@@ -139,16 +139,14 @@ static void readBinaryPOD(std::istream &in, T &podRef) {
     in.read((char *) &podRef, sizeof(T));
 }
 
-template<typename MTYPE>
-using DISTFUNC = MTYPE(*)(const void *, const void *, const void *);
+using DISTFUNC = float(*)(const void *, const void *, const void *);
 
-template<typename MTYPE>
 class SpaceInterface {
  public:
     // virtual void search(void *);
     virtual size_t get_data_size() = 0;
 
-    virtual DISTFUNC<MTYPE> get_dist_func() = 0;
+    virtual DISTFUNC get_dist_func() = 0;
 
     virtual void *get_dist_func_param() = 0;
 

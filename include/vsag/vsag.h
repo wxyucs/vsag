@@ -22,7 +22,7 @@ class HNSW : public IndexInterface {
 public:
     HNSW(int dim, int max_elements, int M, int ef_construction) {
         space = std::make_shared<hnswlib::L2Space>(dim);
-        alg_hnsw = std::make_shared<hnswlib::HierarchicalNSW<DataType>>(
+        alg_hnsw = std::make_shared<hnswlib::HierarchicalNSW>(
             space.get(), max_elements, M, ef_construction);
     }
 
@@ -39,7 +39,7 @@ public:
     }
 
 private:
-    std::shared_ptr<hnswlib::HierarchicalNSW<DataType>> alg_hnsw;
+    std::shared_ptr<hnswlib::HierarchicalNSW> alg_hnsw;
     std::shared_ptr<hnswlib::L2Space> space;
 };
 

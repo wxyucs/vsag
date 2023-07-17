@@ -440,8 +440,8 @@ InnerProductDistanceSIMD4ExtResiduals(const void *pVect1v, const void *pVect2v, 
 }
 #endif
 
-class InnerProductSpace : public SpaceInterface<float> {
-    DISTFUNC<float> fstdistfunc_;
+class InnerProductSpace : public SpaceInterface {
+    DISTFUNC fstdistfunc_;
     size_t data_size_;
     size_t dim_;
 
@@ -466,7 +466,7 @@ class InnerProductSpace : public SpaceInterface<float> {
         return data_size_;
     }
 
-    DISTFUNC<float> get_dist_func() {
+    DISTFUNC get_dist_func() {
         return fstdistfunc_;
     }
 
@@ -477,65 +477,42 @@ class InnerProductSpace : public SpaceInterface<float> {
 ~InnerProductSpace() {}
 };
 
-//
-//class InnerProductSpaceInt8 : public SpaceInterface<int8_t> {
-//DISTFUNC<float> fstdistfunc_;
-//size_t data_size_;
-//size_t dim_;
-//
-//public:
-//    InnerProductSpaceInt8(size_t dim) {
-//        fstdistfunc_ = INT8_InnerProduct;
-//#if defined(USE_AVX) || defined(USE_SSE) || defined(USE_AVX512)
-//#if defined(USE_AVX512)
-//        if (AVX512Capable()) {
-//            InnerProductSIMD16Ext = InnerProductSIMD16ExtAVX512;
-//            InnerProductDistanceSIMD16Ext = InnerProductDistanceSIMD16ExtAVX512;
-//        } else if (AVXCapable()) {
-//            InnerProductSIMD16Ext = InnerProductSIMD16ExtAVX;
-//            InnerProductDistanceSIMD16Ext = InnerProductDistanceSIMD16ExtAVX;
-//        }
-//#elif defined(USE_AVX)
-//        if (AVXCapable()) {
-//            InnerProductSIMD16Ext = InnerProductSIMD16ExtAVX;
-//            InnerProductDistanceSIMD16Ext = InnerProductDistanceSIMD16ExtAVX;
-//        }
-//#endif
-//#if defined(USE_AVX)
-//        if (AVXCapable()) {
-//            InnerProductSIMD4Ext = InnerProductSIMD4ExtAVX;
-//            InnerProductDistanceSIMD4Ext = InnerProductDistanceSIMD4ExtAVX;
-//        }
-//#endif
-//
-//        if (dim % 16 == 0)
-//            fstdistfunc_ = InnerProductDistanceSIMD16Ext;
-//        else if (dim % 4 == 0)
-//            fstdistfunc_ = InnerProductDistanceSIMD4Ext;
-//        else if (dim > 16)
-//            fstdistfunc_ = InnerProductDistanceSIMD16ExtResiduals;
-//        else if (dim > 4)
-//            fstdistfunc_ = InnerProductDistanceSIMD4ExtResiduals;
-//#endif
-//        dim_ = dim;
-//        data_size_ = dim * sizeof(float);
-//}
-//
-//size_t get_data_size() {
-//        return data_size_;
-//}
-//
-//DISTFUNC<float> get_dist_func() {
-//        return fstdistfunc_;
-//}
-//
-//void *get_dist_func_param() {
-//        return &dim_;
-//}
-//
-//~InnerProductSpaceInt8() {}
-//};
-//
+
+class InnerProductSpaceInt8 : public SpaceInterface {
+DISTFUNC fstdistfunc_;
+size_t data_size_;
+size_t dim_;
+
+public:
+    InnerProductSpaceInt8(size_t dim) {
+        fstdistfunc_ = INT8_InnerProduct;
+#if defined(USE_AVX512)
+
+        if (dim >= 32) {
+            fstdistfunc_ = INT8_InnerProduct512Residuals_AVX512;
+        } else if (dim >= 16) {
+            fstdistfunc_ = INT8_InnerProduct256Residuals_AVX512;
+        }
+#endif
+        dim_ = dim;
+        data_size_ = dim * sizeof(int8_t);
+}
+
+size_t get_data_size() {
+        return data_size_;
+}
+
+DISTFUNC get_dist_func() {
+        return fstdistfunc_;
+}
+
+void *get_dist_func_param() {
+        return &dim_;
+}
+
+~InnerProductSpaceInt8() {}
+};
+
 
 
 
