@@ -19,3 +19,7 @@ target_link_libraries (example_test vsag)
 
 add_executable (bench_random1m benchs/bench_random1m.cpp)
 target_link_libraries (bench_random1m vsag)
+
+add_subdirectory (extern/Catch2)
+add_executable (tests tests/test_hnsw.cpp)
+target_link_libraries (tests PRIVATE Catch2::Catch2WithMain)
