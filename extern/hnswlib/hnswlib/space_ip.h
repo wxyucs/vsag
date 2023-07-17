@@ -18,6 +18,24 @@ InnerProductDistance(const void *pVect1, const void *pVect2, const void *qty_ptr
     return 1.0f - InnerProduct(pVect1, pVect2, qty_ptr);
 }
 
+static float
+INT8_InnerProduct_impl(const void *pVect1, const void *pVect2, size_t qty) {
+    int8_t *vec1 = (int8_t *)pVect1;
+    int8_t *vec2 = (int8_t *)pVect2;
+    float res = 0;
+    for (size_t i = 0; i < qty; i++) {
+        res += vec1[i] * vec2[i];
+    }
+    return res;
+}
+
+float INT8_InnerProduct(const void *pVect1, const void *pVect2, const void *qty_ptr) {
+    size_t qty = *((size_t *) qty_ptr);
+    float score = INT8_InnerProduct_impl(pVect1, pVect2, qty);
+    score = score / 5242.88 + 50;
+    return 1 - ((score < 0) ? 0 : (100 < score) ? 100 : score) / 100;
+}
+
 #if defined(USE_AVX)
 
 // Favor using AVX if available.
@@ -178,6 +196,114 @@ InnerProductDistanceSIMD16ExtAVX512(const void *pVect1v, const void *pVect2v, co
     return 1.0f - InnerProductSIMD16ExtAVX512(pVect1v, pVect2v, qty_ptr);
 }
 
+float INT8_InnerProduct512_AVX512_impl(const void *pVect1v, const void *pVect2v, size_t qty) {
+    __mmask32 mask = 0xFFFFFFFF;
+    __mmask64 mask64 = 0xFFFFFFFF;
+
+    int32_t cTmp[16];
+
+    int8_t *pVect1 = (int8_t *)pVect1v;
+    int8_t *pVect2 = (int8_t *)pVect2v;
+    const int8_t *pEnd1 = pVect1 + qty;
+
+    __m512i sum512 = _mm512_set1_epi32(0);
+
+    while (pVect1 < pEnd1) {
+        __m256i v1 = _mm256_maskz_loadu_epi8(mask, pVect1);
+        __m512i v1_512 = _mm512_cvtepi8_epi16(v1);
+        pVect1 += 32;
+        __m256i v2 = _mm256_maskz_loadu_epi8(mask, pVect2);
+        __m512i v2_512 = _mm512_cvtepi8_epi16(v2);
+        pVect2 += 32;
+
+        sum512 = _mm512_add_epi32(sum512, _mm512_madd_epi16(v1_512, v2_512));
+    }
+
+    _mm512_mask_storeu_epi32(cTmp, mask64, sum512);
+    float res = 0;
+    for (int i = 0; i < 16; i ++) {
+        res += cTmp[i];
+    }
+    return res;
+}
+
+float INT8_InnerProduct256_AVX512_impl(const void *pVect1v, const void *pVect2v, size_t qty) {
+    __mmask32 mask = 0xFFFF;
+    __mmask64 mask64 = 0xFFFFFFFF;
+
+    int32_t cTmp[16];
+
+    int8_t *pVect1 = (int8_t *)pVect1v;
+    int8_t *pVect2 = (int8_t *)pVect2v;
+    const int8_t *pEnd1 = pVect1 + qty;
+
+    __m512i sum512 = _mm512_set1_epi32(0);
+
+    while (pVect1 < pEnd1) {
+        __m128i v1 = _mm_maskz_loadu_epi8(mask, pVect1);
+        __m512i v1_512 = _mm512_cvtepi8_epi32(v1);
+        pVect1 += 16;
+        __m128i v2 = _mm_maskz_loadu_epi8(mask, pVect2);
+        __m512i v2_512 = _mm512_cvtepi8_epi32(v2);
+        pVect2 += 16;
+
+        sum512 = _mm512_add_epi32(sum512, _mm512_mullo_epi32(v1_512, v2_512));
+    }
+
+    _mm512_mask_storeu_epi32(cTmp, mask64, sum512);
+    float res = 0;
+    for (int i = 0; i < 16; i ++) {
+        res += cTmp[i];
+    }
+    return res;
+}
+
+
+
+float INT8_InnerProduct256Residuals_AVX512_impl(const void *pVect1v, const void *pVect2v,
+                                          size_t qty) {
+    size_t qty2 = qty >> 4 << 4;
+    float res = INT8_InnerProduct256_AVX512_impl(pVect1v, pVect2v, qty2);
+    int8_t *pVect1 = (int8_t *)pVect1v + qty2;
+    int8_t *pVect2 = (int8_t *)pVect2v + qty2;
+
+    size_t qty_left = qty - qty2;
+    if (qty_left != 0) {
+        res += INT8_InnerProduct_impl(pVect1, pVect2, qty_left);
+    }
+    return res;
+}
+
+
+float INT8_InnerProduct512Residuals_AVX512_impl(const void *pVect1v, const void *pVect2v,
+                                          size_t qty) {
+    size_t qty2 = qty >> 5 << 5;
+    float res = INT8_InnerProduct512_AVX512_impl(pVect1v, pVect2v, qty2);
+    int8_t *pVect1 = (int8_t *)pVect1v + qty2;
+    int8_t *pVect2 = (int8_t *)pVect2v + qty2;
+
+    size_t qty_left = qty - qty2;
+    if (qty_left != 0) {
+        res += INT8_InnerProduct256Residuals_AVX512_impl(pVect1, pVect2, qty_left);
+    }
+    return res;
+}
+
+float INT8_InnerProduct256Residuals_AVX512(const void *pVect1, const void *pVect2, const void *qty_ptr) {
+    size_t qty = *((size_t *) qty_ptr);
+    float score = INT8_InnerProduct256Residuals_AVX512_impl(pVect1, pVect2, qty);
+    score = score / 5242.88 + 50;
+    return 1 - ((score < 0) ? 0 : (100 < score) ? 100 : score) / 100;
+}
+
+float INT8_InnerProduct512Residuals_AVX512(const void *pVect1, const void *pVect2, const void *qty_ptr) {
+    size_t qty = *((size_t *) qty_ptr);
+    float score = INT8_InnerProduct512Residuals_AVX512_impl(pVect1, pVect2, qty);
+    score = score / 5242.88 + 50;
+    return 1 - ((score < 0) ? 0 : (100 < score) ? 100 : score) / 100;
+}
+
+
 #endif
 
 #if defined(USE_AVX)
@@ -322,28 +448,7 @@ class InnerProductSpace : public SpaceInterface<float> {
  public:
     InnerProductSpace(size_t dim) {
         fstdistfunc_ = InnerProductDistance;
-#if defined(USE_AVX) || defined(USE_SSE) || defined(USE_AVX512)
-    #if defined(USE_AVX512)
-        if (AVX512Capable()) {
-            InnerProductSIMD16Ext = InnerProductSIMD16ExtAVX512;
-            InnerProductDistanceSIMD16Ext = InnerProductDistanceSIMD16ExtAVX512;
-        } else if (AVXCapable()) {
-            InnerProductSIMD16Ext = InnerProductSIMD16ExtAVX;
-            InnerProductDistanceSIMD16Ext = InnerProductDistanceSIMD16ExtAVX;
-        }
-    #elif defined(USE_AVX)
-        if (AVXCapable()) {
-            InnerProductSIMD16Ext = InnerProductSIMD16ExtAVX;
-            InnerProductDistanceSIMD16Ext = InnerProductDistanceSIMD16ExtAVX;
-        }
-    #endif
-    #if defined(USE_AVX)
-        if (AVXCapable()) {
-            InnerProductSIMD4Ext = InnerProductSIMD4ExtAVX;
-            InnerProductDistanceSIMD4Ext = InnerProductDistanceSIMD4ExtAVX;
-        }
-    #endif
-
+#if defined(USE_AVX512)
         if (dim % 16 == 0)
             fstdistfunc_ = InnerProductDistanceSIMD16Ext;
         else if (dim % 4 == 0)
@@ -371,5 +476,67 @@ class InnerProductSpace : public SpaceInterface<float> {
 
 ~InnerProductSpace() {}
 };
+
+//
+//class InnerProductSpaceInt8 : public SpaceInterface<int8_t> {
+//DISTFUNC<float> fstdistfunc_;
+//size_t data_size_;
+//size_t dim_;
+//
+//public:
+//    InnerProductSpaceInt8(size_t dim) {
+//        fstdistfunc_ = INT8_InnerProduct;
+//#if defined(USE_AVX) || defined(USE_SSE) || defined(USE_AVX512)
+//#if defined(USE_AVX512)
+//        if (AVX512Capable()) {
+//            InnerProductSIMD16Ext = InnerProductSIMD16ExtAVX512;
+//            InnerProductDistanceSIMD16Ext = InnerProductDistanceSIMD16ExtAVX512;
+//        } else if (AVXCapable()) {
+//            InnerProductSIMD16Ext = InnerProductSIMD16ExtAVX;
+//            InnerProductDistanceSIMD16Ext = InnerProductDistanceSIMD16ExtAVX;
+//        }
+//#elif defined(USE_AVX)
+//        if (AVXCapable()) {
+//            InnerProductSIMD16Ext = InnerProductSIMD16ExtAVX;
+//            InnerProductDistanceSIMD16Ext = InnerProductDistanceSIMD16ExtAVX;
+//        }
+//#endif
+//#if defined(USE_AVX)
+//        if (AVXCapable()) {
+//            InnerProductSIMD4Ext = InnerProductSIMD4ExtAVX;
+//            InnerProductDistanceSIMD4Ext = InnerProductDistanceSIMD4ExtAVX;
+//        }
+//#endif
+//
+//        if (dim % 16 == 0)
+//            fstdistfunc_ = InnerProductDistanceSIMD16Ext;
+//        else if (dim % 4 == 0)
+//            fstdistfunc_ = InnerProductDistanceSIMD4Ext;
+//        else if (dim > 16)
+//            fstdistfunc_ = InnerProductDistanceSIMD16ExtResiduals;
+//        else if (dim > 4)
+//            fstdistfunc_ = InnerProductDistanceSIMD4ExtResiduals;
+//#endif
+//        dim_ = dim;
+//        data_size_ = dim * sizeof(float);
+//}
+//
+//size_t get_data_size() {
+//        return data_size_;
+//}
+//
+//DISTFUNC<float> get_dist_func() {
+//        return fstdistfunc_;
+//}
+//
+//void *get_dist_func_param() {
+//        return &dim_;
+//}
+//
+//~InnerProductSpaceInt8() {}
+//};
+//
+
+
 
 }  // namespace hnswlib
