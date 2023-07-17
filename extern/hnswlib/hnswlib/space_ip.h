@@ -33,7 +33,7 @@ float INT8_InnerProduct(const void *pVect1, const void *pVect2, const void *qty_
     size_t qty = *((size_t *) qty_ptr);
     float score = INT8_InnerProduct_impl(pVect1, pVect2, qty);
     score = score / 5242.88 + 50;
-    return 1 - ((score < 0) ? 0 : (100 < score) ? 100 : score) / 100;
+    return 1 - score / 100;
 }
 
 #if defined(USE_AVX)
@@ -293,14 +293,14 @@ float INT8_InnerProduct256Residuals_AVX512(const void *pVect1, const void *pVect
     size_t qty = *((size_t *) qty_ptr);
     float score = INT8_InnerProduct256Residuals_AVX512_impl(pVect1, pVect2, qty);
     score = score / 5242.88 + 50;
-    return 1 - ((score < 0) ? 0 : (100 < score) ? 100 : score) / 100;
+    return 1 - score / 100;
 }
 
 float INT8_InnerProduct512Residuals_AVX512(const void *pVect1, const void *pVect2, const void *qty_ptr) {
     size_t qty = *((size_t *) qty_ptr);
     float score = INT8_InnerProduct512Residuals_AVX512_impl(pVect1, pVect2, qty);
     score = score / 5242.88 + 50;
-    return 1 - ((score < 0) ? 0 : (100 < score) ? 100 : score) / 100;
+    return 1 - score / 100;
 }
 
 
