@@ -22,14 +22,14 @@ main() {
 
     // Add data to index
     for (int i = 0; i < max_elements; i++) {
-        hnsw.addPoint(std::make_shared<const float>(data[i * dim]), i);
+        hnsw.addPoint(data + i * dim, i);
     }
 
     // Query the elements for themselves and measure recall
     float correct = 0;
     for (int i = 0; i < max_elements; i++) {
         std::priority_queue<std::pair<float, hnswlib::labeltype>> result =
-            hnsw.searchTopK(std::make_shared<const float>(data[i * dim]), 1);
+            hnsw.searchTopK(data + i * dim, 1);
         hnswlib::labeltype label = result.top().second;
         if (label == i)
             correct++;

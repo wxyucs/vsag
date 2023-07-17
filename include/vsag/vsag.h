@@ -8,10 +8,10 @@ namespace vsag {
 class IndexInterface {
 public:
     virtual void
-    addPoint(std::shared_ptr<const void> datapoint, size_t label) = 0;
+    addPoint(const void* datapoint, size_t label) = 0;
 
     virtual std::priority_queue<std::pair<float, size_t>>
-    searchTopK(std::shared_ptr<const void> query_data, size_t k) = 0;
+    searchTopK(const void* query_data, size_t k) = 0;
 
     virtual ~IndexInterface() = default;
 };
@@ -27,14 +27,14 @@ public:
     }
 
     void
-    addPoint(std::shared_ptr<const void> datapoint, size_t label) override {
-        alg_hnsw->addPoint(datapoint.get(), label);
+    addPoint(const void* datapoint, size_t label) override {
+        alg_hnsw->addPoint(datapoint, label);
     }
 
     std::priority_queue<std::pair<float, size_t>>
-    searchTopK(std::shared_ptr<const void> query_data, size_t k) override {
+    searchTopK(const void* query_data, size_t k) override {
         std::priority_queue<std::pair<float, size_t>> results =
-            alg_hnsw->searchKnn(query_data.get(), k);
+            alg_hnsw->searchKnn(query_data, k);
         return results;
     }
 
