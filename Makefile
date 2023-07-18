@@ -1,7 +1,7 @@
 
 debug:
 	cmake -DCMAKE_EXPORT_COMPILE_COMMANDS=1 -S. -Bbuild -DCMAKE_BUILD_TYPE=Debug
-	cmake --build build
+	cmake --build build --parallel 4
 
 format:
 	find include/ -iname *.h -o -iname *.cpp | xargs clang-format -i
