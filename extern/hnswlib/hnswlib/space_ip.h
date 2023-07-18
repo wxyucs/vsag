@@ -406,10 +406,10 @@ InnerProductDistanceSIMD16ExtSSE(const void *pVect1v, const void *pVect2v, const
 #endif
 
 #if defined(USE_SSE) || defined(USE_AVX) || defined(USE_AVX512)
-static DISTFUNC<float> InnerProductSIMD16Ext = InnerProductSIMD16ExtSSE;
-static DISTFUNC<float> InnerProductSIMD4Ext = InnerProductSIMD4ExtSSE;
-static DISTFUNC<float> InnerProductDistanceSIMD16Ext = InnerProductDistanceSIMD16ExtSSE;
-static DISTFUNC<float> InnerProductDistanceSIMD4Ext = InnerProductDistanceSIMD4ExtSSE;
+static DISTFUNC InnerProductSIMD16Ext = InnerProductSIMD16ExtSSE;
+static DISTFUNC InnerProductSIMD4Ext = InnerProductSIMD4ExtSSE;
+static DISTFUNC InnerProductDistanceSIMD16Ext = InnerProductDistanceSIMD16ExtSSE;
+static DISTFUNC InnerProductDistanceSIMD4Ext = InnerProductDistanceSIMD4ExtSSE;
 
 static float
 InnerProductDistanceSIMD16ExtResiduals(const void *pVect1v, const void *pVect2v, const void *qty_ptr) {
