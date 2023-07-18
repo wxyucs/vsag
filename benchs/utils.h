@@ -7,11 +7,11 @@
 struct time_recorder {
 public:
     time_recorder(int &var) : duration_(var) {
-	start_ = std::chrono::high_resolution_clock::now();
+	start_ = std::chrono::steady_clock::now();
     }
 
     ~time_recorder() {
-	auto stop = std::chrono::high_resolution_clock::now();
+	auto stop = std::chrono::steady_clock::now();
 	duration_ = std::chrono::duration_cast<std::chrono::milliseconds>(stop - start_).count();
 
     }
