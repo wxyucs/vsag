@@ -1,0 +1,32 @@
+version: "1.5"
+
+only:
+  triggerType:
+    - push
+  triggerBranch:
+    pushOriginalBranch:
+      - ^master$
+
+parameters:
+  image: reg.docker.alibaba-inc.com/tbase/tbase:dev-20230605
+      
+stages:
+  - BUILD_UT
+  
+vsag_build_ut:
+  stage: BUILD_UT
+  agent:
+    resourceClass: S #2C4G
+    #resourceClass: M #4C8G
+    #resourceClass: L #8C16G
+  steps:
+    - plugin: clone
+    - plugin: shell
+      inputs:
+        image: ${image}
+        command:
+        - |
+          echo "running unittests..."
+          # make unittest
+  timeout: 60
+  allowFailure: false
