@@ -12,7 +12,7 @@ include_directories(include)
 file (GLOB CPP_SRCS "src/*.cpp")
 add_library (vsag SHARED ${CPP_SRCS})
 
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g -Ofast")
 
 # add_compile_options(-mavx512f)
 # add_compile_options(-mavx512dq)

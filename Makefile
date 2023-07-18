@@ -8,7 +8,7 @@ format:
 	find src/ -iname *.h -o -iname *.cpp | xargs clang-format -i
 
 test: debug
-	./build/tests
+	./build/tests -d yes
 
 clean:
 	rm -rf build/*
