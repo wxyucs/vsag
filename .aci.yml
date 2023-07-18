@@ -27,6 +27,6 @@ vsag_build_ut:
         command:
         - |
           echo "running unittests..."
-          # make unittest
+          make test
   timeout: 60
   allowFailure: false

@@ -14,12 +14,12 @@ add_library (vsag SHARED ${CPP_SRCS})
 
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g")
 
-add_compile_options(-mavx512f)
-add_compile_options(-mavx512dq)
-add_compile_options(-mavx512bw)
-add_compile_options(-mavx512vl)
-add_compile_options(-mavx)
-add_compile_options(-msse)
+# add_compile_options(-mavx512f)
+# add_compile_options(-mavx512dq)
+# add_compile_options(-mavx512bw)
+# add_compile_options(-mavx512vl)
+# add_compile_options(-mavx)
+# add_compile_options(-msse)
 
 add_executable (example_test examples/cpp/example_test.cpp)
 target_link_libraries (example_test vsag)

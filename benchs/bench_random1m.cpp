@@ -25,7 +25,7 @@ main() {
     int ef_construction = 200;
 
     // Initing index
-    vsag::HNSW<float> hnsw(dim, max_elements, M, ef_construction);
+    vsag::HNSW hnsw(dim, max_elements, M, ef_construction);
 
     float* data = generate(max_elements, dim);
 
@@ -35,9 +35,9 @@ main() {
         time_recorder tr(duration_add);
         for (int i = 0; i < max_elements; i++) {
             hnsw.addPoint(data + i * dim, i);
-	    print_process(i, max_elements, "adding ... ");
+            print_process(i, max_elements, "adding ... ");
         }
-	cout << endl;
+        cout << endl;
     }
     cout << "add cost: " << duration_add << "ms" << endl;
 
@@ -52,9 +52,9 @@ main() {
             hnswlib::labeltype label = result.top().second;
             if (label == i)
                 correct++;
-	    print_process(i, max_elements, "searching ... ");
+            print_process(i, max_elements, "searching ... ");
         }
-	cout << endl;
+        cout << endl;
     }
     cout << "search cost: " << duration_search << "ms" << endl;
 
