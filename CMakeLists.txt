@@ -25,8 +25,8 @@ if(CMAKE_HOST_SYSTEM_PROCESSOR MATCHES "(x86_64)|(AMD64|amd64)|(^i.86$)")
     add_compile_options(-msse)
 endif()
 
-add_executable (example_test examples/cpp/example_test.cpp)
-target_link_libraries (example_test vsag)
+add_executable (example_hnsw examples/cpp/example_hnsw.cpp)
+target_link_libraries (example_hnsw vsag)
 
 add_executable (bench_random1m benchs/bench_random1m.cpp)
 target_link_libraries (bench_random1m vsag)

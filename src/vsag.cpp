@@ -1,13 +1,15 @@
+#include <utility>
+
 #include "vsag/vsag.h"
 
 #include "hnswlib/hnswlib.h"
 
 namespace vsag {
 
-HNSW::HNSW(int dim, int max_elements, int M, int ef_construction) {
-    space = std::make_shared<hnswlib::InnerProductSpaceInt8>(dim);
+HNSW::HNSW(std::shared_ptr<hnswlib::SpaceInterface> spaceInterface, int max_elements, int M, int ef_construction, int ef_runtime): space(std::move(spaceInterface)){
     alg_hnsw = std::make_shared<hnswlib::HierarchicalNSW>(
         space.get(), max_elements, M, ef_construction);
+    alg_hnsw->setEf(ef_runtime);
 }
 
 void

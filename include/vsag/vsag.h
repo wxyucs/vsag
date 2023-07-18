@@ -19,7 +19,7 @@ public:
 
 class HNSW : public IndexInterface {
 public:
-    HNSW(int dim, int max_elements, int M, int ef_construction);
+    HNSW(std::shared_ptr<hnswlib::SpaceInterface> spaceInterface, int max_elements, int M, int ef_construction, int ef_runtime);
 
     void
     addPoint(const void* datapoint, size_t label) override;

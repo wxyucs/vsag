@@ -23,9 +23,10 @@ main() {
     int M = 16;
 
     int ef_construction = 200;
+    int ef_runtime = 200;
 
     // Initing index
-    vsag::HNSW hnsw(dim, max_elements, M, ef_construction);
+    vsag::HNSW hnsw(std::make_shared<hnswlib::InnerProductSpaceInt8>(dim), max_elements, M, ef_construction, ef_runtime);
 
     float* data = generate(max_elements, dim);
 

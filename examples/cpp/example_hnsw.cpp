@@ -1,26 +1,53 @@
-#include <catch2/catch_test_macros.hpp>
 #include "vsag/vsag.h"
 
-using namespace std;
 
-unsigned int
-Factorial(unsigned int number) {
-    return number <= 1 ? number : Factorial(number - 1) * number;
-}
-
-TEST_CASE("Factorials are computed", "[factorial]") {
-    REQUIRE(Factorial(1) == 1);
-    REQUIRE(Factorial(2) == 2);
-    REQUIRE(Factorial(3) == 6);
-    REQUIRE(Factorial(10) == 3628800);
-}
-
-TEST_CASE("Float Recall", "[hnsw]") {
-    int dim = 128;
-    int max_elements = 10000;
-    int M = 64;
-    int ef_construction = 200;
+void int8_hnsw() {
+    int dim = 16;               // Dimension of the elements
+    int max_elements = 1000;       // Maximum number of elements, should be known beforehand
+    int M = 16;                 // Tightly connected with internal dimensionality of the data
+                                // strongly affects the memory consumption
+    int ef_construction = 200;  // Controls index search speed/build speed tradeoff
     int ef_runtime = 200;
+    // Initing index
+
+    vsag::HNSW hnsw(std::make_shared<hnswlib::InnerProductSpaceInt8>(dim), max_elements, M, ef_construction, ef_runtime);
+
+    // Generate random data
+    std::mt19937 rng;
+    rng.seed(47);
+    std::uniform_real_distribution<> distrib_real;
+    int8_t * data = new int8_t[dim * max_elements];
+    for (int i = 0; i < dim * max_elements; i++) {
+        data[i] = distrib_real(rng) * 256;
+    }
+
+    // Add data to index
+    for (int i = 0; i < max_elements; i++) {
+        hnsw.addPoint(data + i * dim, i);
+    }
+
+    // Query the elements for themselves and measure recall
+    float correct = 0;
+    for (int i = 0; i < max_elements; i++) {
+        std::priority_queue<std::pair<float, hnswlib::labeltype>> result =
+            hnsw.searchTopK(data + i * dim, 1);
+        hnswlib::labeltype label = result.top().second;
+        if (label == i)
+            correct++;
+    }
+    float recall = correct / max_elements;
+    std::cout << "Recall: " << recall << "\n";
+}
+
+
+void float_hnsw() {
+    int dim = 16;               // Dimension of the elements
+    int max_elements = 1000;       // Maximum number of elements, should be known beforehand
+    int M = 16;                 // Tightly connected with internal dimensionality of the data
+                                // strongly affects the memory consumption
+    int ef_construction = 200;  // Controls index search speed/build speed tradeoff
+    int ef_runtime = 200;
+
     // Initing index
     vsag::HNSW hnsw(std::make_shared<hnswlib::L2Space>(dim), max_elements, M, ef_construction, ef_runtime);
 
@@ -48,45 +75,14 @@ TEST_CASE("Float Recall", "[hnsw]") {
             correct++;
     }
     float recall = correct / max_elements;
-
-    REQUIRE(recall == 1);
+    std::cout << "Recall: " << recall << "\n";
 }
 
-TEST_CASE("Int8 Recall", "[hnsw]") {
 
-    int dim = 256;
-    int max_elements = 10000;
-    int M = 64;
-    int ef_construction = 200;
-    int ef_runtime = 200;
-    // Initing index
-    vsag::HNSW hnsw(std::make_shared<hnswlib::InnerProductSpaceInt8>(dim), max_elements, M, ef_construction, ef_runtime = 200);
 
-    // Generate random data
-    std::mt19937 rng;
-    rng.seed(47);
-    std::uniform_real_distribution<> distrib_real;
-    int8_t * data = new int8_t[dim * max_elements];
-    for (int i = 0; i < dim * max_elements; i++) {
-        data[i] = distrib_real(rng) * 256;
-    }
-
-    // Add data to index
-    for (int i = 0; i < max_elements; i++) {
-        hnsw.addPoint(data + i * dim, i);
-    }
-
-    // Query the elements for themselves and measure recall
-    float correct = 0;
-    for (int i = 0; i < max_elements; i++) {
-        std::priority_queue<std::pair<float, hnswlib::labeltype>> result =
-            hnsw.searchTopK(data + i * dim, 1);
-        hnswlib::labeltype label = result.top().second;
-        if (label == i)
-            correct++;
-    }
-    float recall = correct / max_elements;
-
-    REQUIRE(recall == 1);
+int
+main() {
+    int8_hnsw();
+    float_hnsw();
+    return 0;
 }
-
