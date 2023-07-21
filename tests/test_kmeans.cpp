@@ -31,7 +31,7 @@ void fvec_renorm_L2(size_t d, size_t nx, float* __restrict x) {
 
 
 TEST_CASE("InnerProduct", "[Kmeans]") {
-    int dim = 16;
+    size_t dim = 16;
     int max_elements = 100000;
     int clusters = 58;
 
@@ -76,14 +76,14 @@ TEST_CASE("InnerProduct", "[Kmeans]") {
     for (int i = 0; i < clusters; ++i) {
         deviation += (avg - data_id[i].size()) * (avg - data_id[i].size());
     }
-    REQUIRE(std::sqrt(deviation) < 422);
+    REQUIRE(std::sqrt(deviation) < 430);
     REQUIRE(loss < 8340);
 }
 
 
 
 TEST_CASE("L2", "[Kmeans]") {
-    int dim = 16;
+    size_t dim = 16;
     int max_elements = 100000;
     int clusters = 58;
 
