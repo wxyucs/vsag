@@ -10,8 +10,11 @@ format:
 test: debug
 	./build/tests -d yes
 
+benchmark: debug
+	./build/bench_random1m
+
 clean:
 	rm -rf build/*
 
-.PHONY: always clean
+.PHONY: test benchmark clean
 
