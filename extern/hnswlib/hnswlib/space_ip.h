@@ -196,7 +196,7 @@ InnerProductDistanceSIMD16ExtAVX512(const void *pVect1v, const void *pVect2v, co
     return 1.0f - InnerProductSIMD16ExtAVX512(pVect1v, pVect2v, qty_ptr);
 }
 
-float INT8_InnerProduct512_AVX512_impl(const void *pVect1v, const void *pVect2v, size_t qty) {
+static float INT8_InnerProduct512_AVX512_impl(const void *pVect1v, const void *pVect2v, size_t qty) {
     __mmask32 mask = 0xFFFFFFFF;
     __mmask64 mask64 = 0xFFFFFFFF;
 
@@ -227,7 +227,7 @@ float INT8_InnerProduct512_AVX512_impl(const void *pVect1v, const void *pVect2v,
     return res;
 }
 
-float INT8_InnerProduct256_AVX512_impl(const void *pVect1v, const void *pVect2v, size_t qty) {
+static float INT8_InnerProduct256_AVX512_impl(const void *pVect1v, const void *pVect2v, size_t qty) {
     __mmask32 mask = 0xFFFF;
     __mmask64 mask64 = 0xFFFFFFFF;
 
@@ -260,7 +260,7 @@ float INT8_InnerProduct256_AVX512_impl(const void *pVect1v, const void *pVect2v,
 
 
 
-float INT8_InnerProduct256Residuals_AVX512_impl(const void *pVect1v, const void *pVect2v,
+static float INT8_InnerProduct256Residuals_AVX512_impl(const void *pVect1v, const void *pVect2v,
                                           size_t qty) {
     size_t qty2 = qty >> 4 << 4;
     float res = INT8_InnerProduct256_AVX512_impl(pVect1v, pVect2v, qty2);
@@ -275,7 +275,7 @@ float INT8_InnerProduct256Residuals_AVX512_impl(const void *pVect1v, const void 
 }
 
 
-float INT8_InnerProduct512Residuals_AVX512_impl(const void *pVect1v, const void *pVect2v,
+static float INT8_InnerProduct512Residuals_AVX512_impl(const void *pVect1v, const void *pVect2v,
                                           size_t qty) {
     size_t qty2 = qty >> 5 << 5;
     float res = INT8_InnerProduct512_AVX512_impl(pVect1v, pVect2v, qty2);
@@ -289,14 +289,14 @@ float INT8_InnerProduct512Residuals_AVX512_impl(const void *pVect1v, const void 
     return res;
 }
 
-float INT8_InnerProduct256Residuals_AVX512(const void *pVect1, const void *pVect2, const void *qty_ptr) {
+static float INT8_InnerProduct256Residuals_AVX512(const void *pVect1, const void *pVect2, const void *qty_ptr) {
     size_t qty = *((size_t *) qty_ptr);
     float score = INT8_InnerProduct256Residuals_AVX512_impl(pVect1, pVect2, qty);
     score = score / 5242.88 + 50;
     return 1 - score / 100;
 }
 
-float INT8_InnerProduct512Residuals_AVX512(const void *pVect1, const void *pVect2, const void *qty_ptr) {
+static float INT8_InnerProduct512Residuals_AVX512(const void *pVect1, const void *pVect2, const void *qty_ptr) {
     size_t qty = *((size_t *) qty_ptr);
     float score = INT8_InnerProduct512Residuals_AVX512_impl(pVect1, pVect2, qty);
     score = score / 5242.88 + 50;

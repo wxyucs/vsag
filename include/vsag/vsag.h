@@ -17,10 +17,13 @@ public:
     virtual ~IndexInterface() = default;
 };
 
-
 class HNSW : public IndexInterface {
 public:
-    HNSW(std::shared_ptr<hnswlib::SpaceInterface> spaceInterface, int max_elements, int M, int ef_construction, int ef_runtime);
+    HNSW(std::shared_ptr<hnswlib::SpaceInterface> spaceInterface,
+         int max_elements,
+         int M,
+         int ef_construction,
+         int ef_runtime);
 
     void
     addPoint(const void* datapoint, size_t label) override;
@@ -33,12 +36,8 @@ private:
     std::shared_ptr<hnswlib::SpaceInterface> space;
 };
 
-float kmeans_clustering(
-    size_t d,
-    size_t n,
-    size_t k,
-    const float* x,
-    float* centroids,
-    const std::string& dis_type);
+float
+kmeans_clustering(
+    size_t d, size_t n, size_t k, const float* x, float* centroids, const std::string& dis_type);
 
 }  // namespace vsag
