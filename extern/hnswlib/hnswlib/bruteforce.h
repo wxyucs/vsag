@@ -5,6 +5,7 @@
 #include <algorithm>
 #include <assert.h>
 
+
 namespace hnswlib {
 template<typename dist_t>
 class BruteforceSearch : public AlgorithmInterface<dist_t> {

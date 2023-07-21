@@ -2,7 +2,7 @@
 
 #include "vsag/vsag.h"
 
-#include "hnswlib/hnswlib.h"
+#include <hnswlib/hnswlib.h>
 
 namespace vsag {
 

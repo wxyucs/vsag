@@ -28,7 +28,7 @@ INT8_InnerProduct_impl(const void *pVect1, const void *pVect2, size_t qty) {
     }
     return res;
 }
-
+static
 float INT8_InnerProduct(const void *pVect1, const void *pVect2, const void *qty_ptr) {
     size_t qty = *((size_t *) qty_ptr);
     float score = INT8_InnerProduct_impl(pVect1, pVect2, qty);

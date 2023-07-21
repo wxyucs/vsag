@@ -1,3 +1,4 @@
+#pragma once
 #include <cstdint>
 #include <memory>
 #include <vector>
@@ -31,5 +32,13 @@ private:
     std::shared_ptr<hnswlib::HierarchicalNSW> alg_hnsw;
     std::shared_ptr<hnswlib::SpaceInterface> space;
 };
+
+float kmeans_clustering(
+    size_t d,
+    size_t n,
+    size_t k,
+    const float* x,
+    float* centroids,
+    const std::string& dis_type);
 
 }  // namespace vsag
