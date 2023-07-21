@@ -1,3 +1,5 @@
+#include <nlohmann/json.hpp>
+
 #include "utils.h"
 #include "vsag/vsag.h"
 
@@ -25,6 +27,16 @@ main() {
     int ef_construction = 200;
     int ef_runtime = 200;
 
+    nlohmann::json stats;
+    stats["num_elements"] = max_elements;
+    stats["dim"] = 128;
+    stats["index"] = nlohmann::json{
+	{"name", "HNSW"},
+	{"M", 16},
+	{"ef_construction", 200},
+	{"ef_runtime", 200},
+    };
+
     // Initing index
     vsag::HNSW hnsw(std::make_shared<hnswlib::InnerProductSpaceInt8>(dim), max_elements, M, ef_construction, ef_runtime);
 
@@ -41,6 +53,7 @@ main() {
         cout << endl;
     }
     cout << "add cost: " << duration_add << "ms" << endl;
+    stats["add_cost_ms"] = duration_add;
 
     // Query the elements for themselves and measure recall
     float correct = 0;
@@ -58,11 +71,17 @@ main() {
         cout << endl;
     }
     cout << "search cost: " << duration_search << "ms" << endl;
+    stats["search_cost_ms"] = duration_search;
 
     float recall = correct / max_elements;
     cout << "Recall: " << recall << endl;
+    stats["recall"] = recall;
+
     float qps = 1.0f * max_elements / duration_search * 1000;
     cout << "qps: " << qps << endl;
+    stats["qps"] = qps;
+
+    cout << stats.dump(4) << endl;
 
     return 0;
 }
