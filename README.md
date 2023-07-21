@@ -1,12 +1,24 @@
 # VSAG (Vector Search for AntGroup)
 
-## 使用方法
+## Usage
 ```bash
 # compile this project with debug mode
 $ make debug
 
+# compile this project with release mode
+$ make release
+
+# compile and run unittests
+$ make test
+
+# compile and run benchmarks
+$ make benchmark
+
 # format cpp changes
 $ make format
+
+# clean all compilation results
+$ make clean
 ```
 
 ## Roadmap
