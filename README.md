@@ -31,10 +31,10 @@ $ make clean
   - ~~实现类型扩展~~
   - ~~编写 HNSW 的集成测试~~
   - ~~编写 INT8 类型的 bench 代码~~
-- 提供 k-means 聚类算法（v0.3）
-  - 集成 k-means 聚类算法
-  - 扩展 k-means 聚类算法支持 INT8 类型
-  - 编写 k-means 的集成测试
+- ~~提供 k-means 聚类算法（v0.3）~~
+  - ~~集成 k-means 聚类算法~~
+  - ~~扩展 k-means 聚类算法支持 INT8 类型~~
+  - ~~编写 k-means 的集成测试~~
 - 提供 python 接口的 HNSW 和 k-means（v0.4）
   - 使用 pybind11 导出 python 接口
   - 编写召回率/QPS的 benchmark 代码
