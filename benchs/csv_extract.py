@@ -12,7 +12,7 @@ def cmd_get_csv():
 def cmd_get_column():
     return input("2. select column: ")
 
-def extract():
+def extract_vector():
     csv_filename = cmd_get_csv()
     while not os.path.isfile(csv_filename):
         csv_filename = cmd_get_csv()
@@ -52,9 +52,29 @@ def extract():
                 else:
                     del hdf5file[dataset_name]
             hdf5file.create_dataset(dataset_name, data.shape, data=data)
-    print("extract done")
+
+def convert_ids():
+    pass
+
+help_message = '''select command to execute:
+\t[1] extract vector from csv file
+\t[2] convert stringid to intid
+\t[q] exit
+:'''
 
 if __name__ == "__main__":
     while True:
-        extract()
+        cmd = None
+        while cmd not in ['1', '2', 'q']:
+            cmd = input(help_message)
+
+        if cmd == '1':
+            extract_vector()
+            print("extract vector done")
+        elif cmd == '2':
+            convert_ids()
+            print("convert ids done")
+        elif cmd == 'q':
+            print('bye')
+            break
 
