@@ -5,12 +5,16 @@ import csv
 import h5py
 import numpy as np
 import subprocess
+import argparse
 
-def extract_from_csv(csvfile, line_count, id_column_idx, vector_column_idx, output_hdf5, dataset_name, overwrite):
+def extract_from_csv(csvfile, id_column_name, vector_column_name, output_hdf5, dataset_name, overwrite):
     with h5py.File(output_hdf5, 'a') as hdf5file:
+        line_count = int(subprocess.check_output(f'wc -l {csvfile}', shell=True).split()[0]) - 1
         with open(csvfile, 'r') as basefile:
             reader = csv.reader(basefile)
             header = next(reader)
+            vector_column_idx = header.index(vector_column_name)
+
             data = list()
 
             i = 0
@@ -31,13 +35,13 @@ def extract_from_csv(csvfile, line_count, id_column_idx, vector_column_idx, outp
                     exit(-1)
             hdf5file.create_dataset(dataset_name, data.shape, data=data)
 
-def extract(base_csv, base_line_count, base_id_column_idx, base_vector_column_idx,
-            query_csv, query_line_count, query_id_column_idx, query_vector_column_idx,
+def extract(base_csv, base_id_column_name, base_vector_column_name,
+            query_csv, query_id_column_name, query_vector_column_name,
             output_hdf5, overwrite):
-    extract_from_csv(base_csv, base_line_count, base_id_column_idx, base_vector_column_idx, output_hdf5, "base", overwrite)
-    extract_from_csv(query_csv, query_line_count, query_id_column_idx, query_vector_column_idx, output_hdf5, "query", overwrite)
-    
-if __name__ == "__main__":
+    extract_from_csv(base_csv, base_id_column_name, base_vector_column_name, output_hdf5, "base", overwrite)
+    extract_from_csv(query_csv, query_id_column_name, query_vector_column_name, output_hdf5, "query", overwrite)
+
+def interactive():
     # input of base dataset
     base_csv = ""
     while not os.path.isfile(base_csv):
@@ -106,12 +110,46 @@ Extract Plan:
     print(plan_message)
 
     extract(base_csv,
-            base_line_count,
-            base_id_column_idx,
-            base_vector_column_idx,
+            base_id_column_name,
+            base_vector_column_name,
             query_csv,
-            query_line_count,
-            query_id_column_idx,
-            query_vector_column_idx,
+            query_id_column_name,
+            query_vector_column_name,
             output_hdf5,
             overwrite)
+
+
+call_from_cmd_example = '''
+python3 csv_extract.py --base-csv /path/to/base.csv \\
+	--base-id-name id --base-vector-name feature \\
+	--query-csv /path/to/query.csv \\
+	--query-id-name id --query-vector-name feature \\
+	--output /path/to/output.h5 --overwrite
+'''
+    
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description='Extract vector dataset from csv')
+    parser.add_argument('--example', action='store_true', help='print example commands')
+    parser.add_argument('--base-csv', type=str, help='base csv filename')
+    parser.add_argument('--base-id-name', type=str, help='id column name in base csv')
+    parser.add_argument('--base-vector-name', type=str, help='vector column name in base csv')
+    parser.add_argument('--query-csv', type=str, help='query csv filename')
+    parser.add_argument('--query-id-name', type=str, help='id column name in base csv')
+    parser.add_argument('--query-vector-name', type=str, help='vector column name in base csv')
+    parser.add_argument('--output', type=str, help='output hdf5 filename')
+    parser.add_argument('--overwrite', action='store_true', help='overwrite if output file exist')
+    args = parser.parse_args()
+
+    if args.example:
+        print(call_from_cmd_example)
+        exit(0)
+
+    if None in [args.base_csv, args.base_id_name, args.base_vector_name,
+                args.query_csv, args.query_id_name, args.query_vector_name,
+                args.output]:
+        interactive()
+    else:
+        extract(args.base_csv, args.base_id_name, args.base_vector_name,
+                args.query_csv, args.query_id_name, args.query_vector_name,
+                args.output, args.overwrite)
+    
