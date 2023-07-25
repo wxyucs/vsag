@@ -6,24 +6,38 @@ import h5py
 import numpy as np
 import subprocess
 import argparse
+import pickle
+import hnswlib
 
-def extract_from_csv(csvfile, id_column_name, vector_column_name, output_hdf5, dataset_name, overwrite):
+def extract_from_csv(csvfile,
+                     id_column_name,
+                     vector_column_name,
+                     output_hdf5,
+                     dataset_name,
+                     overwrite,
+                     id_callback=lambda *args: None,
+                     vector_callback=lambda *args: None):
     with h5py.File(output_hdf5, 'a') as hdf5file:
         line_count = int(subprocess.check_output(f'wc -l {csvfile}', shell=True).split()[0]) - 1
         with open(csvfile, 'r') as basefile:
             reader = csv.reader(basefile)
             header = next(reader)
+            id_column_idx = header.index(id_column_name)
             vector_column_idx = header.index(vector_column_name)
 
             data = list()
 
-            i = 0
+            lineno = 0
             for row in reader:
-                data.append([int(val) for val in row[vector_column_idx].split(',')])
+                id = row[id_column_idx]
+                id_callback(lineno, id)
+                vector = [int(val) for val in row[vector_column_idx].split(',')]
+                vector_callback(lineno, vector)
+                data.append(vector)
 
-                i += 1
-                if i % (line_count // 100) == 0:
-                    print(f"\r{dataset_name} parsing ... {i / (line_count // 100)}%", end="")
+                lineno += 1
+                if lineno % (line_count // 100) == 0:
+                    print(f"\r{dataset_name} parsing ... {lineno / (line_count // 100)}%", end="")
             print("\nconverting ...")
             data = np.array(data)
 
@@ -38,8 +52,45 @@ def extract_from_csv(csvfile, id_column_name, vector_column_name, output_hdf5, d
 def extract(base_csv, base_id_column_name, base_vector_column_name,
             query_csv, query_id_column_name, query_vector_column_name,
             output_hdf5, overwrite):
-    extract_from_csv(base_csv, base_id_column_name, base_vector_column_name, output_hdf5, "base", overwrite)
-    extract_from_csv(query_csv, query_id_column_name, query_vector_column_name, output_hdf5, "query", overwrite)
+    idmap = dict()
+    def proc1(lineno, id):
+        idmap[id] = lineno
+    extract_from_csv(base_csv,
+                     base_id_column_name,
+                     base_vector_column_name,
+                     output_hdf5,
+                     "base",
+                     overwrite,
+                     id_callback=proc1)
+    with h5py.File(output_hdf5, 'r') as hdf5file:
+        base = np.array(hdf5file["base"])
+        bf_index = hnswlib.BFIndex(space='l2', dim=base.shape[1])
+        bf_index.init_index(max_elements=base.shape[0])
+        bf_index.add_items(base)
+
+    extract_from_csv(query_csv,
+                     query_id_column_name,
+                     query_vector_column_name,
+                     output_hdf5,
+                     "query",
+                     overwrite)
+
+    with h5py.File(output_hdf5, 'r') as hdf5file:
+        query = np.array(hdf5file["query"])
+        gt_ids, _ = bf_index.knn_query(query, 20)
+    groundtruth = np.array(gt_ids)
+    print(groundtruth.shape)
+    with h5py.File(output_hdf5, 'a') as hdf5file:
+        if 'groundtruth' in hdf5file.keys():
+            if overwrite:
+                del hdf5file['groundtruth']
+            else:
+                print(f"error: groundtruth exists in {output_hdf5}, overwrite is NOT allow")
+                exit(-1)
+        hdf5file.create_dataset('groundtruth', groundtruth.shape, data=groundtruth)
+    idmap_filename = os.path.splitext(output_hdf5)[0] + ".idmap"
+    with open(idmap_filename, 'wb') as f:
+        pickle.dump(idmap, f)
 
 def interactive():
     # input of base dataset
