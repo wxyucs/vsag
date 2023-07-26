@@ -52,6 +52,7 @@ def extract_from_csv(csvfile,
 def extract(base_csv, base_id_column_name, base_vector_column_name,
             query_csv, query_id_column_name, query_vector_column_name,
             output_hdf5, overwrite):
+    print("Step #1: extract base data")
     idmap = dict()
     def proc1(lineno, id):
         idmap[id] = lineno
@@ -68,6 +69,7 @@ def extract(base_csv, base_id_column_name, base_vector_column_name,
         bf_index.init_index(max_elements=base.shape[0])
         bf_index.add_items(base)
 
+    print("Step #2: extract query data")
     extract_from_csv(query_csv,
                      query_id_column_name,
                      query_vector_column_name,
@@ -75,6 +77,7 @@ def extract(base_csv, base_id_column_name, base_vector_column_name,
                      "query",
                      overwrite)
 
+    print("Step #3: calculate groundtruth")
     with h5py.File(output_hdf5, 'r') as hdf5file:
         query = np.array(hdf5file["query"])
         gt_ids, _ = bf_index.knn_query(query, 20)
