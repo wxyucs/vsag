@@ -8,6 +8,7 @@
 #include <atomic>
 #include <stdlib.h>
 #include <assert.h>
+#include <iostream>
 
 namespace py = pybind11;
 using namespace pybind11::literals;  // needed to bring in _a literal
@@ -837,6 +838,7 @@ class BFIndex {
             CustomFilterFunctor idFilter(filter);
             CustomFilterFunctor* p_idFilter = filter ? &idFilter : nullptr;
 
+	    size_t one_percent = rows / 100;
             for (size_t row = 0; row < rows; row++) {
                 std::priority_queue<std::pair<dist_t, hnswlib::labeltype >> result = alg->searchKnn(
                         (void *) items.data(row), k, p_idFilter);
@@ -846,7 +848,11 @@ class BFIndex {
                     data_numpy_l[row * k + i] = result_tuple.second;
                     result.pop();
                 }
+		if (row % one_percent == 0) {
+		    std::cout << "\rbf searching ... " << row / one_percent << "%" << std::flush;
+		}
             }
+	    std::cout << std::endl;
         }
 
         py::capsule free_when_done_l(data_numpy_l, [](void *f) {
