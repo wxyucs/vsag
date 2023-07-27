@@ -7,7 +7,7 @@ import numpy as np
 import subprocess
 import argparse
 import pickle
-import hnswlib
+from pprint import pprint
 
 def extract_from_csv(csvfile,
                      id_column_name,
@@ -63,26 +63,42 @@ def extract(base_csv, base_id_column_name, base_vector_column_name,
                      "base",
                      overwrite,
                      id_callback=proc1)
-    with h5py.File(output_hdf5, 'r') as hdf5file:
-        base = np.array(hdf5file["base"])
-        bf_index = hnswlib.BFIndex(space='l2', dim=base.shape[1])
-        bf_index.init_index(max_elements=base.shape[0])
-        bf_index.add_items(base)
+    # with h5py.File(output_hdf5, 'r') as hdf5file:
+    #     base = np.array(hdf5file["base"])
+    #     bf_index = hnswlib.BFIndex(space='l2', dim=base.shape[1])
+    #     bf_index.init_index(max_elements=base.shape[0])
+    #     bf_index.add_items(base)
 
     print("Step #2: extract query data")
+    groundtruth = list()
+    failed_list = list()
+    def proc2(lineno, id):
+        if id not in idmap:
+            failed_list.append(id)
+            groundtruth.append([-1])
+        else:
+            groundtruth.append([idmap[id]])
     extract_from_csv(query_csv,
                      query_id_column_name,
                      query_vector_column_name,
                      output_hdf5,
                      "query",
-                     overwrite)
+                     overwrite,
+                     id_callback=proc2)
+    if len(failed_list):
+        print("failed list:")
+        pprint(failed_list)
+    groundtruth = np.array(groundtruth)
+    print(f"groundtruth.shape: {groundtruth.shape}")
 
-    print("Step #3: calculate groundtruth")
-    with h5py.File(output_hdf5, 'r') as hdf5file:
-        query = np.array(hdf5file["query"])
-        gt_ids, _ = bf_index.knn_query(query, 20)
-    groundtruth = np.array(gt_ids)
-    print(groundtruth.shape)
+    # print("Step #3: calculate groundtruth")
+    # with h5py.File(output_hdf5, 'r') as hdf5file:
+    #     query = np.array(hdf5file["query"])
+    #     gt_ids, _ = bf_index.knn_query(query, 20)
+    # groundtruth = np.array(gt_ids)
+    # print(groundtruth.shape)
+
+    # Save groundtruth and idmap
     with h5py.File(output_hdf5, 'a') as hdf5file:
         if 'groundtruth' in hdf5file.keys():
             if overwrite:
