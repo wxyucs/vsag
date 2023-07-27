@@ -18,37 +18,38 @@ def extract_from_csv(csvfile,
                      id_callback=lambda *args: None,
                      vector_callback=lambda *args: None):
     with h5py.File(output_hdf5, 'a') as hdf5file:
-        line_count = int(subprocess.check_output(f'wc -l {csvfile}', shell=True).split()[0]) - 1
-        with open(csvfile, 'r') as basefile:
-            reader = csv.reader(basefile)
-            header = next(reader)
-            id_column_idx = header.index(id_column_name)
-            vector_column_idx = header.index(vector_column_name)
+        data = list()
+        for csvfile in [f for f in csvfile.split(":") if f != '']:
+            line_count = int(subprocess.check_output(f'wc -l {csvfile}', shell=True).split()[0]) - 1
+            with open(csvfile, 'r') as basefile:
+                reader = csv.reader(basefile)
+                header = next(reader)
+                id_column_idx = header.index(id_column_name)
+                vector_column_idx = header.index(vector_column_name)
 
-            data = list()
+                lineno = 0
+                for row in reader:
+                    id = row[id_column_idx]
+                    id_callback(lineno, id)
+                    # vector = [int(val) for val in row[vector_column_idx].split(',')]
+                    vector = np.fromstring(row[vector_column_idx], dtype=np.int8, sep=',')
+                    vector_callback(lineno, vector)
+                    data.append(vector)
 
-            lineno = 0
-            for row in reader:
-                id = row[id_column_idx]
-                id_callback(lineno, id)
-                # vector = [int(val) for val in row[vector_column_idx].split(',')]
-                vector = np.fromstring(row[vector_column_idx], dtype=np.int8, sep=',')
-                vector_callback(lineno, vector)
-                data.append(vector)
+                    lineno += 1
+                    if lineno % (line_count // 100) == 0:
+                        print(f"\r{dataset_name} parsing ... {lineno / (line_count // 100)}%", end="")
 
-                lineno += 1
-                if lineno % (line_count // 100) == 0:
-                    print(f"\r{dataset_name} parsing ... {lineno / (line_count // 100)}%", end="")
-            print("\nconverting ...")
-            data = np.array(data, dtype=np.int8)
+        print("\nconverting ...")
+        data = np.array(data, dtype=np.int8)
 
-            if dataset_name in hdf5file.keys():
-                if overwrite:
-                    del hdf5file[dataset_name]
-                else:
-                    print(f"error: {dataset_name} exists in {output_hdf5}, overwrite is NOT allow")
-                    exit(-1)
-            hdf5file.create_dataset(dataset_name, data.shape, data=data)
+        if dataset_name in hdf5file.keys():
+            if overwrite:
+                del hdf5file[dataset_name]
+            else:
+                print(f"error: {dataset_name} exists in {output_hdf5}, overwrite is NOT allow")
+                exit(-1)
+        hdf5file.create_dataset(dataset_name, data.shape, data=data)
 
 def extract(base_csv, base_id_column_name, base_vector_column_name,
             query_csv, query_id_column_name, query_vector_column_name,
@@ -87,8 +88,7 @@ def extract(base_csv, base_id_column_name, base_vector_column_name,
                      overwrite,
                      id_callback=proc2)
     if len(failed_list):
-        print("failed list:")
-        pprint(failed_list)
+        pprint({"failed list": failed_list})
     groundtruth = np.array(groundtruth)
     print(f"groundtruth.shape: {groundtruth.shape}")
 
