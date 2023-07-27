@@ -19,7 +19,9 @@ def extract_from_csv(csvfile,
                      vector_callback=lambda *args: None):
     with h5py.File(output_hdf5, 'a') as hdf5file:
         data = list()
-        for csvfile in [f for f in csvfile.split(":") if f != '']:
+        csvfiles = [f for f in csvfile.split(":") if f != '']
+        for i in range(len(csvfiles)):
+            csvfile = csvfiles[i]
             line_count = int(subprocess.check_output(f'wc -l {csvfile}', shell=True).split()[0]) - 1
             with open(csvfile, 'r') as basefile:
                 reader = csv.reader(basefile)
@@ -38,9 +40,10 @@ def extract_from_csv(csvfile,
 
                     lineno += 1
                     if lineno % (line_count // 100) == 0:
-                        print(f"\r{dataset_name} parsing ... {lineno / (line_count // 100)}%", end="")
+                        print(f"\r{dataset_name} parsing ... {lineno / (line_count // 100)}% [{i+1}/{len(csvfiles)}]", end="")
+                print()
 
-        print("\nconverting ...")
+        print("converting ...")
         data = np.array(data, dtype=np.int8)
 
         if dataset_name in hdf5file.keys():
