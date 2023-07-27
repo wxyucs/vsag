@@ -31,7 +31,8 @@ def extract_from_csv(csvfile,
             for row in reader:
                 id = row[id_column_idx]
                 id_callback(lineno, id)
-                vector = [int(val) for val in row[vector_column_idx].split(',')]
+                # vector = [int(val) for val in row[vector_column_idx].split(',')]
+                vector = np.fromstring(row[vector_column_idx], dtype=np.int8, sep=',')
                 vector_callback(lineno, vector)
                 data.append(vector)
 
@@ -39,7 +40,7 @@ def extract_from_csv(csvfile,
                 if lineno % (line_count // 100) == 0:
                     print(f"\r{dataset_name} parsing ... {lineno / (line_count // 100)}%", end="")
             print("\nconverting ...")
-            data = np.array(data)
+            data = np.array(data, dtype=np.int8)
 
             if dataset_name in hdf5file.keys():
                 if overwrite:
