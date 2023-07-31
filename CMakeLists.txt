@@ -38,3 +38,10 @@ target_link_libraries (bench_random1m vsag)
 add_subdirectory (extern/Catch2)
 add_executable (tests tests/test_hnsw.cpp tests/test_json.cpp tests/test_kmeans.cpp tests/test_log.cpp)
 target_link_libraries (tests PRIVATE Catch2::Catch2WithMain vsag)
+
+set(CMAKE_SHARED_LINKER_FLAGS "-Wl,-flat_namespace,-undefined,suppress")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -stdlib=libc++")
+add_subdirectory(extern/pybind11)
+add_executable(example python/binding.cpp)
+target_link_libraries(example PRIVATE pybind11::module)
+
