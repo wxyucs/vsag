@@ -44,3 +44,4 @@ _deps
 
 /build/
 .idea/
+venv/

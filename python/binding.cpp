@@ -13,7 +13,7 @@ namespace py = pybind11;
 int add(int a, int b) {
     return a + b;
 }
-py::array_t<double> kmeans(py::array_t<float, py::array::c_style | py::array::forcecast>& datas, int clusters, const std::string& dis_type) {
+py::array_t<float> kmeans(py::array_t<float, py::array::c_style | py::array::forcecast>& datas, int clusters, const std::string& dis_type) {
     auto data_shape = datas.shape();
     py::ssize_t py_clusters(clusters);
     auto data_size = data_shape[0];

@@ -39,8 +39,8 @@ add_subdirectory (extern/Catch2)
 add_executable (tests tests/test_hnsw.cpp tests/test_json.cpp tests/test_kmeans.cpp tests/test_log.cpp)
 target_link_libraries (tests PRIVATE Catch2::Catch2WithMain vsag)
 
-find_package(Python3 REQUIRED COMPONENTS Interpreter Development)
-add_subdirectory(extern/pybind11)
-add_library(pyvsag SHARED python/binding.cpp)
-target_link_libraries(pyvsag PRIVATE pybind11::module vsag)
+#find_package(Python3 REQUIRED COMPONENTS Interpreter Development)
+#add_subdirectory(extern/pybind11)
+#add_library(pyvsag SHARED python/binding.cpp)
+#target_link_libraries(pyvsag PRIVATE pybind11::module vsag)
 
