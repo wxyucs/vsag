@@ -14,12 +14,16 @@ def test_kmeans():
     dimension = 256
     clusters = 16
     vectors = data_load(data_size, dimension)
-    centroids = vsag.kmeans(vectors, clusters)
+    centroids = vsag.kmeans(vectors, clusters, "ip")
     distances = cdist(vectors, centroids)
     min_idx = np.argmin(distances, axis=1)
-    counts = np.zeros(centroids.shape[0], dtype=np.int)
+    counts = np.zeros(centroids.shape[0], dtype=np.int32)
     for idx in min_idx:
         counts[idx] += 1
     print(counts)
+
+
+if __name__ == "__main__":
+    test_kmeans()
 
 
