@@ -24,7 +24,7 @@ py::array_t<float> kmeans(py::array_t<float, py::array::c_style | py::array::for
 }
 
 
-PYBIND11_MODULE(pyvsag, m) {
+PYBIND11_MODULE(vsag, m) {
     m.def("add", &add, "A function which adds two numbers");
     m.def("kmeans", &kmeans, "Kmeans");
 }
