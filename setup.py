@@ -1,24 +1,49 @@
 from setuptools import setup, Extension
 import glob
+
 import platform
+from cpufeature import CPUFeature
 
 source_files = glob.glob('src/*.cpp')
 source_files.append('python_bindings/binding.cpp')
 
 compile_flags = [
     '-std=c++17',
-    '-g',
-    '-Ofast'
+    '-g'
 ]
 if platform.processor() == "x86_64":
-    compile_flags.extend([
-        '-mavx512f',
-        '-mavx512dq',
-        '-mavx512bw',
-        '-mavx512vl',
-        '-mavx',
-        '-msse',
-    ])
+    if CPUFeature['AVX']:
+        compile_flags.extend([
+            '-mavx',
+        ])
+    if CPUFeature['AVX2']:
+        compile_flags.extend([
+            '-mavx2',
+        ])
+    if CPUFeature['AVX512f']:
+        compile_flags.extend([
+            '-mavx512f'
+        ])
+    if CPUFeature['AVX512vl']:
+        compile_flags.extend([
+            '-mavx512vl',
+        ])
+    if CPUFeature['AVX512bw']:
+        compile_flags.extend([
+            '-mavx512bw',
+        ])
+    if CPUFeature['AVX512dq']:
+        compile_flags.extend([
+            '-mavx512dq',
+        ])
+    if CPUFeature['SSE']:
+        compile_flags.extend([
+            '-msse',
+        ])
+    if CPUFeature['AVX'] and CPUFeature['SSE']:
+        compile_flags.extend([
+            '-Ofast'
+        ])
 
 ext_modules = [
     Extension(
@@ -44,5 +69,5 @@ setup(
     author_email='tbase@antgroup.com',
     description='VSAG Package',
     ext_modules=ext_modules,
-    install_requires=['pybind11', 'spdlog', 'numpy'],
+    install_requires=['pybind11', 'spdlog', 'numpy', 'cpufeature'],
 )
