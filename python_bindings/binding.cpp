@@ -24,7 +24,70 @@ py::array_t<float> kmeans(py::array_t<float, py::array::c_style | py::array::for
 }
 
 
+class Index {
+public:
+    Index(int dim,
+          int max_elements,
+          const std::string& dist_type,
+          const std::string& data_type,
+          int M,
+          int ef_construction,
+          int ef_runtime) {
+        if (dist_type == "l2" && data_type == "float32") {
+            space = std::make_shared<hnswlib::L2Space>(dim);
+        } else if (dist_type == "ip" && data_type == "int8") {
+            space = std::make_shared<hnswlib::InnerProductSpaceInt8>(dim);
+        } else if (dist_type == "ip" && data_type == "float") {
+            space = std::make_shared<hnswlib::InnerProductSpace>(dim);
+        } else {
+            throw std::runtime_error("no matching space");
+        }
+        hnsw = std::make_shared<vsag::HNSW>(space, max_elements, M, ef_construction, ef_runtime);
+    }
+    void
+    addPoint(py::array_t<float> point, size_t label) {
+        hnsw->addPoint(point.data(), label);
+    }
+
+    py::object
+    searchTopK(py::array_t<float> point, int k) {
+        auto result = hnsw->searchTopK(point.data(), k);
+        auto labels = py::array_t<size_t>(k);
+        auto dists = py::array_t<float>(k);
+        auto labels_data = labels.mutable_data();
+        auto dists_data = dists.mutable_data();
+        for (int i = 0; i < result.size(); ++i) {
+            auto item = result.top();
+            labels_data[i] = item.second;
+            dists_data[i] = item.first;
+            result.pop();
+        }
+        return py::make_tuple(labels, dists);
+    }
+private:
+    std::shared_ptr<vsag::HNSW> hnsw;
+    std::shared_ptr<hnswlib::SpaceInterface> space;
+};
+
+
+
 PYBIND11_MODULE(vsag, m) {
     m.def("add", &add, "A function which adds two numbers");
     m.def("kmeans", &kmeans, "Kmeans");
+
+    py::class_<Index>(m, "Index")
+        .def(py::init<int, int, const std::string&, const std::string&, int, int, int>(),
+             py::arg("dim"),
+             py::arg("max_elements"),
+             py::arg("dist_type"),
+             py::arg("data_type"),
+             py::arg("M") = 16,
+             py::arg("ef_construction") = 200,
+             py::arg("ef_runtime") = 200)
+        .def("addPoint", &Index::addPoint,
+             py::arg("point"),
+             py::arg("label"))
+        .def("searchTopK", &Index::searchTopK,
+             py::arg("point"),
+             py::arg("k"));
 }

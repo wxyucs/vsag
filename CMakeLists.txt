@@ -41,6 +41,6 @@ target_link_libraries (tests PRIVATE Catch2::Catch2WithMain vsag)
 
 #find_package(Python3 REQUIRED COMPONENTS Interpreter Development)
 #add_subdirectory(extern/pybind11)
-#add_library(pyvsag SHARED python/binding.cpp)
+#add_library(pyvsag SHARED python_bindings/binding.cpp)
 #target_link_libraries(pyvsag PRIVATE pybind11::module vsag)
 
