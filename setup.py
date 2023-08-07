@@ -2,7 +2,7 @@ from setuptools import setup, Extension
 import glob
 
 import platform
-from cpufeature import CPUFeature
+
 
 source_files = glob.glob('src/*.cpp')
 source_files.append('python_bindings/binding.cpp')
@@ -12,6 +12,7 @@ compile_flags = [
     '-g'
 ]
 if platform.processor() == "x86_64":
+    from cpufeature import CPUFeature
     if CPUFeature['AVX']:
         compile_flags.extend([
             '-mavx',
@@ -58,7 +59,6 @@ ext_modules = [
         ],
         language='c++',
         extra_compile_args=compile_flags,
-        extra_link_args=['-lgomp'],
     )
 ]
 
@@ -69,5 +69,5 @@ setup(
     author_email='tbase@antgroup.com',
     description='VSAG Package',
     ext_modules=ext_modules,
-    install_requires=['pybind11', 'spdlog', 'numpy', 'cpufeature'],
+    install_requires=['pybind11', 'spdlog', 'numpy'],
 )
