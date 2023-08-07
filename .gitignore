@@ -45,3 +45,4 @@ _deps
 /build/
 .idea/
 venv/
+/vsag.egg-info/
