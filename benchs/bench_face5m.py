@@ -33,6 +33,8 @@ if not OSS_BUCKET:
     logging.info(f"OSS_BUCKET is not set")
 if not OSS_OBJECT:
     logging.info(f"OSS_OBJECT is not set")
+if None in [OSS_ACCESS_KEY_ID, OSS_ACCESS_KEY_SECRET, OSS_ENDPOINT, OSS_BUCKET, OSS_OBJECT]:
+    exit(-1)
 
 auth = oss2.ProviderAuth(EnvironmentVariableCredentialsProvider())
 bucket = oss2.Bucket(auth, OSS_ENDPOINT, OSS_BUCKET)

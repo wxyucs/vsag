@@ -15,6 +15,10 @@ test: debug
 	./build/tests -d yes
 
 benchmark: release
+	echo "bechmarking on python interface"
+	pip install .
+	python3 benchs/bench_face5m.py
+	echo "bechmarking on cpp interface"
 	./build/bench_random1m
 
 clean:
