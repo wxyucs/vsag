@@ -5,6 +5,8 @@ import time
 import h5py
 import vsag
 from utils import read_dataset
+import datetime
+import logging
 
 def measure_all(dataset, X_train, vector_count, ef_construction, M, ef_values, num_queries, k):
 
@@ -81,7 +83,14 @@ def run_benchmark(dataset_name, ef_construction, M, ef_values, k=1):
         print("benchmark for vector count:", vector_count)
         measure_all(dataset, X_train, vector_count, ef_construction = ef_construction, M=M, ef_values=ef_values, num_queries=5, k=20)
 
-if __name__ == "__main__":
+def run():
+
+    logging.basicConfig(encoding='utf-8',
+                        level=logging.INFO,
+                        format='%(asctime)s [%(levelname)s] %(message)s',
+                        handlers=[logging.FileHandler('/tmp/bench-hnsw.log'),
+                                  logging.StreamHandler()])
+    logging.info(f'{__file__} running at {datetime.now()}')
     DATASETS = ['sift-1m-128-euclidean.hdf5']
     # for every dataset the params are: (ef_construction, M, ef_runtime).
     dataset_params = {'glove-25-angular': (100, 16, [50, 100, 200]),

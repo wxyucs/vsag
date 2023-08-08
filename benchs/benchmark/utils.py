@@ -5,12 +5,6 @@ import h5py
 import datetime
 from oss2.credentials import EnvironmentVariableCredentialsProvider
 
-# logging.basicConfig(encoding='utf-8',
-#                     level=logging.INFO,
-#                     format='%(asctime)s [%(levelname)s] %(message)s',
-#                     handlers=[logging.FileHandler('/tmp/bench-face5m.log'),
-#                               logging.StreamHandler()])
-# logging.info(f'{__file__} running at {datetime.now()}')
 
 OSS_ACCESS_KEY_ID = os.environ.get('OSS_ACCESS_KEY_ID')
 OSS_ACCESS_KEY_SECRET = os.environ.get('OSS_ACCESS_KEY_SECRET')
