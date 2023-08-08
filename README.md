@@ -35,9 +35,9 @@ $ make clean
   - ~~集成 k-means 聚类算法~~
   - ~~扩展 k-means 聚类算法支持 INT8 类型~~
   - ~~编写 k-means 的集成测试~~
-- 提供 python 接口的 HNSW 和 k-means（v0.4）
+- ~~提供 python 接口的 HNSW 和 k-means（v0.4）~~
   - ~~使用 pybind11 导出 python 接口~~
-  - 编写召回率/QPS的 benchmark 代码
+  - ~~编写召回率/QPS的 benchmark 代码~~
 - 编写基于 HDF5 的 python 接口 benchmark 工具（v0.5）
   - 编写基于 HDF5 的 benchmark 接口
   - 实现 benchmark 过程和报告输出
