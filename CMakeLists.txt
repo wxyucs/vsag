@@ -37,9 +37,6 @@ target_link_libraries (example_hnsw vsag)
 add_executable (example_kmeans examples/cpp/example_kmeans.cpp src/Clustering.cpp)
 target_link_libraries (example_kmeans vsag)
 
-add_executable (bench_random1m benchs/bench_random1m.cpp)
-target_link_libraries (bench_random1m vsag)
-
 add_subdirectory (extern/Catch2)
 add_executable (tests tests/test_hnsw.cpp tests/test_json.cpp tests/test_kmeans.cpp tests/test_log.cpp)
 target_link_libraries (tests PRIVATE Catch2::Catch2WithMain vsag)

@@ -14,12 +14,9 @@ format:
 test: debug
 	./build/tests -d yes
 
-benchmark: release
-	echo "bechmarking on python interface"
+benchmark:
 	pip install .
-	python3 benchs/bench_face5m.py
-	echo "bechmarking on cpp interface"
-	./build/bench_random1m
+	python3 benchs/run.py
 
 clean:
 	rm -rf build/*

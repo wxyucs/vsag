@@ -47,3 +47,4 @@ _deps
 venv/
 /vsag.egg-info/
 dataset/
+__pycache__/
