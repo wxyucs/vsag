@@ -39,7 +39,7 @@ $ make clean
   - ~~使用 pybind11 导出 python 接口~~
   - ~~编写召回率/QPS的 benchmark 代码~~
 - 编写基于 HDF5 的 python 接口 benchmark 工具（v0.5）
-  - 编写基于 HDF5 的 benchmark 接口
+  - ~~编写基于 HDF5 的 benchmark 接口~~
   - 实现 benchmark 过程和报告输出
   - [optional] 改进性能
 - 迁移分区实验到项目中
