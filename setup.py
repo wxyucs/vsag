@@ -12,39 +12,41 @@ compile_flags = [
     '-g'
 ]
 if platform.processor() == "x86_64":
-    from cpufeature import CPUFeature
-    if CPUFeature['AVX']:
-        compile_flags.extend([
-            '-mavx',
-        ])
-    if CPUFeature['AVX2']:
-        compile_flags.extend([
-            '-mavx2',
-        ])
-    if CPUFeature['AVX512f']:
-        compile_flags.extend([
-            '-mavx512f'
-        ])
-    if CPUFeature['AVX512vl']:
-        compile_flags.extend([
-            '-mavx512vl',
-        ])
-    if CPUFeature['AVX512bw']:
-        compile_flags.extend([
-            '-mavx512bw',
-        ])
-    if CPUFeature['AVX512dq']:
-        compile_flags.extend([
-            '-mavx512dq',
-        ])
-    if CPUFeature['SSE']:
-        compile_flags.extend([
-            '-msse',
-        ])
-    if CPUFeature['AVX'] and CPUFeature['SSE']:
-        compile_flags.extend([
-            '-Ofast'
-        ])
+    from cpuinfo import get_cpu_info
+    info = get_cpu_info()
+    if 'flags' in info:
+        if 'avx' in info['flags']:
+            compile_flags.extend([
+                '-mavx',
+            ])
+        if 'avx2' in info['flags']:
+            compile_flags.extend([
+                '-mavx2',
+            ])
+        if 'avx512f' in info['flags']:
+            compile_flags.extend([
+                '-mavx512f'
+            ])
+        if 'avx512vl' in info['flags']:
+            compile_flags.extend([
+                '-mavx512vl',
+            ])
+        if 'avx512bw' in info['flags']:
+            compile_flags.extend([
+                '-mavx512bw',
+            ])
+        if 'avx512dq' in info['flags']:
+            compile_flags.extend([
+                '-mavx512dq',
+            ])
+        if 'sse' in info['flags']:
+            compile_flags.extend([
+                '-msse',
+            ])
+        if 'avx' in info['flags'] and 'sse' in info['flags']:
+            compile_flags.extend([
+                '-Ofast'
+            ])
 
 ext_modules = [
     Extension(
