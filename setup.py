@@ -71,5 +71,5 @@ setup(
     author_email='tbase@antgroup.com',
     description='VSAG Package',
     ext_modules=ext_modules,
-    install_requires=['pybind11', 'spdlog', 'numpy'],
+    install_requires=['pybind11', 'spdlog', 'numpy', 'h5py', 'oss2'],
 )
