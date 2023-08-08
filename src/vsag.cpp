@@ -14,12 +14,17 @@ HNSW::HNSW(std::shared_ptr<hnswlib::SpaceInterface> spaceInterface,
     : space(std::move(spaceInterface)) {
     alg_hnsw =
         std::make_shared<hnswlib::HierarchicalNSW>(space.get(), max_elements, M, ef_construction);
-    alg_hnsw->setEf(ef_runtime);
+    setEfRuntime(ef_runtime);
 }
 
 void
 HNSW::addPoint(const void* datapoint, size_t label) {
     alg_hnsw->addPoint(datapoint, label);
+}
+
+void
+HNSW::setEfRuntime(size_t ef_runtime) {
+    alg_hnsw->setEf(ef_runtime);
 }
 
 std::priority_queue<std::pair<float, size_t>>

@@ -46,3 +46,4 @@ _deps
 .idea/
 venv/
 /vsag.egg-info/
+dataset/

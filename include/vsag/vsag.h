@@ -31,6 +31,9 @@ public:
     std::priority_queue<std::pair<float, size_t>>
     searchTopK(const void* query_data, size_t k) override;
 
+    void
+    setEfRuntime(size_t ef_runtime);
+
 private:
     std::shared_ptr<hnswlib::HierarchicalNSW> alg_hnsw;
     std::shared_ptr<hnswlib::SpaceInterface> space;

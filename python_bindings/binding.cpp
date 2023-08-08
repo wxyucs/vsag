@@ -49,14 +49,20 @@ public:
         hnsw->addPoint(point.data(), label);
     }
 
+
+    void
+    setEfRuntime(size_t ef_runtime) {
+        hnsw->setEfRuntime(ef_runtime);
+    }
+
     py::object
-    searchTopK(py::array_t<float> point, int k) {
+    searchTopK(py::array_t<float> point, size_t k) {
         auto result = hnsw->searchTopK(point.data(), k);
         auto labels = py::array_t<size_t>(k);
         auto dists = py::array_t<float>(k);
         auto labels_data = labels.mutable_data();
         auto dists_data = dists.mutable_data();
-        for (int i = 0; i < result.size(); ++i) {
+        for (int i = 0; i < k; ++i) {
             auto item = result.top();
             labels_data[i] = item.second;
             dists_data[i] = item.first;
@@ -89,5 +95,7 @@ PYBIND11_MODULE(vsag, m) {
              py::arg("label"))
         .def("searchTopK", &Index::searchTopK,
              py::arg("point"),
-             py::arg("k"));
+             py::arg("k"))
+        .def("setEfRuntime", &Index::setEfRuntime,
+             py::arg("ef_runtime"));
 }
