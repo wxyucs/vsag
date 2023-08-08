@@ -5,7 +5,7 @@ import time
 import h5py
 import vsag
 from .utils import read_dataset
-import datetime
+from datetime import datetime
 import logging
 
 def measure_all(dataset, X_train, vector_count, ef_construction, M, ef_values, num_queries, k):
