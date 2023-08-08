@@ -4,22 +4,7 @@ import numpy as np
 import time
 import h5py
 import vsag
-
-
-def download(src, dst):
-    if not os.path.exists("dataset"):
-        os.makedirs("dataset")
-    if not os.path.exists(dst):
-        print('downloading %s -> %s...' % (src, dst))
-        urlretrieve(src, dst)
-
-# Download dataset from ann-benchmarks, save the file locally
-def get_data_set(dataset_name):
-
-    hdf5_filename = os.path.join('./dataset/', '%s.hdf5' % dataset_name)
-    url = 'http://ann-benchmarks.com/%s.hdf5' % dataset_name
-    download(url, hdf5_filename)
-    return h5py.File(hdf5_filename, 'r')
+from utils import read_dataset
 
 def measure_all(dataset, X_train, vector_count, ef_construction, M, ef_values, num_queries, k):
 
@@ -85,7 +70,7 @@ def measure_all(dataset, X_train, vector_count, ef_construction, M, ef_values, n
 def run_benchmark(dataset_name, ef_construction, M, ef_values, k=1):
 
     print("\nRunning benchmark for:", dataset_name)
-    dataset = get_data_set(dataset_name)
+    dataset = read_dataset(dataset_name)
     X_train = np.array(dataset['train'])
     distance = dataset.attrs['distance']
     dimension = int(dataset.attrs['dimension']) if 'dimension' in dataset.attrs else len(X_train[0])
@@ -97,16 +82,14 @@ def run_benchmark(dataset_name, ef_construction, M, ef_values, k=1):
         measure_all(dataset, X_train, vector_count, ef_construction = ef_construction, M=M, ef_values=ef_values, num_queries=5, k=20)
 
 if __name__ == "__main__":
-    #DATASETS = ['glove-25-angular', 'glove-50-angular', 'glove-100-angular', 'glove-200-angular',
-    #'mnist-784-euclidean', 'sift-128-euclidean']
-    DATASETS = ['sift-128-euclidean']
+    DATASETS = ['sift-1m-128-euclidean.hdf5']
     # for every dataset the params are: (ef_construction, M, ef_runtime).
     dataset_params = {'glove-25-angular': (100, 16, [50, 100, 200]),
                       'glove-50-angular': (150, 24, [100, 200, 300]),
                       'glove-100-angular': (250, 36, [150, 300, 500]),
                       'glove-200-angular': (350, 48, [200, 350, 600]),
                       'mnist-784-euclidean': (150, 32, [100, 200, 350]),
-                      'sift-128-euclidean': (200, 32, [150, 300, 500])}
+                      'sift-1m-128-euclidean.hdf5': (200, 32, [150, 300, 500])}
     k = 10
     for d_name in DATASETS:
         run_benchmark(d_name, *(dataset_params[d_name]), k)
