@@ -4,7 +4,7 @@ import numpy as np
 import time
 import h5py
 import vsag
-from utils import read_dataset
+from .utils import read_dataset
 import datetime
 import logging
 
