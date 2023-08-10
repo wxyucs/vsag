@@ -71,7 +71,7 @@ def measure_all(dataset, X_train, vector_count, ef_construction, M, ef_values, n
 
 def run_benchmark(dataset_name, ef_construction, M, ef_values, k=1):
 
-    logging.info("\nRunning benchmark for:{dataset_name}")
+    logging.info(f"\nRunning benchmark for:{dataset_name}")
     dataset = read_dataset(dataset_name)
     X_train = np.array(dataset['train'])
     distance = dataset.attrs['distance']
@@ -80,7 +80,7 @@ def run_benchmark(dataset_name, ef_construction, M, ef_values, k=1):
     logging.info('metric is: %s' % distance)
 
     for vector_count in [800000, 900000, 1000000]:
-        logging.info("benchmark for vector count:{vector_count}")
+        logging.info(f"benchmark for vector count:{vector_count}")
         measure_all(dataset, X_train, vector_count, ef_construction = ef_construction, M=M, ef_values=ef_values, num_queries=5, k=20)
 
 def run():
