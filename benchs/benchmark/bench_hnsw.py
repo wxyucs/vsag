@@ -21,7 +21,7 @@ def measure_all(dataset, X_train, vector_count, ef_construction, M, ef_values, n
 
 
     for ef_runtime in ef_values:
-        logging.info("\nRunning queries with ef_runtime =", ef_runtime, "...")
+        logging.info(f"\nRunning queries with ef_runtime ={ef_runtime}...")
         hnsw.setEfRuntime(ef_runtime)
         correct = 0
         bf_total_time = 0
@@ -57,17 +57,17 @@ def measure_all(dataset, X_train, vector_count, ef_construction, M, ef_values, n
 
         # Measure recall
         recall = float(correct)/(k*num_queries)
-        logging.info("Average recall is:", recall)
+        logging.info(f"Average recall is:{recall}")
 
         # logging.info("BF query per seconds: ", num_queries/bf_total_time)
         # logging.info("BF average lantency per query: ", bf_total_time/num_queries, "seconds")
         # logging.info("BF min lantency for query: ", bf_min_latency, "seconds")
         # logging.info("BF max lantency for query: ", bf_max_latency, "seconds")
 
-        logging.info("HNSW query per seconds: ", num_queries/hnsw_total_time)
-        logging.info("HNSW average lantency per query: ", hnsw_total_time/num_queries, "seconds")
-        logging.info("HNSW min lantency for query: ", hnsw_min_latency, "seconds")
-        logging.info("HNSW max lantency for query: ", hnsw_max_latency, "seconds")
+        logging.info(f"HNSW query per seconds: {num_queries/hnsw_total_time}")
+        logging.info(f"HNSW average lantency per query: {hnsw_total_time/num_queries}seconds")
+        logging.info(f"HNSW min lantency for query: {hnsw_min_latency}seconds")
+        logging.info(f"HNSW max lantency for query: {hnsw_max_latency}seconds")
 
 def run_benchmark(dataset_name, ef_construction, M, ef_values, k=1):
 
@@ -76,8 +76,8 @@ def run_benchmark(dataset_name, ef_construction, M, ef_values, k=1):
     X_train = np.array(dataset['train'])
     distance = dataset.attrs['distance']
     dimension = int(dataset.attrs['dimension']) if 'dimension' in dataset.attrs else len(X_train[0])
-    logging.info('got a train set of size (%d * %d)' % (X_train.shape[0], dimension))
-    logging.info('metric is: %s' % distance)
+    logging.info(f'got a train set of size ({X_train.shape[0]} * {dimension})')
+    logging.info(f'metric is: {distance}')
 
     for vector_count in [800000, 900000, 1000000]:
         logging.info(f"benchmark for vector count:{vector_count}")
