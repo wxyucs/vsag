@@ -43,7 +43,8 @@ def get_query_set():
             if size >= 100000: break
     return result, vector
 
-
+# The amount of computations that can be reduced by testing at different recall rates.
+# Using a mixture of multiple distance functions for querying
 def test_kmeans():
     clusters = 400
     data_labels, data_vectors = get_data_set()
@@ -90,7 +91,20 @@ def test_kmeans():
     print("P9999: %d" % ranks[math.floor(len(ranks) * 0.9999)])
 
 
+# Validating that using K-means to partition vectors into multiple clusters will not decrease the recall rate.
 
+
+
+# Hierarchical clustering algorithm.
+
+
+# Improving recall rate by redundantly storing points on the edges of clusters.
+
+
+# Investigating the impact of the number of iterations in K-means on the number of partitions to be explored.
+
+
+# Investigating the effect of random seeds on the partitioning results.
 
 
 if __name__ == "__main__":

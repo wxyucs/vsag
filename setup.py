@@ -66,10 +66,10 @@ ext_modules = [
 
 setup(
     name='vsag',
-    version='0.4.0',
+    version='0.5.0',
     author='Tbase',
     author_email='tbase@antgroup.com',
     description='VSAG Package',
     ext_modules=ext_modules,
-    install_requires=['pybind11', 'spdlog', 'numpy', 'h5py', 'oss2'],
+    install_requires=['pybind11', 'spdlog', 'numpy', 'h5py', 'oss2', 'scipy'],
 )
