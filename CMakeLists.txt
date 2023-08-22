@@ -17,6 +17,9 @@ include_directories(extern/faiss)
 include_directories(extern/spdlog/include)
 include_directories(include)
 
+# include_directories(extern/DiskANN/include)
+add_subdirectory(extern/DiskANN)
+
 file (GLOB CPP_SRCS "src/*.cpp")
 add_library (vsag SHARED ${CPP_SRCS})
 
@@ -34,12 +37,20 @@ endif()
 add_executable (example_hnsw examples/cpp/example_hnsw.cpp)
 target_link_libraries (example_hnsw vsag)
 
-add_executable (example_kmeans examples/cpp/example_kmeans.cpp src/Clustering.cpp)
+add_executable (example_kmeans examples/cpp/example_kmeans.cpp)
 target_link_libraries (example_kmeans vsag)
 
+
+link_directories(/opt/intel/lib/intel64_lin/)
+link_directories(/opt/intel/mkl/lib/intel64/)
+add_executable (example_diskann examples/cpp/example_diskann.cpp)
+target_include_directories(example_diskann PRIVATE extern/DiskANN/include)
+target_link_libraries (example_diskann diskann vsag)
+
 add_subdirectory (extern/Catch2)
-add_executable (tests tests/test_hnsw.cpp tests/test_json.cpp tests/test_kmeans.cpp tests/test_log.cpp)
-target_link_libraries (tests PRIVATE Catch2::Catch2WithMain vsag)
+add_executable (tests tests/test_hnsw.cpp tests/test_json.cpp tests/test_kmeans.cpp tests/test_log.cpp tests/test_diskann.cpp)
+target_include_directories(tests PRIVATE extern/DiskANN/include)
+target_link_libraries (tests PRIVATE Catch2::Catch2WithMain diskann vsag)
 
 #find_package(Python3 REQUIRED COMPONENTS Interpreter Development)
 #add_subdirectory(extern/pybind11)

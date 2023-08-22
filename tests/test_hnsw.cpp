@@ -15,7 +15,7 @@ TEST_CASE("Factorials are computed", "[factorial]") {
     REQUIRE(Factorial(10) == 3628800);
 }
 
-TEST_CASE("Float Recall", "[hnsw]") {
+TEST_CASE("HNSW Float Recall", "[hnsw]") {
     int dim = 128;
     int max_elements = 10000;
     int M = 64;
@@ -52,7 +52,7 @@ TEST_CASE("Float Recall", "[hnsw]") {
     REQUIRE(recall == 1);
 }
 
-TEST_CASE("Int8 Recall", "[hnsw]") {
+TEST_CASE("HNSW Int8 Recall", "[hnsw]") {
 
     int dim = 256;
     int max_elements = 10000;
