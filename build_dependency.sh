@@ -1,6 +1,6 @@
 
 
-yum install boost boost-devel
+yum install -y boost boost-devel
 
 
 export CC=/usr/bin/gcc
