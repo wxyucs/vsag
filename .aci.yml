@@ -27,8 +27,7 @@ vsag_build_ut:
         command:
         - |
           echo "running unittests..."
-          export CC=/usr/bin/gcc
-          export CXX=/usr/bin/g++
+          sh build_dependency.sh
           make test
   timeout: 60
   allowFailure: false
