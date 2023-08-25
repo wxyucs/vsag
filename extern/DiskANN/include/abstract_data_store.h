@@ -23,11 +23,17 @@ template <typename data_t> class AbstractDataStore
     // Return number of points returned
     virtual location_t load(const std::string &filename) = 0;
 
+
+    virtual location_t load(std::stringstream &in) = 0;
+
     // Why does store take num_pts? Since store only has capacity, but we allow
     // resizing we can end up in a situation where the store has spare capacity.
     // To optimize disk utilization, we pass the number of points that are "true"
     // points, so that the store can discard the empty locations before saving.
     virtual size_t save(const std::string &filename, const location_t num_pts) = 0;
+
+
+    virtual size_t save(std::stringstream &out, const location_t num_pts) = 0;
 
     DISKANN_DLLEXPORT virtual location_t capacity() const;
 

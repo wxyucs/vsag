@@ -336,6 +336,12 @@ inline void get_bin_metadata(const std::string &bin_file, size_t &nrows, size_t 
     std::ifstream reader(bin_file.c_str(), std::ios::binary);
     get_bin_metadata_impl(reader, nrows, ncols, offset);
 }
+
+inline void get_bin_metadata(std::stringstream &in, size_t &nrows, size_t &ncols, size_t offset = 0)
+{
+    get_bin_metadata_impl(in, nrows, ncols, offset);
+}
+
 // get_bin_metadata functions END
 
 #ifndef EXEC_ENV_OLS
@@ -446,6 +452,24 @@ inline void load_bin(const std::string &bin_file, T *&data, size_t &npts, size_t
     }
     diskann::cout << "done." << std::endl;
 }
+
+template <typename T>
+inline void load_bin(std::stringstream &reader, T *&data, size_t &npts, size_t &dim, size_t offset = 0)
+{
+    try
+    {
+        reader.seekg(0);
+        load_bin_impl<T>(reader, data, npts, dim, offset);
+    }
+    catch (std::system_error &e)
+    {
+        throw FileException("no bin file error", e, __FUNCSIG__, __FILE__, __LINE__);
+    }
+    diskann::cout << "done." << std::endl;
+}
+
+
+
 
 inline void wait_for_keystroke()
 {
@@ -711,6 +735,23 @@ inline size_t save_bin(const std::string &filename, T *data, size_t npts, size_t
     return bytes_written;
 }
 
+template <typename T>
+inline size_t save_bin(std::stringstream& writer, T *data, size_t npts, size_t ndims, size_t offset = 0)
+{
+//    std::ofstream writer;
+    writer.seekp(offset, writer.beg);
+    int npts_i32 = (int)npts, ndims_i32 = (int)ndims;
+    size_t bytes_written = npts * ndims * sizeof(T) + 2 * sizeof(uint32_t);
+    writer.write((char *)&npts_i32, sizeof(int));
+    writer.write((char *)&ndims_i32, sizeof(int));
+    diskann::cout << "bin: #pts = " << npts << ", #dims = " << ndims << ", size = " << bytes_written << "B"
+                  << std::endl;
+
+    writer.write((char *)data, npts * ndims * sizeof(T));
+    diskann::cout << "Finished writing bin." << std::endl;
+    return bytes_written;
+}
+
 inline void print_progress(double percentage)
 {
     int val = (int)(percentage * 100);
@@ -933,6 +974,23 @@ inline size_t save_data_in_base_dimensions(const std::string &filename, T *data,
     return bytes_written;
 }
 
+
+template <typename T>
+inline size_t save_data_in_base_dimensions(std::stringstream &writer, T *data, size_t npts, size_t ndims,
+                                               size_t aligned_dim, size_t offset = 0)
+{
+    int npts_i32 = (int)npts, ndims_i32 = (int)ndims;
+    size_t bytes_written = 2 * sizeof(uint32_t) + npts * ndims * sizeof(T);
+    writer.seekp(offset, writer.beg);
+    writer.write((char *)&npts_i32, sizeof(int));
+    writer.write((char *)&ndims_i32, sizeof(int));
+    for (size_t i = 0; i < npts; i++)
+    {
+        writer.write((char *)(data + i * aligned_dim), ndims * sizeof(T));
+    }
+    return bytes_written;
+}
+
 template <typename T>
 inline void copy_aligned_data_from_file(const char *bin_file, T *&data, size_t &npts, size_t &dim,
                                         const size_t &rounded_dim, size_t offset = 0)
@@ -947,6 +1005,33 @@ inline void copy_aligned_data_from_file(const char *bin_file, T *&data, size_t &
     std::ifstream reader;
     reader.exceptions(std::ios::badbit | std::ios::failbit);
     reader.open(bin_file, std::ios::binary);
+    reader.seekg(offset, reader.beg);
+
+    int npts_i32, dim_i32;
+    reader.read((char *)&npts_i32, sizeof(int));
+    reader.read((char *)&dim_i32, sizeof(int));
+    npts = (unsigned)npts_i32;
+    dim = (unsigned)dim_i32;
+
+    for (size_t i = 0; i < npts; i++)
+    {
+        reader.read((char *)(data + i * rounded_dim), dim * sizeof(T));
+        memset(data + i * rounded_dim + dim, 0, (rounded_dim - dim) * sizeof(T));
+    }
+}
+
+
+template <typename T>
+inline void copy_aligned_data_from_file(std::stringstream &reader, T *&data, size_t &npts, size_t &dim,
+                                            const size_t &rounded_dim, size_t offset = 0)
+{
+    if (data == nullptr)
+    {
+        diskann::cerr << "Memory was not allocated for " << data << " before calling the load function. Exiting..."
+                      << std::endl;
+        throw diskann::ANNException("Null pointer passed to copy_aligned_data_from_file function", -1, __FUNCSIG__,
+                                    __FILE__, __LINE__);
+    }
     reader.seekg(offset, reader.beg);
 
     int npts_i32, dim_i32;

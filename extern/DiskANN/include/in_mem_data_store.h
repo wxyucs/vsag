@@ -25,7 +25,9 @@ template <typename data_t> class InMemDataStore : public AbstractDataStore<data_
     virtual ~InMemDataStore();
 
     virtual location_t load(const std::string &filename) override;
+    virtual location_t load(std::stringstream &in) override;
     virtual size_t save(const std::string &filename, const location_t num_points) override;
+    virtual size_t save(std::stringstream &out, const location_t num_points) override;
 
     virtual size_t get_aligned_dim() const override;
 
@@ -60,6 +62,7 @@ template <typename data_t> class InMemDataStore : public AbstractDataStore<data_
     virtual location_t shrink(const location_t new_size) override;
 
     virtual location_t load_impl(const std::string &filename);
+    virtual location_t load_impl(std::stringstream &in);
 #ifdef EXEC_ENV_OLS
     virtual location_t load_impl(AlignedFileReader &reader);
 #endif

@@ -72,6 +72,9 @@ template <typename T, typename TagT = uint32_t, typename LabelT = uint32_t> clas
     // Saves graph, data, metadata and associated tags.
     DISKANN_DLLEXPORT void save(const char *filename, bool compact_before_save = false);
 
+
+    DISKANN_DLLEXPORT void save(std::stringstream &graph_stream, std::stringstream &tag_stream, std::stringstream &data_stream, bool compact_before_save = false);
+
     // Load functions
 #ifdef EXEC_ENV_OLS
     DISKANN_DLLEXPORT void load(AlignedFileReader &reader, uint32_t num_threads, uint32_t search_l);
@@ -80,6 +83,9 @@ template <typename T, typename TagT = uint32_t, typename LabelT = uint32_t> clas
     DISKANN_DLLEXPORT static size_t get_graph_num_frozen_points(const std::string &graph_file);
 
     DISKANN_DLLEXPORT void load(const char *index_file, uint32_t num_threads, uint32_t search_l);
+
+
+    DISKANN_DLLEXPORT void load(std::stringstream &graph_stream, std::stringstream &tag_stream, std::stringstream &data_stream, uint32_t num_threads, uint32_t search_l);
 #endif
 
     // get some private variables
@@ -313,6 +319,13 @@ template <typename T, typename TagT = uint32_t, typename LabelT = uint32_t> clas
     DISKANN_DLLEXPORT size_t save_graph(std::string filename);
     DISKANN_DLLEXPORT size_t save_data(std::string filename);
     DISKANN_DLLEXPORT size_t save_tags(std::string filename);
+
+
+    DISKANN_DLLEXPORT size_t save_graph(std::stringstream& out);
+    DISKANN_DLLEXPORT size_t save_data(std::stringstream& out);
+    DISKANN_DLLEXPORT size_t save_tags(std::stringstream& out);
+
+
     DISKANN_DLLEXPORT size_t save_delete_list(const std::string &filename);
 #ifdef EXEC_ENV_OLS
     DISKANN_DLLEXPORT size_t load_graph(AlignedFileReader &reader, size_t expected_num_points);
@@ -323,6 +336,13 @@ template <typename T, typename TagT = uint32_t, typename LabelT = uint32_t> clas
     DISKANN_DLLEXPORT size_t load_graph(const std::string filename, size_t expected_num_points);
     DISKANN_DLLEXPORT size_t load_data(std::string filename0);
     DISKANN_DLLEXPORT size_t load_tags(const std::string tag_file_name);
+
+
+    DISKANN_DLLEXPORT size_t load_graph(std::stringstream &in, size_t expected_num_points);
+    DISKANN_DLLEXPORT size_t load_data(std::stringstream &in);
+    DISKANN_DLLEXPORT size_t load_tags(std::stringstream &in);
+
+
     DISKANN_DLLEXPORT size_t load_delete_set(const std::string &filename);
 #endif
 

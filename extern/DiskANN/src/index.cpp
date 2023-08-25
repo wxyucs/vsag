@@ -247,6 +247,48 @@ template <typename T, typename TagT, typename LabelT> size_t Index<T, TagT, Labe
     return tag_bytes_written;
 }
 
+
+template <typename T, typename TagT, typename LabelT> size_t Index<T, TagT, LabelT>::save_tags(std::stringstream& out)
+{
+    if (!_enable_tags)
+    {
+        diskann::cout << "Not saving tags as they are not enabled." << std::endl;
+        return 0;
+    }
+    size_t tag_bytes_written;
+    TagT *tag_data = new TagT[_nd + _num_frozen_pts];
+    for (uint32_t i = 0; i < _nd; i++)
+    {
+        TagT tag;
+        if (_location_to_tag.try_get(i, tag))
+        {
+            tag_data[i] = tag;
+        }
+        else
+        {
+            // catering to future when tagT can be any type.
+            std::memset((char *)&tag_data[i], 0, sizeof(TagT));
+        }
+    }
+    if (_num_frozen_pts > 0)
+    {
+        std::memset((char *)&tag_data[_start], 0, sizeof(TagT) * _num_frozen_pts);
+    }
+    try
+    {
+        tag_bytes_written = save_bin<TagT>(out, tag_data, _nd + _num_frozen_pts, 1);
+    }
+    catch (std::system_error &e)
+    {
+        throw FileException("tags_stream", e, __FUNCSIG__, __FILE__, __LINE__);
+    }
+    delete[] tag_data;
+    return tag_bytes_written;
+}
+
+
+
+
 template <typename T, typename TagT, typename LabelT> size_t Index<T, TagT, LabelT>::save_data(std::string data_file)
 {
     // Note: at this point, either _nd == _max_points or any frozen points have
@@ -254,6 +296,15 @@ template <typename T, typename TagT, typename LabelT> size_t Index<T, TagT, Labe
     // location limit.
     return _data_store->save(data_file, (location_t)(_nd + _num_frozen_pts));
 }
+
+template <typename T, typename TagT, typename LabelT> size_t Index<T, TagT, LabelT>::save_data(std::stringstream &out)
+{
+    // Note: at this point, either _nd == _max_points or any frozen points have
+    // been temporarily moved to _nd, so _nd + _num_frozen_points is the valid
+    // location limit.
+    return _data_store->save(out, (location_t)(_nd + _num_frozen_pts));
+}
+
 
 // save the graph index on a file as an adjacency list. For each point,
 // first store the number of neighbors, and then the neighbor list (each as
@@ -289,6 +340,37 @@ template <typename T, typename TagT, typename LabelT> size_t Index<T, TagT, Labe
     out.close();
     return index_size; // number of bytes written
 }
+
+template <typename T, typename TagT, typename LabelT> size_t Index<T, TagT, LabelT>::save_graph(std::stringstream& out)
+{
+    size_t file_offset = 0; // we will use this if we want
+    out.seekp(file_offset, out.beg);
+    size_t index_size = 24;
+    uint32_t max_degree = 0;
+    out.write((char *)&index_size, sizeof(uint64_t));
+    out.write((char *)&_max_observed_degree, sizeof(uint32_t));
+    uint32_t ep_u32 = _start;
+    out.write((char *)&ep_u32, sizeof(uint32_t));
+    out.write((char *)&_num_frozen_pts, sizeof(size_t));
+    // Note: at this point, either _nd == _max_points or any frozen points have
+    // been temporarily moved to _nd, so _nd + _num_frozen_points is the valid
+    // location limit.
+    for (uint32_t i = 0; i < _nd + _num_frozen_pts; i++)
+    {
+        uint32_t GK = (uint32_t)_final_graph[i].size();
+        out.write((char *)&GK, sizeof(uint32_t));
+        out.write((char *)_final_graph[i].data(), GK * sizeof(uint32_t));
+        max_degree = _final_graph[i].size() > max_degree ? (uint32_t)_final_graph[i].size() : max_degree;
+        index_size += (size_t)(sizeof(uint32_t) * (GK + 1));
+    }
+    out.seekp(file_offset, out.beg);
+    out.write((char *)&index_size, sizeof(uint64_t));
+    out.write((char *)&max_degree, sizeof(uint32_t));
+    return index_size; // number of bytes written
+}
+
+
+
 
 template <typename T, typename TagT, typename LabelT>
 size_t Index<T, TagT, LabelT>::save_delete_list(const std::string &filename)
@@ -406,6 +488,57 @@ void Index<T, TagT, LabelT>::save(const char *filename, bool compact_before_save
     diskann::cout << "Time taken for save: " << timer.elapsed() / 1000000.0 << "s." << std::endl;
 }
 
+
+template <typename T, typename TagT, typename LabelT>
+void Index<T, TagT, LabelT>::save(std::stringstream &graph_stream, std::stringstream &tag_stream, std::stringstream &data_stream, bool compact_before_save)
+{
+    diskann::Timer timer;
+
+    std::unique_lock<std::shared_timed_mutex> ul(_update_lock);
+    std::unique_lock<std::shared_timed_mutex> cl(_consolidate_lock);
+    std::unique_lock<std::shared_timed_mutex> tl(_tag_lock);
+    std::unique_lock<std::shared_timed_mutex> dl(_delete_lock);
+
+    if (compact_before_save)
+    {
+        compact_data();
+        compact_frozen_point();
+    }
+    else
+    {
+        if (!_data_compacted)
+        {
+            throw ANNException("Index save for non-compacted index is not yet implemented", -1, __FUNCSIG__, __FILE__,
+                               __LINE__);
+        }
+    }
+
+    if (!_save_as_one_file)
+    {
+
+        // Because the save_* functions use append mode, ensure that
+        // the files are deleted before save. Ideally, we should check
+        // the error code for delete_file, but will ignore now because
+        // delete should succeed if save will succeed.
+        save_graph(graph_stream);
+        save_data(data_stream);
+        save_tags(tag_stream);
+    }
+    else
+    {
+        diskann::cout << "Save index in a single file currently not supported. "
+                         "Not saving the index."
+                      << std::endl;
+    }
+
+    // If frozen points were temporarily compacted to _nd, move back to
+    // _max_points.
+    reposition_frozen_point_to_end();
+
+    diskann::cout << "Time taken for save: " << timer.elapsed() / 1000000.0 << "s." << std::endl;
+}
+
+
 #ifdef EXEC_ENV_OLS
 template <typename T, typename TagT, typename LabelT>
 size_t Index<T, TagT, LabelT>::load_tags(AlignedFileReader &reader)
@@ -462,6 +595,51 @@ size_t Index<T, TagT, LabelT>::load_tags(const std::string tag_filename)
     return file_num_points;
 }
 
+
+
+template <typename T, typename TagT, typename LabelT>
+size_t Index<T, TagT, LabelT>::load_tags(std::stringstream &in)
+{
+    if (!_enable_tags)
+    {
+        diskann::cout << "Tags not loaded as tags not enabled." << std::endl;
+        return 0;
+    }
+
+    size_t file_dim, file_num_points;
+    TagT *tag_data;
+    load_bin<TagT>(in, tag_data, file_num_points, file_dim);
+    if (file_dim != 1)
+    {
+        std::stringstream stream;
+        stream << "ERROR: Found " << file_dim << " dimensions for tags,"
+               << "but tag file must have 1 dimension." << std::endl;
+        diskann::cerr << stream.str() << std::endl;
+        delete[] tag_data;
+        throw diskann::ANNException(stream.str(), -1, __FUNCSIG__, __FILE__, __LINE__);
+    }
+
+    const size_t num_data_points = file_num_points - _num_frozen_pts;
+    _location_to_tag.reserve(num_data_points);
+    _tag_to_location.reserve(num_data_points);
+    for (uint32_t i = 0; i < (uint32_t)num_data_points; i++)
+    {
+        TagT tag = *(tag_data + i);
+        if (_delete_set->find(i) == _delete_set->end())
+        {
+            _location_to_tag.set(i, tag);
+            _tag_to_location[tag] = i;
+        }
+    }
+    diskann::cout << "Tags loaded." << std::endl;
+    delete[] tag_data;
+    return file_num_points;
+}
+
+
+
+
+
 template <typename T, typename TagT, typename LabelT>
 #ifdef EXEC_ENV_OLS
 size_t Index<T, TagT, LabelT>::load_data(AlignedFileReader &reader)
@@ -511,6 +689,41 @@ size_t Index<T, TagT, LabelT>::load_data(std::string filename)
     return file_num_points;
 }
 
+
+
+template <typename T, typename TagT, typename LabelT>
+size_t Index<T, TagT, LabelT>::load_data(std::stringstream &in)
+{
+    size_t file_dim, file_num_points;
+    std::stringstream back_in;
+    back_in << in.rdbuf();
+    diskann::get_bin_metadata(back_in, file_num_points, file_dim);
+
+    // since we are loading a new dataset, _empty_slots must be cleared
+    _empty_slots.clear();
+
+    if (file_dim != _dim)
+    {
+        std::stringstream stream;
+        stream << "ERROR: Driver requests loading " << _dim << " dimension,"
+               << "but file has " << file_dim << " dimension." << std::endl;
+        diskann::cerr << stream.str() << std::endl;
+        throw diskann::ANNException(stream.str(), -1, __FUNCSIG__, __FILE__, __LINE__);
+    }
+
+    if (file_num_points > _max_points + _num_frozen_pts)
+    {
+        // update and tag lock acquired in load() before calling load_data
+        resize(file_num_points - _num_frozen_pts);
+    }
+    _data_store->load(in); // offset == 0.
+    return file_num_points;
+}
+
+
+
+
+
 #ifdef EXEC_ENV_OLS
 template <typename T, typename TagT, typename LabelT>
 size_t Index<T, TagT, LabelT>::load_delete_set(AlignedFileReader &reader)
@@ -538,6 +751,72 @@ size_t Index<T, TagT, LabelT>::load_delete_set(const std::string &filename)
 
 // load the index from file and update the max_degree, cur (navigating
 // node loc), and _final_graph (adjacency list)
+template <typename T, typename TagT, typename LabelT>
+void Index<T, TagT, LabelT>::load(std::stringstream &graph_stream, std::stringstream &tag_stream, std::stringstream &data_stream, uint32_t num_threads, uint32_t search_l)
+{
+    std::unique_lock<std::shared_timed_mutex> ul(_update_lock);
+    std::unique_lock<std::shared_timed_mutex> cl(_consolidate_lock);
+    std::unique_lock<std::shared_timed_mutex> tl(_tag_lock);
+    std::unique_lock<std::shared_timed_mutex> dl(_delete_lock);
+
+    _has_built = true;
+
+    size_t tags_file_num_pts = 0, graph_num_pts = 0, data_file_num_pts = 0, label_num_pts = 0;
+    if (!_save_as_one_file)
+    {
+        // For DLVS Store, we will not support saving the index in multiple
+        // files.
+#ifndef EXEC_ENV_OLS
+        data_file_num_pts = load_data(data_stream);
+        if (_enable_tags)
+        {
+            tags_file_num_pts = load_tags(tag_stream);
+        }
+        graph_num_pts = load_graph(graph_stream, data_file_num_pts);
+#endif
+    }
+    else
+    {
+        diskann::cout << "Single index file saving/loading support not yet "
+                         "enabled. Not loading the index."
+                      << std::endl;
+        return;
+    }
+
+    if (data_file_num_pts != graph_num_pts || (data_file_num_pts != tags_file_num_pts && _enable_tags))
+    {
+        std::stringstream stream;
+        stream << "ERROR: When loading index, loaded " << data_file_num_pts << " points from datafile, "
+               << graph_num_pts << " from graph, and " << tags_file_num_pts
+               << " tags, with num_frozen_pts being set to " << _num_frozen_pts << " in constructor." << std::endl;
+        diskann::cerr << stream.str() << std::endl;
+        throw diskann::ANNException(stream.str(), -1, __FUNCSIG__, __FILE__, __LINE__);
+    }
+    _nd = data_file_num_pts - _num_frozen_pts;
+    _empty_slots.clear();
+    _empty_slots.reserve(_max_points);
+    for (auto i = _nd; i < _max_points; i++)
+    {
+        _empty_slots.insert((uint32_t)i);
+    }
+
+    reposition_frozen_point_to_end();
+    diskann::cout << "Num frozen points:" << _num_frozen_pts << " _nd: " << _nd << " _start: " << _start
+                  << " size(_location_to_tag): " << _location_to_tag.size()
+                  << " size(_tag_to_location):" << _tag_to_location.size() << " Max points: " << _max_points
+                  << std::endl;
+
+    // For incremental index, _query_scratch is initialized in the constructor.
+    // For the bulk index, the params required to initialize _query_scratch
+    // are known only at load time, hence this check and the call to
+    // initialize_q_s().
+    if (_query_scratch.size() == 0)
+    {
+        initialize_query_scratch(num_threads, search_l, search_l, (uint32_t)_max_range_of_loaded_graph, _indexingMaxC,
+                                 _dim);
+    }
+}
+
 template <typename T, typename TagT, typename LabelT>
 #ifdef EXEC_ENV_OLS
 void Index<T, TagT, LabelT>::load(AlignedFileReader &reader, uint32_t num_threads, uint32_t search_l)
@@ -669,6 +948,9 @@ void Index<T, TagT, LabelT>::load(const char *filename, uint32_t num_threads, ui
                                  _dim);
     }
 }
+
+
+
 
 #ifndef EXEC_ENV_OLS
 template <typename T, typename TagT, typename LabelT>
@@ -827,6 +1109,93 @@ size_t Index<T, TagT, LabelT>::load_graph(std::string filename, size_t expected_
                   << _start << std::endl;
     return nodes_read;
 }
+
+template <typename T, typename TagT, typename LabelT>
+size_t Index<T, TagT, LabelT>::load_graph(std::stringstream &in, size_t expected_num_points)
+{
+    size_t expected_file_size;
+    size_t file_frozen_pts;
+
+
+    size_t file_offset = 0; // will need this for single file format support
+    in.exceptions(std::ios::badbit | std::ios::failbit);
+    in.seekg(file_offset, in.beg);
+    in.read((char *)&expected_file_size, sizeof(size_t));
+    in.read((char *)&_max_observed_degree, sizeof(uint32_t));
+    in.read((char *)&_start, sizeof(uint32_t));
+    in.read((char *)&file_frozen_pts, sizeof(size_t));
+    size_t vamana_metadata_size = sizeof(size_t) + sizeof(uint32_t) + sizeof(uint32_t) + sizeof(size_t);
+
+    diskann::cout << "From graph header, expected_file_size: " << expected_file_size
+                  << ", _max_observed_degree: " << _max_observed_degree << ", _start: " << _start
+                  << ", file_frozen_pts: " << file_frozen_pts << std::endl;
+
+    if (file_frozen_pts != _num_frozen_pts)
+    {
+        std::stringstream stream;
+        if (file_frozen_pts == 1)
+        {
+            stream << "ERROR: When loading index, detected dynamic index, but "
+                      "constructor asks for static index. Exitting."
+                   << std::endl;
+        }
+        else
+        {
+            stream << "ERROR: When loading index, detected static index, but "
+                      "constructor asks for dynamic index. Exitting."
+                   << std::endl;
+        }
+        diskann::cerr << stream.str() << std::endl;
+        throw diskann::ANNException(stream.str(), -1, __FUNCSIG__, __FILE__, __LINE__);
+    }
+
+    const size_t expected_max_points = expected_num_points - file_frozen_pts;
+
+    // If user provides more points than max_points
+    // resize the _final_graph to the larger size.
+    if (_max_points < expected_max_points)
+    {
+        diskann::cout << "Number of points in data: " << expected_max_points
+                      << " is greater than max_points: " << _max_points
+                      << " Setting max points to: " << expected_max_points << std::endl;
+        _final_graph.resize(expected_max_points + _num_frozen_pts);
+        _max_points = expected_max_points;
+    }
+    size_t bytes_read = vamana_metadata_size;
+    size_t cc = 0;
+    uint32_t nodes_read = 0;
+    while (bytes_read != expected_file_size)
+    {
+        uint32_t k;
+        in.read((char *)&k, sizeof(uint32_t));
+
+        if (k == 0)
+        {
+            diskann::cerr << "ERROR: Point found with no out-neighbors, point#" << nodes_read << std::endl;
+        }
+
+        cc += k;
+        ++nodes_read;
+        std::vector<uint32_t> tmp(k);
+        tmp.reserve(k);
+        in.read((char *)tmp.data(), k * sizeof(uint32_t));
+        _final_graph[nodes_read - 1].swap(tmp);
+        bytes_read += sizeof(uint32_t) * ((size_t)k + 1);
+        if (nodes_read % 10000000 == 0)
+            diskann::cout << "." << std::flush;
+        if (k > _max_range_of_loaded_graph)
+        {
+            _max_range_of_loaded_graph = k;
+        }
+    }
+
+    diskann::cout << "done. Index has " << nodes_read << " nodes and " << cc << " out-edges, _start is set to "
+                  << _start << std::endl;
+    return nodes_read;
+}
+
+
+
 
 template <typename T, typename TagT, typename LabelT>
 int Index<T, TagT, LabelT>::_get_vector_by_tag(TagType &tag, DataType &vec)

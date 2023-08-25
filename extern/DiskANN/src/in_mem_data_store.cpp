@@ -42,6 +42,11 @@ template <typename data_t> location_t InMemDataStore<data_t>::load(const std::st
     return load_impl(filename);
 }
 
+template <typename data_t> location_t InMemDataStore<data_t>::load(std::stringstream &in)
+{
+    return load_impl(in);
+}
+
 #ifdef EXEC_ENV_OLS
 template <typename data_t> location_t InMemDataStore<data_t>::load_impl(AlignedFileReader &reader)
 {
@@ -102,10 +107,43 @@ template <typename data_t> location_t InMemDataStore<data_t>::load_impl(const st
     return (location_t)file_num_points;
 }
 
+template <typename data_t> location_t InMemDataStore<data_t>::load_impl(std::stringstream &in)
+{
+    size_t file_dim, file_num_points;
+    diskann::get_bin_metadata(in, file_num_points, file_dim);
+
+    if (file_dim != this->_dim)
+    {
+        std::stringstream stream;
+        stream << "ERROR: Driver requests loading " << this->_dim << " dimension,"
+               << "but file has " << file_dim << " dimension." << std::endl;
+        diskann::cerr << stream.str() << std::endl;
+        aligned_free(_data);
+        throw diskann::ANNException(stream.str(), -1, __FUNCSIG__, __FILE__, __LINE__);
+    }
+
+    if (file_num_points > this->capacity())
+    {
+        this->resize((location_t)file_num_points);
+    }
+
+    in.seekg(0, in.beg);
+    copy_aligned_data_from_file<data_t>(in, _data, file_num_points, file_dim, _aligned_dim);
+
+    return (location_t)file_num_points;
+}
+
+
 template <typename data_t> size_t InMemDataStore<data_t>::save(const std::string &filename, const location_t num_points)
 {
     return save_data_in_base_dimensions(filename, _data, num_points, this->get_dims(), this->get_aligned_dim(), 0U);
 }
+
+template <typename data_t> size_t InMemDataStore<data_t>::save(std::stringstream &out, const location_t num_points)
+{
+    return save_data_in_base_dimensions(out, _data, num_points, this->get_dims(), this->get_aligned_dim(), 0U);
+}
+
 
 template <typename data_t> void InMemDataStore<data_t>::populate_data(const data_t *vectors, const location_t num_pts)
 {

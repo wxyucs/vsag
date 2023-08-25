@@ -17,7 +17,6 @@
 
 TEST_CASE("DiskAnn Float Recall", "[diskann]") {
 
-
     diskann::Metric metric = diskann::Metric::L2;
 
     size_t data_num = 10000, data_dim = 256;
@@ -29,23 +28,7 @@ TEST_CASE("DiskAnn Float Recall", "[diskann]") {
     auto index_build_params = diskann::IndexWriteParametersBuilder(L, R)
                                   .build();
 
-    auto build_params = diskann::IndexBuildParamsBuilder(index_build_params)
-                            .build();
-    auto config = diskann::IndexConfigBuilder()
-                      .with_metric(metric)
-                      .with_dimension(data_dim)
-                      .with_max_points(data_num)
-                      .with_data_load_store_strategy(diskann::DataStoreStrategy::MEMORY)
-                      .with_graph_load_store_strategy(diskann::GraphStoreStrategy::MEMORY)
-                      .with_data_type(data_type)
-                      .with_label_type(label_type)
-                      .is_dynamic_index(false)
-                      .with_index_write_params(index_build_params)
-                      .is_enable_tags(false)
-                      .build();
-
-    auto index_factory = diskann::IndexFactory(config);
-    auto index = index_factory.create_instance();
+    diskann::Index<float, uint32_t, uint32_t> index(metric, data_dim, data_num, false, false, false, false, 4, false);
 
     std::mt19937 rng;
     rng.seed(47);
@@ -56,11 +39,11 @@ TEST_CASE("DiskAnn Float Recall", "[diskann]") {
         data[i] = distrib_real(rng);
         tags.push_back(i);
     }
-    index->build(data, data_num, index_build_params, tags);
+    index.build(data, data_num, index_build_params, tags);
     auto results = new uint32_t[20];
     double correct = 0;
     for (size_t i = 0; i < data_num; i++) {
-        index->search(data + i * data_dim, 1, L, results);
+        index.search(data + i * data_dim, 1, L, results);
         if (results[0] == i) {
             correct += 1;
         }
