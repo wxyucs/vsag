@@ -40,9 +40,13 @@ target_link_libraries (example_hnsw vsag)
 add_executable (example_kmeans examples/cpp/example_kmeans.cpp)
 target_link_libraries (example_kmeans vsag)
 
-
+link_directories(
+    ${root}/third-party/install/lib
+    ${root}/third-party/install/lib64)
 link_directories(/opt/intel/lib/intel64_lin/)
 link_directories(/opt/intel/mkl/lib/intel64/)
+
+
 add_executable (example_diskann examples/cpp/example_diskann.cpp)
 target_include_directories(example_diskann PRIVATE extern/DiskANN/include)
 target_link_libraries (example_diskann diskann vsag)

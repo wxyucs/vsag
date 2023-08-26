@@ -92,7 +92,8 @@ if (MSVC)
     set(Boost_USE_STATIC_LIBS ON)
 endif()
 
-find_package(Boost COMPONENTS program_options)
+set(BOOST_ROOT "/tbase-project/vsag/third-party/build/boost/source/")
+find_package(Boost COMPONENTS program_options REQUIRED)
 
 # For Windows, fall back to nuget version if find_package didn't find it.
 if (MSVC AND NOT Boost_FOUND)
@@ -139,7 +140,7 @@ if (MSVC)
         "${DISKANN_MKL_LIB_PATH}/mkl_intel_thread.lib")
 else()
     # expected path for manual intel mkl installs
-    set(POSSIBLE_OMP_PATHS "/opt/intel/oneapi/compiler/latest/linux/compiler/lib/intel64_lin/libiomp5.so;/usr/lib/x86_64-linux-gnu/libiomp5.so;/opt/intel/lib/intel64_lin/libiomp5.so")
+    set(POSSIBLE_OMP_PATHS "/opt/intel/oneapi/compiler/latest/linux/compiler/lib/intel64_lin/libiomp5.so;/usr/lib/x86_64-linux-gnu/libiomp5.so;/opt/intel/lib/intel64_lin/libiomp5.so;/opt/intel/compilers_and_libraries_2020.4.304/linux/compiler/lib/intel64_lin/libiomp5.so")
     foreach(POSSIBLE_OMP_PATH ${POSSIBLE_OMP_PATHS})
         if (EXISTS ${POSSIBLE_OMP_PATH})
             get_filename_component(OMP_PATH ${POSSIBLE_OMP_PATH} DIRECTORY)
@@ -325,3 +326,4 @@ include(clang-format.cmake)
 if(PYBIND)
     add_subdirectory(python)
 endif()
+

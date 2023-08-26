@@ -48,3 +48,6 @@ venv/
 /vsag.egg-info/
 dataset/
 __pycache__/
+third-party/build/
+third-party/downloads/
+third-party/install/
