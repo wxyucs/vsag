@@ -51,3 +51,4 @@ __pycache__/
 third-party/build/
 third-party/downloads/
 third-party/install/
+dist/

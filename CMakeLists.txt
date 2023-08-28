@@ -26,9 +26,17 @@ add_subdirectory(extern/DiskANN)
 file (GLOB CPP_SRCS "src/*.cpp")
 add_library (vsag SHARED ${CPP_SRCS})
 
-target_link_libraries (vsag diskann)
+target_link_libraries (vsag diskann
+        /opt/intel/mkl/lib/intel64/libmkl_def.so
+        /opt/intel/mkl/lib/intel64/libmkl_intel_ilp64.a
+        /opt/intel/mkl/lib/intel64/libmkl_intel_thread.a
+        /opt/intel/mkl/lib/intel64/libmkl_core.a
+        iomp5
+        pthread
+        m
+        dl)
 
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g -Ofast")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g -Ofast -fPIC")
 
 if(CMAKE_HOST_SYSTEM_PROCESSOR MATCHES "(x86_64)|(AMD64|amd64)|(^i.86$)")
     add_compile_options(-mavx512f)

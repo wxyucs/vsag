@@ -63,14 +63,14 @@ ext_modules = [
         library_dirs=[
             '/opt/intel/lib/intel64_lin/',
             '/opt/intel/mkl/lib/intel64/',
-            '/tbase-project/cluster/vsag/build/extern/DiskANN/src/'
+            'extern/DiskANN/src/'
         ],
-        libraries=['diskann'],
+        libraries=["mkl_def", "mkl_core", "mkl_intel_ilp64", "mkl_intel_thread", "iomp5", "pthread", "m", "dl"],
+        extra_objects=['/tbase-project/cluster/vsag/build/extern/DiskANN/src/libdiskann.a'],
         language='c++',
         extra_compile_args=compile_flags,
     )
 ]
-
 setup(
     name='vsag',
     version='0.5.0',

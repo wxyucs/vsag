@@ -17,8 +17,9 @@ else()
     if (RESTAPI)
         list(APPEND CPP_SOURCES restapi/search_wrapper.cpp restapi/server.cpp)
     endif()
-    add_library(${PROJECT_NAME} SHARED ${CPP_SOURCES})
-    target_link_libraries(${PROJECT_NAME} aio)
+
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fPIC")
+    add_library(${PROJECT_NAME} STATIC ${CPP_SOURCES})
     add_library(${PROJECT_NAME}_s STATIC ${CPP_SOURCES})
 endif()
 

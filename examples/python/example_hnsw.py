@@ -49,5 +49,5 @@ def int8_hnsw_test():
     print("int8 recall:", correct / len(data))
 
 if __name__ == '__main__':
-    int8_hnsw_test()
+    # int8_hnsw_test()
     float32_hnsw_test()
