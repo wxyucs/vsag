@@ -1,7 +1,7 @@
 export CC=/usr/bin/gcc
 export CXX=/usr/bin/g++
-#VSAG_HOME="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
-VSAG_HOME=/tbase-project/cluster/vsag
+VSAG_HOME="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+
 mkdir -p ${VSAG_HOME}/third-party/build
 pushd ${VSAG_HOME}/third-party/build
 cmake \
