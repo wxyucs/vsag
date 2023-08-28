@@ -4,7 +4,7 @@
 #pragma once
 
 #include <errno.h>
-
+#include <xmmintrin.h>
 #include "common_includes.h"
 
 #ifdef __APPLE__

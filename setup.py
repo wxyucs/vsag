@@ -58,7 +58,14 @@ ext_modules = [
             'extern/spdlog/include',
             'include',
             'extern/pybind11/include',
+            'extern/DiskANN/include',
         ],
+        library_dirs=[
+            '/opt/intel/lib/intel64_lin/',
+            '/opt/intel/mkl/lib/intel64/',
+            '/tbase-project/cluster/vsag/build/extern/DiskANN/src/'
+        ],
+        libraries=['diskann'],
         language='c++',
         extra_compile_args=compile_flags,
     )

@@ -16,7 +16,7 @@ def float32_hnsw_test():
     data = np.float32(np.random.random((num_elements, dim)))
 
     # Declaring index
-    p = vsag.Index(dim, num_elements, "l2", "float32")
+    p = vsag.HNSWIndex(dim, num_elements, "l2", "float32")
 
     for i, item in enumerate(data):
         p.addPoint(item, i)
@@ -36,7 +36,7 @@ def int8_hnsw_test():
     data = np.int8(np.random.randint(-128, 127, size=(num_elements, dim)))
 
     # Declaring index
-    p = vsag.Index(dim, num_elements, "ip", "int8")
+    p = vsag.HNSWIndex(dim, num_elements, "ip", "int8")
 
     for i, item in enumerate(data):
         p.addPoint(item, i)

@@ -5,15 +5,6 @@
 #include "vsag/vsag.h"
 #include <omp.h>
 #include <cstring>
-#include <boost/program_options.hpp>
-
-#include <index.h>
-#include <utils.h>
-#include <program_options_utils.hpp>
-#include <memory_mapper.h>
-#include <ann_exception.h>
-#include <index_factory.h>
-
 
 TEST_CASE("DiskAnn Float Recall", "[diskann]") {
 

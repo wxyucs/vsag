@@ -24,9 +24,9 @@ py::array_t<float> kmeans(py::array_t<float, py::array::c_style | py::array::for
 }
 
 
-class Index {
+class HNSWIndex {
 public:
-    Index(int dim,
+    HNSWIndex(int dim,
           int max_elements,
           const std::string& dist_type,
           const std::string& data_type,
@@ -76,12 +76,65 @@ private:
 };
 
 
+class VamanaIndex {
+public:
+    VamanaIndex(int dim,
+                int max_elements,
+                const std::string& dist_type,
+                const std::string& data_type) {
+        diskann::Metric metric;
+        if (dist_type == "l2") {
+            metric = diskann::Metric::L2;
+        } else if (dist_type == "cosine") {
+            metric = diskann::Metric::COSINE;
+        } else if (dist_type == "ip") {
+            metric = diskann::Metric::INNER_PRODUCT;
+        }
+        vamana = std::make_shared<vsag::Vamana>(metric, dim, max_elements, data_type);
+    }
+
+    void build(
+            py::array_t<float> datas,
+            int M,
+            int ef_construction) {
+        vamana->build(datas.data(), ef_construction, M);
+    }
+
+    py::object
+    searchTopK(py::array_t<float> point, size_t k) {
+        auto result = vamana->searchTopK(point.data(), k);
+        auto labels = py::array_t<uint32_t>(k);
+        auto dists = py::array_t<float>(k);
+        auto labels_data = labels.mutable_data();
+        auto dists_data = dists.mutable_data();
+        for (int i = 0; i < k; ++i) {
+            auto item = result.top();
+            labels_data[i] = item.second;
+            dists_data[i] = item.first;
+            result.pop();
+        }
+        return py::make_tuple(labels, dists);
+    }
+
+    void
+    setEfRuntime(size_t ef_runtime) {
+        vamana->setEfRuntime(ef_runtime);
+    }
+
+private:
+    std::shared_ptr<vsag::Vamana> vamana;
+};
+
+
+
+
+
 
 PYBIND11_MODULE(vsag, m) {
     m.def("add", &add, "A function which adds two numbers");
     m.def("kmeans", &kmeans, "Kmeans");
 
-    py::class_<Index>(m, "Index")
+    py::class_<HNSWIndex>(m, "HNSWIndex")
         .def(py::init<int, int, const std::string&, const std::string&, int, int, int>(),
              py::arg("dim"),
              py::arg("max_elements"),
@@ -90,12 +143,28 @@ PYBIND11_MODULE(vsag, m) {
              py::arg("M") = 16,
              py::arg("ef_construction") = 200,
              py::arg("ef_runtime") = 200)
-        .def("addPoint", &Index::addPoint,
+        .def("addPoint", &HNSWIndex::addPoint,
              py::arg("point"),
              py::arg("label"))
-        .def("searchTopK", &Index::searchTopK,
+        .def("searchTopK", &HNSWIndex::searchTopK,
              py::arg("point"),
              py::arg("k"))
-        .def("setEfRuntime", &Index::setEfRuntime,
+        .def("setEfRuntime", &HNSWIndex::setEfRuntime,
              py::arg("ef_runtime"));
+
+    py::class_<VamanaIndex>(m, "VamanaIndex")
+            .def(py::init<int, int, const std::string&, const std::string&>(),
+                 py::arg("dim"),
+                 py::arg("max_elements"),
+                 py::arg("dist_type"),
+                 py::arg("data_type"))
+            .def("searchTopK", &VamanaIndex::searchTopK,
+                 py::arg("point"),
+                 py::arg("k"))
+            .def("build",&VamanaIndex::build,
+                 py::arg("datas"),
+                 py::arg("M"),
+                 py::arg("ef_construction"))
+            .def("setEfRuntime", &VamanaIndex::setEfRuntime,
+                 py::arg("ef_runtime"));
 }

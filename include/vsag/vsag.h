@@ -3,14 +3,16 @@
 #include <memory>
 #include <vector>
 
-#include "hnswlib/hnswlib.h"
+#include <index.h>
+#include <utils.h>
+#include <memory_mapper.h>
+#include <ann_exception.h>
+#include <index_factory.h>
+#include <hnswlib/hnswlib.h>
 namespace vsag {
 
 class IndexInterface {
 public:
-    virtual void
-    addPoint(const void* datapoint, size_t label) = 0;
-
     virtual std::priority_queue<std::pair<float, size_t>>
     searchTopK(const void* query_data, size_t k) = 0;
 
@@ -26,7 +28,10 @@ public:
          int ef_runtime);
 
     void
-    addPoint(const void* datapoint, size_t label) override;
+    addPoint(const void* datapoint, size_t label);
+
+    void
+    build(const void* datapoint, size_t data_size, size_t data_dim);
 
     std::priority_queue<std::pair<float, size_t>>
     searchTopK(const void* query_data, size_t k) override;
@@ -37,6 +42,27 @@ public:
 private:
     std::shared_ptr<hnswlib::HierarchicalNSW> alg_hnsw;
     std::shared_ptr<hnswlib::SpaceInterface> space;
+};
+
+class Vamana : public IndexInterface {
+public:
+    Vamana(diskann::Metric metric, size_t data_dim, size_t data_num, std::string data_type);
+
+    std::priority_queue<std::pair<float, size_t>>
+    searchTopK(const void* query_data, size_t k) override;
+
+    void
+    build(const void* datapoint, size_t ef_runtime, int M);
+
+    void
+    setEfRuntime(size_t ef_runtime);
+
+private:
+    std::shared_ptr<diskann::AbstractIndex> index;
+    std::shared_ptr<diskann::IndexWriteParametersBuilder> param;
+    size_t ef_runtime;
+    size_t data_num_;
+    size_t data_dim_;
 };
 
 float
