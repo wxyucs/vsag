@@ -92,8 +92,9 @@ if (MSVC)
     set(Boost_USE_STATIC_LIBS ON)
 endif()
 
-set(BOOST_ROOT "/tbase-project/vsag/third-party/build/boost/source/")
-find_package(Boost COMPONENTS program_options REQUIRED)
+set(BOOST_ROOT "../../third-party/build/boost/source")
+set(Boost_NO_SYSTEM_PATHS ON)
+find_package(Boost REQUIRED)
 
 # For Windows, fall back to nuget version if find_package didn't find it.
 if (MSVC AND NOT Boost_FOUND)
