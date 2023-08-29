@@ -18,10 +18,15 @@ include_directories(extern/spdlog/include)
 include_directories(include)
 include_directories(extern/DiskANN/include)
 
-
 link_directories(/opt/intel/lib/intel64_lin/)
 link_directories(/opt/intel/mkl/lib/intel64/)
 add_subdirectory(extern/DiskANN)
+
+set(BOOST_ROOT "third-party/build/boost/source")
+set(Boost_NO_SYSTEM_PATHS ON)
+find_package(Boost REQUIRED)
+
+include_directories(${Boost_INCLUDE_DIR})
 
 file (GLOB CPP_SRCS "src/*.cpp")
 add_library (vsag SHARED ${CPP_SRCS})
@@ -59,7 +64,7 @@ target_link_libraries (example_diskann vsag)
 
 add_subdirectory (extern/Catch2)
 add_executable (tests tests/test_hnsw.cpp tests/test_json.cpp tests/test_kmeans.cpp tests/test_log.cpp tests/test_diskann.cpp)
-target_include_directories(tests PRIVATE extern/DiskANN/include)
+target_include_directories(tests PRIVATE third-party/install/include/boost/)
 target_link_libraries (tests PRIVATE Catch2::Catch2WithMain vsag)
 
 #find_package(Python3 REQUIRED COMPONENTS Interpreter Development)
