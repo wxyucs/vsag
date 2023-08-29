@@ -59,6 +59,7 @@ ext_modules = [
             'include',
             'extern/pybind11/include',
             'extern/DiskANN/include',
+            "third-party/build/boost/source"
         ],
         library_dirs=[
             '/opt/intel/lib/intel64_lin/',
