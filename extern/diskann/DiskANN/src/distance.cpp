@@ -350,18 +350,18 @@ template <typename T> float DistanceInnerProduct<T>::inner_product(const T *a, c
 #else
 #ifdef __SSE2__
 #define SSE_DOT(addr1, addr2, dest, tmp1, tmp2)                                                                        \
-    tmp1 = _mm128_loadu_ps(addr1);                                                                                     \
-    tmp2 = _mm128_loadu_ps(addr2);                                                                                     \
-    tmp1 = _mm128_mul_ps(tmp1, tmp2);                                                                                  \
-    dest = _mm128_add_ps(dest, tmp1);
+    tmp1 = _mm_loadu_ps(addr1);                                                                                     \
+    tmp2 = _mm_loadu_ps(addr2);                                                                                     \
+    tmp1 = _mm_mul_ps(tmp1, tmp2);                                                                                  \
+    dest = _mm_add_ps(dest, tmp1);
     __m128 sum;
     __m128 l0, l1, l2, l3;
     __m128 r0, r1, r2, r3;
     uint32_t D = (size + 3) & ~3U;
     uint32_t DR = D % 16;
     uint32_t DD = D - DR;
-    const float *l = a;
-    const float *r = b;
+    const float *l = (const float *)a;
+    const float *r = (const float *)b;
     const float *e_l = l + DD;
     const float *e_r = r + DD;
     float unpack[4] __attribute__((aligned(16))) = {0, 0, 0, 0};
@@ -462,16 +462,16 @@ template <typename T> float DistanceFastL2<T>::norm(const T *a, uint32_t size) c
 #else
 #ifdef __SSE2__
 #define SSE_L2NORM(addr, dest, tmp)                                                                                    \
-    tmp = _mm128_loadu_ps(addr);                                                                                       \
-    tmp = _mm128_mul_ps(tmp, tmp);                                                                                     \
-    dest = _mm128_add_ps(dest, tmp);
+    tmp = _mm_loadu_ps(addr);                                                                                       \
+    tmp = _mm_mul_ps(tmp, tmp);                                                                                     \
+    dest = _mm_add_ps(dest, tmp);
 
     __m128 sum;
     __m128 l0, l1, l2, l3;
     uint32_t D = (size + 3) & ~3U;
     uint32_t DR = D % 16;
     uint32_t DD = D - DR;
-    const float *l = a;
+    const float *l = (const float *)a;
     const float *e_l = l + DD;
     float unpack[4] __attribute__((aligned(16))) = {0, 0, 0, 0};
 

@@ -11,7 +11,7 @@
 #include "disk_utils.h"
 #include "cached_io.h"
 #include "index.h"
-#include "mkl.h"
+//#include "mkl.h"
 #include "omp.h"
 #include "percentile_stats.h"
 #include "partition.h"
@@ -1161,7 +1161,7 @@ int build_disk_index(const char *dataFilePath, const char *indexFilePath, const 
     if (num_threads != 0)
     {
         omp_set_num_threads(num_threads);
-        mkl_set_num_threads(num_threads);
+        // mkl_set_num_threads(num_threads);
     }
 
     diskann::cout << "Starting index build: R=" << R << " L=" << L << " Query RAM budget: " << final_index_ram_limit

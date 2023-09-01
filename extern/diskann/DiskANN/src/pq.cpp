@@ -1,7 +1,9 @@
 // Copyright (c) Microsoft Corporation. All rights reserved.
 // Licensed under the MIT license.
 
-#include "mkl.h"
+// #include "mkl.h"
+#include <cblas.h>
+#include <lapacke.h>
 
 #include "pq.h"
 #include "partition.h"
@@ -608,9 +610,9 @@ int generate_opq_pivots(const float *passed_train_data, size_t num_train, uint32
     for (uint32_t rnd = 0; rnd < MAX_OPQ_ITERS; rnd++)
     {
         // rotate the training data using the current rotation matrix
-        cblas_sgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, (MKL_INT)num_train, (MKL_INT)dim, (MKL_INT)dim, 1.0f,
-                    train_data.get(), (MKL_INT)dim, rotmat_tr.get(), (MKL_INT)dim, 0.0f, rotated_train_data.get(),
-                    (MKL_INT)dim);
+        cblas_sgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, (blasint)num_train, (blasint)dim, (blasint)dim, 1.0f,
+                    train_data.get(), (blasint)dim, rotmat_tr.get(), (blasint)dim, 0.0f, rotated_train_data.get(),
+                    (blasint)dim);
 
         // compute the PQ pivots on the rotated space
         for (size_t i = 0; i < num_pq_chunks; i++)
@@ -667,15 +669,15 @@ int generate_opq_pivots(const float *passed_train_data, size_t num_train, uint32
 
         // compute the correlation matrix between the original data and the
         // quantized data to compute the new rotation
-        cblas_sgemm(CblasRowMajor, CblasTrans, CblasNoTrans, (MKL_INT)dim, (MKL_INT)dim, (MKL_INT)num_train, 1.0f,
-                    train_data.get(), (MKL_INT)dim, rotated_and_quantized_train_data.get(), (MKL_INT)dim, 0.0f,
-                    correlation_matrix.get(), (MKL_INT)dim);
+        cblas_sgemm(CblasRowMajor, CblasTrans, CblasNoTrans, (blasint)dim, (blasint)dim, (blasint)num_train, 1.0f,
+                    train_data.get(), (blasint)dim, rotated_and_quantized_train_data.get(), (blasint)dim, 0.0f,
+                    correlation_matrix.get(), (blasint)dim);
 
         // compute the SVD of the correlation matrix to help determine the new
         // rotation matrix
-        uint32_t errcode = (uint32_t)LAPACKE_sgesdd(LAPACK_ROW_MAJOR, 'A', (MKL_INT)dim, (MKL_INT)dim,
-                                                    correlation_matrix.get(), (MKL_INT)dim, singular_values.get(),
-                                                    Umat.get(), (MKL_INT)dim, Vmat_T.get(), (MKL_INT)dim);
+        uint32_t errcode = (uint32_t)LAPACKE_sgesdd(LAPACK_ROW_MAJOR, 'A', (blasint)dim, (blasint)dim,
+                                                    correlation_matrix.get(), (blasint)dim, singular_values.get(),
+                                                    Umat.get(), (blasint)dim, Vmat_T.get(), (blasint)dim);
 
         if (errcode > 0)
         {
@@ -685,8 +687,8 @@ int generate_opq_pivots(const float *passed_train_data, size_t num_train, uint32
 
         // compute the new rotation matrix from the singular vectors as R^T = U
         // V^T
-        cblas_sgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, (MKL_INT)dim, (MKL_INT)dim, (MKL_INT)dim, 1.0f,
-                    Umat.get(), (MKL_INT)dim, Vmat_T.get(), (MKL_INT)dim, 0.0f, rotmat_tr.get(), (MKL_INT)dim);
+        cblas_sgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, (blasint)dim, (blasint)dim, (blasint)dim, 1.0f,
+                    Umat.get(), (blasint)dim, Vmat_T.get(), (blasint)dim, 0.0f, rotmat_tr.get(), (blasint)dim);
     }
 
     std::vector<size_t> cumul_bytes(4, 0);
@@ -857,9 +859,9 @@ int generate_pq_data_from_pivots(const std::string &data_file, uint32_t num_cent
         {
             // rotate the current block with the trained rotation matrix before
             // PQ
-            cblas_sgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, (MKL_INT)cur_blk_size, (MKL_INT)dim, (MKL_INT)dim,
-                        1.0f, block_data_float.get(), (MKL_INT)dim, rotmat_tr.get(), (MKL_INT)dim, 0.0f,
-                        block_data_tmp.get(), (MKL_INT)dim);
+            cblas_sgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, (blasint)cur_blk_size, (blasint)dim, (blasint)dim,
+                        1.0f, block_data_float.get(), (blasint)dim, rotmat_tr.get(), (blasint)dim, 0.0f,
+                        block_data_tmp.get(), (blasint)dim);
             std::memcpy(block_data_float.get(), block_data_tmp.get(), cur_blk_size * dim * sizeof(float));
         }
 

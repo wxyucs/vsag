@@ -27,7 +27,7 @@ vsag_build_ut:
         command:
         - |
           echo "running unittests..."
-          sh build_dependency.sh
+          sh ./scripts/deps/install_deps_centos.sh
           export CC=/usr/bin/gcc
           export CXX=/usr/bin/g++
           make test
