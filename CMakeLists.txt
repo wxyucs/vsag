@@ -63,7 +63,7 @@ add_executable (tests tests/test_hnsw.cpp tests/test_json.cpp tests/test_kmeans.
 target_include_directories(tests PRIVATE third-party/install/include/boost/)
 target_link_libraries (tests PRIVATE Catch2::Catch2WithMain vsag)
 
-find_package(Python3 REQUIRED COMPONENTS Interpreter Development)
+# find_package(Python3 REQUIRED COMPONENTS Interpreter Development)
 add_subdirectory(extern/pybind11)
 pybind11_add_module(pyvsag python_bindings/binding.cpp)
 target_link_libraries(pyvsag PRIVATE pybind11::module vsag)
