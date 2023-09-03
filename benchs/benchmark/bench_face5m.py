@@ -43,7 +43,7 @@ def run():
 
     with h5py.File("/tmp/face5m.h5", 'r') as file:
         base = np.array(file['base'])
-        index = vsag.Index(base.shape[1], base.shape[0], "ip", "int8")
+        index = vsag.HNSWIndex(base.shape[1], base.shape[0], "ip", "int8")
         for i, item in enumerate(base):
             index.addPoint(item, i)
         correct = 0

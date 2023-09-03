@@ -3,7 +3,7 @@ from urllib.request import urlretrieve
 import numpy as np
 import time
 import h5py
-import vsag
+import pyvsag
 from .utils import read_dataset
 from datetime import datetime
 import logging
@@ -14,7 +14,7 @@ def measure_all(dataset, X_train, vector_count, ef_construction, M, ef_values, n
     results = np.array(dataset['neighbors'])
     logging.info("\nRunning measure_all...")
 
-    hnsw = vsag.Index(X_train.shape[1], X_train.shape[0], "l2", "float32", M, ef_construction, ef_values[0])
+    hnsw = pyvsag.HNSWIndex(X_train.shape[1], X_train.shape[0], "l2", "float32", M, ef_construction, ef_values[0])
 
     for i in range(X_train.shape[0]):
         hnsw.addPoint(X_train[i], i)
@@ -72,7 +72,7 @@ def measure_all(dataset, X_train, vector_count, ef_construction, M, ef_values, n
 def run_benchmark(dataset_name, ef_construction, M, ef_values, k=1):
 
     logging.info(f"\nRunning benchmark for:{dataset_name}")
-    dataset = read_dataset(dataset_name)
+    dataset = read_dataset(dataset_name, logging)
     X_train = np.array(dataset['train'])
     distance = dataset.attrs['distance']
     dimension = int(dataset.attrs['dimension']) if 'dimension' in dataset.attrs else len(X_train[0])

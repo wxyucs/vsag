@@ -130,7 +130,7 @@ private:
 
 
 
-PYBIND11_MODULE(vsag, m) {
+PYBIND11_MODULE(pyvsag, m) {
     m.def("add", &add, "A function which adds two numbers");
     m.def("kmeans", &kmeans, "Kmeans");
 

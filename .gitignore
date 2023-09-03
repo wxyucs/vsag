@@ -29,6 +29,7 @@
 # Executables
 *.exe
 *.out
+*.log
 *.app
 
 CMakeLists.txt.user
@@ -45,7 +46,7 @@ _deps
 /build/
 .idea/
 venv/
-/vsag.egg-info/
+/*.egg-info/
 dataset/
 __pycache__/
 third-party/build/

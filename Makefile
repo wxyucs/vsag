@@ -15,7 +15,8 @@ test: debug
 	./build/tests -d yes
 
 benchmark:
-	pip install .
+	cmake -DCMAKE_EXPORT_COMPILE_COMMANDS=1 -S. -Bbuild -DCMAKE_BUILD_TYPE=Release
+	cmake --build build --parallel 4
 	python3 benchs/run.py
 
 clean:

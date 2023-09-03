@@ -1,7 +1,9 @@
-import vsag
+import pyvsag
 import numpy as np
 import pickle
+import sys
 
+sys.path.append("/tbase-project/cluster/vsag/build/")
 
 """
 Example of search
@@ -9,14 +11,14 @@ Example of search
 
 
 def float32_hnsw_test():
-    dim = 128
-    num_elements = 10000
+    dim = 256
+    num_elements = 50000
 
     # Generating sample data
     data = np.float32(np.random.random((num_elements, dim)))
 
     # Declaring index
-    p = vsag.HNSWIndex(dim, num_elements, "l2", "float32")
+    p = pyvsag.HNSWIndex(dim, num_elements, "l2", "float32", 64, 200, 10)
 
     for i, item in enumerate(data):
         p.addPoint(item, i)
@@ -36,7 +38,7 @@ def int8_hnsw_test():
     data = np.int8(np.random.randint(-128, 127, size=(num_elements, dim)))
 
     # Declaring index
-    p = vsag.HNSWIndex(dim, num_elements, "ip", "int8")
+    p = pyvsag.HNSWIndex(dim, num_elements, "ip", "int8")
 
     for i, item in enumerate(data):
         p.addPoint(item, i)
