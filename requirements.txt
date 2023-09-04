@@ -3,4 +3,5 @@ wheel
 pybind11
 spdlog
 numpy
+h5py
 py-cpuinfo
