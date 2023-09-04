@@ -1,14 +1,14 @@
 #pragma once
+#include <ann_exception.h>
+#include <hnswlib/hnswlib.h>
+#include <index.h>
+#include <index_factory.h>
+#include <memory_mapper.h>
+#include <utils.h>
+
 #include <cstdint>
 #include <memory>
 #include <vector>
-
-#include <index.h>
-#include <utils.h>
-#include <memory_mapper.h>
-#include <ann_exception.h>
-#include <index_factory.h>
-#include <hnswlib/hnswlib.h>
 namespace vsag {
 
 class IndexInterface {
