@@ -1,0 +1,6 @@
+setuptools>=42
+wheel
+pybind11
+spdlog
+numpy
+py-cpuinfo

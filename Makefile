@@ -20,6 +20,7 @@ test: debug
 benchmark:
 	cmake -DCMAKE_EXPORT_COMPILE_COMMANDS=1 -S. -Bbuild -DCMAKE_BUILD_TYPE=Release
 	cmake --build build --parallel 4
+	pip3 install -r requirements.txt
 	python3 benchs/run.py
 
 clean:

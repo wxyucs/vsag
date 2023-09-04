@@ -1,4 +1,4 @@
-import vsag
+import pyvsag
 import numpy as np
 import csv
 from scipy.spatial.distance import cdist
@@ -49,7 +49,7 @@ def test_kmeans():
     clusters = 400
     data_labels, data_vectors = get_data_set()
     print("data size", len(data_labels))
-    centroids = vsag.kmeans(data_vectors, clusters, "ip")
+    centroids = pyvsag.kmeans(data_vectors, clusters, "ip")
     distances = cdist(data_vectors, centroids)
     min_idx = np.argmin(distances, axis=1)
     assert(len(data_labels) == len(min_idx))

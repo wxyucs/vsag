@@ -6,6 +6,7 @@ only:
   triggerBranch:
     pushOriginalBranch:
       - ^master$
+      - ^feature_diskann$
 
 parameters:
   image: reg.docker.alibaba-inc.com/tbase/tbase:dev-20230605

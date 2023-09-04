@@ -9,7 +9,7 @@ def run():
     from datetime import datetime
     import oss2
     from oss2.credentials import EnvironmentVariableCredentialsProvider
-    import vsag
+    import pyvsag
 
     logging.basicConfig(encoding='utf-8',
                         level=logging.INFO,

@@ -1,4 +1,4 @@
-import vsag
+import pyvsag
 import numpy as np
 import pickle
 
@@ -16,7 +16,7 @@ def float32_vemana_test():
     data = np.float32(np.random.random((num_elements, dim)))
 
     # Declaring index
-    p = vsag.VamanaIndex(dim, num_elements, "l2", "float32")
+    p = pyvsag.VamanaIndex(dim, num_elements, "l2", "float32")
 
     build_data = data.flatten()
 
