@@ -5,3 +5,5 @@ spdlog
 numpy
 h5py
 py-cpuinfo
+oss2
+scipy
