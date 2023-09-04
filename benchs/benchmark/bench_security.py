@@ -39,7 +39,7 @@ def run():
 
     k = 20
 
-    with read_dataset("security-7m.h5", logging) as file:
+    with read_dataset("security-1m.h5", logging) as file:
         for result_key, key in zip(['ids_256', 'ids_512'], ['vector_256', 'vector_512']):
             base = np.array(file[key])
             ids = np.array(file[result_key])
