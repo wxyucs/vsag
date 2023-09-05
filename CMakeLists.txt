@@ -21,21 +21,19 @@ include(extern/boost/boost.cmake)
 include(extern/openblas/openblas.cmake)
 include(extern/aio/aio.cmake)
 include(extern/diskann/diskann.cmake)
+include(extern/spdlog/spdlog.cmake)
 
 include_directories(extern/hnswlib)
 include_directories(extern/json/single_include)
 include_directories(extern/faiss)
-include_directories(extern/spdlog/include)
+include_directories(${CMAKE_CURRENT_BINARY_DIR}/spdlog/install/include)
 include_directories(include)
 
 file (GLOB CPP_SRCS "src/*.cpp")
 file (GLOB CPP_INDEX_SRCS "src/index/*.cpp")
 add_library (vsag SHARED ${CPP_SRCS} ${CPP_INDEX_SRCS})
-
-target_link_libraries (vsag diskann
-        pthread
-        m
-        dl)
+target_link_libraries (vsag diskann pthread m dl)
+add_dependencies(vsag spdlog)
 
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fPIC")
 if(CMAKE_BUILD_TYPE STREQUAL "Debug")
@@ -64,8 +62,9 @@ add_executable (tests
   tests/test_diskann.cpp
   tests/test_kmeans.cpp
   )
-target_include_directories(tests PRIVATE third-party/install/include/boost/)
+target_include_directories(tests PRIVATE ${CMAKE_CURRENT_BINARY_DIR}/spdlog/install/include)
 target_link_libraries (tests PRIVATE Catch2::Catch2WithMain vsag)
+add_dependencies(tests spdlog)
 
 # find_package(Python3 REQUIRED COMPONENTS Interpreter Development)
 add_subdirectory(extern/pybind11)
