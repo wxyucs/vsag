@@ -3,6 +3,9 @@
 //
 #include <catch2/catch_test_macros.hpp>
 #include "vsag/vsag.h"
+#include "hnswlib/hnswlib.h"
+#include <cmath>
+#include <random>
 
 float fvec_norm_L2sqr(const float* x, size_t d) {
     // the double in the _ref is suspected to be a typo. Some of the manual

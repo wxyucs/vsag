@@ -10,8 +10,8 @@ release:
 	cmake --build build --parallel 4
 
 format:
-	find include/ -iname *.h -o -iname *.cpp | xargs clang-format -i
-	find src/ -iname *.h -o -iname *.cpp | xargs clang-format -i
+	find include/ -iname "*.h" -o -iname "*.cpp" | xargs clang-format -i
+	find src/ -iname "*.h" -o -iname "*.cpp" | xargs clang-format -i
 
 test: debug
 	./build/tests -d yes

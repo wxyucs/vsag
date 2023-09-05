@@ -6,6 +6,12 @@
 #include <omp.h>
 #include <cstring>
 
+#include <ann_exception.h>
+#include <index.h>
+#include <index_factory.h>
+#include <memory_mapper.h>
+#include <utils.h>
+
 TEST_CASE("DiskAnn Float Recall", "[diskann]") {
 
     diskann::Metric metric = diskann::Metric::L2;

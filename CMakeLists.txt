@@ -29,14 +29,20 @@ include_directories(extern/spdlog/include)
 include_directories(include)
 
 file (GLOB CPP_SRCS "src/*.cpp")
-add_library (vsag SHARED ${CPP_SRCS})
+file (GLOB CPP_INDEX_SRCS "src/index/*.cpp")
+add_library (vsag SHARED ${CPP_SRCS} ${CPP_INDEX_SRCS})
 
 target_link_libraries (vsag diskann
         pthread
         m
         dl)
 
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g -Ofast -fPIC")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fPIC")
+if(CMAKE_BUILD_TYPE STREQUAL "Debug")
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g -O0")
+elseif(CMAKE_BUILD_TYPE STREQUAL "Release")
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Ofast")
+endif()
 
 if(CMAKE_HOST_SYSTEM_PROCESSOR MATCHES "(x86_64)|(AMD64|amd64)|(^i.86$)")
 # FIXME: only work on machine with AVX512 support
@@ -48,18 +54,16 @@ if(CMAKE_HOST_SYSTEM_PROCESSOR MATCHES "(x86_64)|(AMD64|amd64)|(^i.86$)")
 #    add_compile_options(-msse)
 endif()
 
-add_executable (example_hnsw examples/cpp/example_hnsw.cpp)
-target_link_libraries (example_hnsw vsag)
-
-add_executable (example_kmeans examples/cpp/example_kmeans.cpp)
-target_link_libraries (example_kmeans vsag)
-
-
-add_executable (example_diskann examples/cpp/example_diskann.cpp)
-target_link_libraries (example_diskann vsag)
+add_subdirectory (examples/cpp)
 
 add_subdirectory (extern/Catch2)
-add_executable (tests tests/test_hnsw.cpp tests/test_json.cpp tests/test_kmeans.cpp tests/test_log.cpp tests/test_diskann.cpp)
+add_executable (tests
+  tests/test_json.cpp
+  tests/test_log.cpp
+  tests/test_hnsw.cpp
+  tests/test_diskann.cpp
+  tests/test_kmeans.cpp
+  )
 target_include_directories(tests PRIVATE third-party/install/include/boost/)
 target_link_libraries (tests PRIVATE Catch2::Catch2WithMain vsag)
 

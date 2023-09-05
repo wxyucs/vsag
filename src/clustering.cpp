@@ -7,12 +7,15 @@
 
 // -*- c++ -*-
 
-#include "Clustering.h"
+#include "clustering.h"
+
+#include <hnswlib/hnswlib.h>
 
 #include <cinttypes>
 #include <cmath>
 #include <cstdio>
-#include <cstring>
+#include <random>
+#include <string>
 
 namespace vsag {
 
