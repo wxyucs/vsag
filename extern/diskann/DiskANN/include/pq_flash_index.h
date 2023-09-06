@@ -44,6 +44,8 @@ template <typename T, typename LabelT = uint32_t> class PQFlashIndex
                                                    const char *pivots_filepath, const char *compressed_filepath);
 #endif
 
+    DISKANN_DLLEXPORT int load_from_separate_paths(uint32_t num_threads, const char *index_filepath,
+                                                   std::stringstream &pivots_stream, std::stringstream &compressed_stream);
     DISKANN_DLLEXPORT void load_cache_list(std::vector<uint32_t> &node_list);
 
 #ifdef EXEC_ENV_OLS

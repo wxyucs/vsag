@@ -1061,6 +1061,280 @@ int PQFlashIndex<T, LabelT>::load_from_separate_paths(uint32_t num_threads, cons
     return 0;
 }
 
+template <typename T, typename LabelT>
+int PQFlashIndex<T, LabelT>::load_from_separate_paths(uint32_t num_threads, const char *index_filepath,
+                                                          std::stringstream &pivots_stream, std::stringstream &compressed_stream)
+{
+
+    std::string disk_index_file = index_filepath;
+    std::string medoids_file = std::string(disk_index_file) + "_medoids.bin";
+    std::string centroids_file = std::string(disk_index_file) + "_centroids.bin";
+
+    std::string labels_file = std ::string(disk_index_file) + "_labels.txt";
+    std::string labels_to_medoids = std ::string(disk_index_file) + "_labels_to_medoids.txt";
+    std::string dummy_map_file = std ::string(disk_index_file) + "_dummy_map.txt";
+    std::string labels_map_file = std ::string(disk_index_file) + "_labels_map.txt";
+    size_t num_pts_in_label_file = 0;
+
+    size_t pq_file_dim, pq_file_num_centroids;
+    get_bin_metadata(pivots_stream, pq_file_num_centroids, pq_file_dim, 40);
+
+    this->disk_index_file = disk_index_file;
+
+    if (pq_file_num_centroids != 256)
+    {
+        diskann::cout << "Error. Number of PQ centroids is not 256. Exiting." << std::endl;
+        return -1;
+    }
+
+    this->data_dim = pq_file_dim;
+    // will reset later if we use PQ on disk
+    this->disk_data_dim = this->data_dim;
+    // will change later if we use PQ on disk or if we are using
+    // inner product without PQ
+    this->disk_bytes_per_point = this->data_dim * sizeof(T);
+    this->aligned_dim = ROUND_UP(pq_file_dim, 8);
+
+    size_t npts_u64, nchunks_u64;
+    diskann::load_bin<uint8_t>(compressed_stream, this->data, npts_u64, nchunks_u64);
+
+    this->num_points = npts_u64;
+    this->n_chunks = nchunks_u64;
+    if (file_exists(labels_file))
+    {
+        parse_label_file(labels_file, num_pts_in_label_file);
+        assert(num_pts_in_label_file == this->num_points);
+        _label_map = load_label_map(labels_map_file);
+        if (file_exists(labels_to_medoids))
+        {
+            std::ifstream medoid_stream(labels_to_medoids);
+            assert(medoid_stream.is_open());
+            std::string line, token;
+
+            _filter_to_medoid_ids.clear();
+            try
+            {
+                while (std::getline(medoid_stream, line))
+                {
+                    std::istringstream iss(line);
+                    uint32_t cnt = 0;
+                    std::vector<uint32_t> medoids;
+                    LabelT label;
+                    while (std::getline(iss, token, ','))
+                    {
+                        if (cnt == 0)
+                            label = (LabelT)std::stoul(token);
+                        else
+                            medoids.push_back((uint32_t)stoul(token));
+                        cnt++;
+                    }
+                    _filter_to_medoid_ids[label].swap(medoids);
+                }
+            }
+            catch (std::system_error &e)
+            {
+                throw FileException(labels_to_medoids, e, __FUNCSIG__, __FILE__, __LINE__);
+            }
+        }
+        std::string univ_label_file = std ::string(disk_index_file) + "_universal_label.txt";
+        if (file_exists(univ_label_file))
+        {
+            std::ifstream universal_label_reader(univ_label_file);
+            assert(universal_label_reader.is_open());
+            std::string univ_label;
+            universal_label_reader >> univ_label;
+            universal_label_reader.close();
+            LabelT label_as_num = (LabelT)std::stoul(univ_label);
+            set_universal_label(label_as_num);
+        }
+        if (file_exists(dummy_map_file))
+        {
+            std::ifstream dummy_map_stream(dummy_map_file);
+            assert(dummy_map_stream.is_open());
+            std::string line, token;
+
+            while (std::getline(dummy_map_stream, line))
+            {
+                std::istringstream iss(line);
+                uint32_t cnt = 0;
+                uint32_t dummy_id;
+                uint32_t real_id;
+                while (std::getline(iss, token, ','))
+                {
+                    if (cnt == 0)
+                        dummy_id = (uint32_t)stoul(token);
+                    else
+                        real_id = (uint32_t)stoul(token);
+                    cnt++;
+                }
+                _dummy_pts.insert(dummy_id);
+                _has_dummy_pts.insert(real_id);
+                _dummy_to_real_map[dummy_id] = real_id;
+
+                if (_real_to_dummy_map.find(real_id) == _real_to_dummy_map.end())
+                    _real_to_dummy_map[real_id] = std::vector<uint32_t>();
+
+                _real_to_dummy_map[real_id].emplace_back(dummy_id);
+            }
+            dummy_map_stream.close();
+            diskann::cout << "Loaded dummy map" << std::endl;
+        }
+    }
+    pq_table.load_pq_centroid_bin(pivots_stream, nchunks_u64);
+    diskann::cout << "Loaded PQ centroids and in-memory compressed vectors. #points: " << num_points
+                  << " #dim: " << data_dim << " #aligned_dim: " << aligned_dim << " #chunks: " << n_chunks << std::endl;
+
+    if (n_chunks > MAX_PQ_CHUNKS)
+    {
+        std::stringstream stream;
+        stream << "Error loading index. Ensure that max PQ bytes for in-memory "
+                  "PQ data does not exceed "
+               << MAX_PQ_CHUNKS << std::endl;
+        throw diskann::ANNException(stream.str(), -1, __FUNCSIG__, __FILE__, __LINE__);
+    }
+
+//    use_disk_index_pq = true;
+//    // giving 0 chunks to make the pq_table infer from the
+//    // chunk_offsets file the correct value
+//    disk_pq_table.load_pq_centroid_bin(pivots_stream, 0);
+//    disk_pq_n_chunks = disk_pq_table.get_num_chunks();
+//    disk_bytes_per_point =
+//            disk_pq_n_chunks * sizeof(uint8_t); // revising disk_bytes_per_point since DISK PQ is used.
+//    diskann::cout << "Disk index uses PQ data compressed down to " << disk_pq_n_chunks << " bytes per point."
+//                  << std::endl;
+
+// read index metadata
+    std::ifstream index_metadata(disk_index_file, std::ios::binary);
+
+    uint32_t nr, nc; // metadata itself is stored as bin format (nr is number of
+    // metadata, nc should be 1)
+    READ_U32(index_metadata, nr);
+    READ_U32(index_metadata, nc);
+
+    uint64_t disk_nnodes;
+    uint64_t disk_ndims; // can be disk PQ dim if disk_PQ is set to true
+    READ_U64(index_metadata, disk_nnodes);
+    READ_U64(index_metadata, disk_ndims);
+
+    if (disk_nnodes != num_points)
+    {
+        diskann::cout << "Mismatch in #points for compressed data file and disk "
+                         "index file: "
+                      << disk_nnodes << " vs " << num_points << std::endl;
+        return -1;
+    }
+
+    size_t medoid_id_on_file;
+    READ_U64(index_metadata, medoid_id_on_file);
+    READ_U64(index_metadata, max_node_len);
+    READ_U64(index_metadata, nnodes_per_sector);
+    max_degree = ((max_node_len - disk_bytes_per_point) / sizeof(uint32_t)) - 1;
+
+    if (max_degree > MAX_GRAPH_DEGREE)
+    {
+        std::stringstream stream;
+        stream << "Error loading index. Ensure that max graph degree (R) does "
+                  "not exceed "
+               << MAX_GRAPH_DEGREE << std::endl;
+        throw diskann::ANNException(stream.str(), -1, __FUNCSIG__, __FILE__, __LINE__);
+    }
+
+    // setting up concept of frozen points in disk index for streaming-DiskANN
+    READ_U64(index_metadata, this->num_frozen_points);
+    uint64_t file_frozen_id;
+    READ_U64(index_metadata, file_frozen_id);
+    if (this->num_frozen_points == 1)
+        this->frozen_location = file_frozen_id;
+    if (this->num_frozen_points == 1)
+    {
+        diskann::cout << " Detected frozen point in index at location " << this->frozen_location
+                      << ". Will not output it at search time." << std::endl;
+    }
+
+    READ_U64(index_metadata, this->reorder_data_exists);
+    if (this->reorder_data_exists)
+    {
+        if (this->use_disk_index_pq == false)
+        {
+            throw ANNException("Reordering is designed for used with disk PQ "
+                               "compression option",
+                               -1, __FUNCSIG__, __FILE__, __LINE__);
+        }
+        READ_U64(index_metadata, this->reorder_data_start_sector);
+        READ_U64(index_metadata, this->ndims_reorder_vecs);
+        READ_U64(index_metadata, this->nvecs_per_sector);
+    }
+
+    diskann::cout << "Disk-Index File Meta-data: ";
+    diskann::cout << "# nodes per sector: " << nnodes_per_sector;
+    diskann::cout << ", max node len (bytes): " << max_node_len;
+    diskann::cout << ", max node degree: " << max_degree << std::endl;
+#ifndef EXEC_ENV_OLS
+    // open AlignedFileReader handle to index_file
+    std::string index_fname(disk_index_file);
+    reader->open(index_fname);
+    this->setup_thread_data(num_threads);
+    this->max_nthreads = num_threads;
+#endif
+    index_metadata.close();
+    if (file_exists(medoids_file))
+    {
+        size_t tmp_dim;
+        diskann::load_bin<uint32_t>(medoids_file, medoids, num_medoids, tmp_dim);
+
+        if (tmp_dim != 1)
+        {
+            std::stringstream stream;
+            stream << "Error loading medoids file. Expected bin format of m times "
+                      "1 vector of uint32_t."
+                   << std::endl;
+            throw diskann::ANNException(stream.str(), -1, __FUNCSIG__, __FILE__, __LINE__);
+        }
+        if (!file_exists(centroids_file))
+        {
+            diskann::cout << "Centroid data file not found. Using corresponding vectors "
+                             "for the medoids "
+                          << std::endl;
+            use_medoids_data_as_centroids();
+        }
+        else
+        {
+            size_t num_centroids, aligned_tmp_dim;
+            diskann::load_aligned_bin<float>(centroids_file, centroid_data, num_centroids, tmp_dim, aligned_tmp_dim);
+            if (aligned_tmp_dim != aligned_dim || num_centroids != num_medoids)
+            {
+                std::stringstream stream;
+                stream << "Error loading centroids data file. Expected bin format "
+                          "of "
+                          "m times data_dim vector of float, where m is number of "
+                          "medoids "
+                          "in medoids file.";
+                diskann::cerr << stream.str() << std::endl;
+                throw diskann::ANNException(stream.str(), -1, __FUNCSIG__, __FILE__, __LINE__);
+            }
+        }
+    }
+    else
+    {
+        num_medoids = 1;
+        medoids = new uint32_t[1];
+        medoids[0] = (uint32_t)(medoid_id_on_file);
+        use_medoids_data_as_centroids();
+    }
+    std::string norm_file = std::string(disk_index_file) + "_max_base_norm.bin";
+
+    if (file_exists(norm_file) && metric == diskann::Metric::INNER_PRODUCT)
+    {
+        uint64_t dumr, dumc;
+        float *norm_val;
+        diskann::load_bin<float>(norm_file, norm_val, dumr, dumc);
+        this->max_base_norm = norm_val[0];
+        diskann::cout << "Setting re-scaling factor of base vectors to " << this->max_base_norm << std::endl;
+        delete[] norm_val;
+    }
+    diskann::cout << "done.." << std::endl;
+    return 0;
+}
 #ifdef USE_BING_INFRA
 bool getNextCompletedRequest(const IOContext &ctx, size_t size, int &completedIndex)
 {
@@ -1346,12 +1620,25 @@ void PQFlashIndex<T, LabelT>::cached_beam_search(const T *query1, const uint64_t
 #else
             reader->read(frontier_read_reqs, ctx); // synchronous IO linux
 #endif
+
+//            diskann_stream.seekg(13598720);
+//            auto x = new char[4096];
+//            diskann_stream.read(x, 4096);
+
+//            for (int i = 0; i < frontier_nhoods.size(); ++i) {
+//                std::cout << (*(uint32_t *)((char *)frontier_read_reqs[i].buf + data_dim * sizeof (float)));
+//                char *node_disk_buf = OFFSET_TO_NODE(frontier_read_reqs[i].buf, frontier_nhoods[i].first);
+//                uint32_t *node_buf = OFFSET_TO_NODE_NHOOD(node_disk_buf);
+//                long offset1 = node_disk_buf - (char *)frontier_read_reqs[i].buf;
+//                long offset2 = (char *)node_buf - (char *)frontier_read_reqs[i].buf;
+//                std::cout << offset2 << "    " << data_dim * sizeof (float) << "   " << offset1 << std::endl;
+//            }
+//            exit(0);
             if (stats != nullptr)
             {
                 stats->io_us += (float)io_timer.elapsed();
             }
         }
-
         // process cached nhoods
         for (auto &cached_nhood : cached_nhoods)
         {
@@ -1427,6 +1714,7 @@ void PQFlashIndex<T, LabelT>::cached_beam_search(const T *query1, const uint64_t
             {
                 cur_expanded_dist = dist_cmp->compare(aligned_query_T, data_buf, (uint32_t)aligned_dim);
             }
+
             else
             {
                 if (metric == diskann::Metric::INNER_PRODUCT)

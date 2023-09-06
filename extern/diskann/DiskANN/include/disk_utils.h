@@ -104,5 +104,7 @@ template <typename T>
 DISKANN_DLLEXPORT void create_disk_layout(const std::string base_file, const std::string mem_index_file,
                                           const std::string output_file,
                                           const std::string reorder_data_file = std::string(""));
-
+template <typename T>
+void create_disk_layout(std::stringstream &base_reader, std::stringstream &vamana_reader, std::stringstream &diskann_writer,
+                            const std::string reorder_data_file);
 } // namespace diskann

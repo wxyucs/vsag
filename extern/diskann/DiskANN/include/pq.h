@@ -51,6 +51,8 @@ class FixedChunkPQTable
     void inflate_vector(uint8_t *base_vec, float *out_vec);
 
     void populate_chunk_inner_products(const float *query_vec, float *dist_vec);
+
+    void load_pq_centroid_bin(std::stringstream &pq_table, size_t num_chunks);
 };
 
 template <typename T> struct PQScratch
@@ -103,6 +105,11 @@ DISKANN_DLLEXPORT int generate_pq_pivots(const float *const train_data, size_t n
                                          unsigned num_centers, unsigned num_pq_chunks, unsigned max_k_means_reps,
                                          std::string pq_pivots_path, bool make_zero_mean = false);
 
+DISKANN_DLLEXPORT int generate_pq_pivots(const float *const train_data, size_t num_train, unsigned dim,
+                                             unsigned num_centers, unsigned num_pq_chunks, unsigned max_k_means_reps,
+                                             std::stringstream &pq_pivots_stream, bool make_zero_mean = false);
+
+
 DISKANN_DLLEXPORT int generate_opq_pivots(const float *train_data, size_t num_train, unsigned dim, unsigned num_centers,
                                           unsigned num_pq_chunks, std::string opq_pivots_path,
                                           bool make_zero_mean = false);
@@ -116,7 +123,10 @@ template <typename T>
 void generate_disk_quantized_data(const std::string &data_file_to_use, const std::string &disk_pq_pivots_path,
                                   const std::string &disk_pq_compressed_vectors_path,
                                   const diskann::Metric compareMetric, const double p_val, size_t &disk_pq_dims);
-
+template <typename T>
+void generate_disk_quantized_data(std::stringstream &data_stream, std::stringstream &disk_pq_pivots,
+                                  std::stringstream &disk_pq_compressed_vectors, diskann::Metric compareMetric,
+                                  const double p_val, size_t &disk_pq_dims);
 template <typename T>
 void generate_quantized_data(const std::string &data_file_to_use, const std::string &pq_pivots_path,
                              const std::string &pq_compressed_vectors_path, const diskann::Metric compareMetric,

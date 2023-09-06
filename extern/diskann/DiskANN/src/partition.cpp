@@ -141,6 +141,51 @@ void gen_random_slice(const std::string data_file, double p_val, float *&sampled
     }
 }
 
+
+
+template <typename T>
+void gen_random_slice(std::stringstream &base_reader, double p_val, float *&sampled_data, size_t &slice_size,
+                      size_t &ndims)
+{
+    size_t npts;
+    std::vector<std::vector<float>> sampled_vectors;
+    uint32_t npts32, ndims32;
+    base_reader.read((char *)&npts32, sizeof(uint32_t));
+    base_reader.read((char *)&ndims32, sizeof(uint32_t));
+    npts = npts32;
+    ndims = ndims32;
+
+    std::unique_ptr<T[]> cur_vector_T = std::make_unique<T[]>(ndims);
+    p_val = p_val < 1 ? p_val : 1;
+
+    std::random_device rd; // Will be used to obtain a seed for the random number
+    size_t x = rd();
+    std::mt19937 generator((uint32_t)x);
+    std::uniform_real_distribution<float> distribution(0, 1);
+
+    for (size_t i = 0; i < npts; i++)
+    {
+        base_reader.read((char *)cur_vector_T.get(), ndims * sizeof(T));
+        float rnd_val = distribution(generator);
+        if (rnd_val < p_val)
+        {
+            std::vector<float> cur_vector_float;
+            for (size_t d = 0; d < ndims; d++)
+                cur_vector_float.push_back(cur_vector_T[d]);
+            sampled_vectors.push_back(cur_vector_float);
+        }
+    }
+    slice_size = sampled_vectors.size();
+    sampled_data = new float[slice_size * ndims];
+    for (size_t i = 0; i < slice_size; i++)
+    {
+        for (size_t j = 0; j < ndims; j++)
+        {
+            sampled_data[i * ndims + j] = sampled_vectors[i][j];
+        }
+    }
+}
+
 // same as above, but samples from the matrix inputdata instead of a file of
 // npts*ndims to return sampled_data of size slice_size*ndims.
 template <typename T>
@@ -609,6 +654,12 @@ template void DISKANN_DLLEXPORT gen_random_slice<uint8_t>(const std::string base
                                                           double sampling_rate);
 template void DISKANN_DLLEXPORT gen_random_slice<float>(const std::string base_file, const std::string output_prefix,
                                                         double sampling_rate);
+template void DISKANN_DLLEXPORT gen_random_slice<int8_t>(std::stringstream &base_reader, double p_val, float *&sampled_data, size_t &slice_size,
+                                                         size_t &ndims);
+template void DISKANN_DLLEXPORT gen_random_slice<uint8_t>(std::stringstream &base_reader, double p_val, float *&sampled_data, size_t &slice_size,
+                                                          size_t &ndims);
+template void DISKANN_DLLEXPORT gen_random_slice<float>(std::stringstream &base_reader, double p_val, float *&sampled_data, size_t &slice_size,
+                                                        size_t &ndims);
 
 template void DISKANN_DLLEXPORT gen_random_slice<float>(const float *inputdata, size_t npts, size_t ndims, double p_val,
                                                         float *&sampled_data, size_t &slice_size);

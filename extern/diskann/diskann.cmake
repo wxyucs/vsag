@@ -38,5 +38,5 @@ set(DISKANN_SOURCES
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -mavx -msse2 -ftree-vectorize -fno-builtin-malloc -fno-builtin-calloc -fno-builtin-realloc -fno-builtin-free -fopenmp -fopenmp-simd -funroll-loops -Wfatal-errors")
 
 add_library(diskann STATIC ${DISKANN_SOURCES})
-target_link_libraries(diskann libopenblas.a gfortran)
+target_link_libraries(diskann libopenblas.a gfortran aio)
 add_dependencies(diskann boost openblas)
