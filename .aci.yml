@@ -28,8 +28,18 @@ vsag_build_ut:
         - |
           echo "running unittests..."
           sh ./scripts/deps/install_deps_centos.sh
+          # download ccache
+          osscmd config --host=${OSS_HOST} --id=${OSS_ACCESS_KEY_ID} --key=${OSS_ACCESS_KEY_SECRET}
+          osscmd get oss://tbase/vsag/ccache.tar.gz ./ccache.tar.gz
+          mkdir $HOME/.ccache
+          tar -xzf ./ccache.tar.gz -C $HOME
+          # compile
           export CC=/usr/bin/gcc
           export CXX=/usr/bin/g++
-          make test
+          export PATH=/usr/lib/ccache:$PATH
+          make debug
+          # upload ccache
+          cd $HOME/ && tar -czf ccache.tar.gz .ccache
+          osscmd put ./ccache.tar.gz oss://tbase/vsag/ccache.tar.gz
   timeout: 60
   allowFailure: false

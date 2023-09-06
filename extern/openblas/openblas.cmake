@@ -14,6 +14,7 @@ ExternalProject_Add(
     SOURCE_DIR ${source_dir}
     CONFIGURE_COMMAND ""
     BUILD_COMMAND
+	env PATH=/usr/lib/ccache:$ENV{PATH}
 	make
 	-j${NUM_BUILDING_JOBS}
     INSTALL_COMMAND

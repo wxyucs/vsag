@@ -16,11 +16,13 @@ ExternalProject_Add(
     SOURCE_DIR ${source_dir}
     CONFIGURE_COMMAND ""
     CONFIGURE_COMMAND
+	env PATH=/usr/lib/ccache:$ENV{PATH}
         ./bootstrap.sh
             --without-icu
             --without-libraries=python,test,stacktrace,mpi,log,graph,graph_parallel
             --prefix=${install_dir}
     BUILD_COMMAND
+	env PATH=/usr/lib/ccache:$ENV{PATH}
         ./b2 install
             -d0
             -j${NUM_BUILDING_JOBS}
