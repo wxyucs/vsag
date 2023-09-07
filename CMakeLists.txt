@@ -23,6 +23,7 @@ include(extern/openblas/openblas.cmake)
 include(extern/aio/aio.cmake)
 include(extern/diskann/diskann.cmake)
 include(extern/spdlog/spdlog.cmake)
+include(extern/catch2/catch2.cmake)
 
 include_directories(extern/hnswlib)
 include_directories(extern/json/single_include)
@@ -55,7 +56,6 @@ endif()
 
 add_subdirectory (examples/cpp)
 
-add_subdirectory (extern/Catch2)
 add_executable (tests
   tests/test_json.cpp
   tests/test_log.cpp
@@ -65,7 +65,7 @@ add_executable (tests
   )
 target_include_directories(tests PRIVATE ${CMAKE_CURRENT_BINARY_DIR}/spdlog/install/include)
 target_link_libraries (tests PRIVATE Catch2::Catch2WithMain vsag)
-add_dependencies(tests spdlog)
+add_dependencies(tests spdlog Catch2)
 
 # find_package(Python3 REQUIRED COMPONENTS Interpreter Development)
 add_subdirectory(extern/pybind11)
