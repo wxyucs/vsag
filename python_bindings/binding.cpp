@@ -4,6 +4,7 @@
 
 #include <pybind11/numpy.h>
 #include <pybind11/pybind11.h>
+#include <nlohmann/json.hpp>
 
 #include "vsag/vsag.h"
 
@@ -45,7 +46,7 @@ public:
             {"ef_construction", ef_construction},
             {"ef_runtime", ef_runtime},
         };
-        hnsw_ = vsag::Factory::create("hnsw", index_parameters);
+        hnsw_ = vsag::Factory::create("hnsw", index_parameters.dump());
     }
     void
     addPoint(py::array_t<float> point, size_t label) {

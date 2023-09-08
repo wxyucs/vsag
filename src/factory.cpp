@@ -5,6 +5,7 @@
 #include <memory>
 #include <stdexcept>
 #include <string>
+#include <nlohmann/json.hpp>
 
 #include "index/hnsw.h"
 #include "index/vamana.h"
@@ -12,21 +13,23 @@
 namespace vsag {
 
 std::shared_ptr<Index>
-Factory::create(const std::string& name, nlohmann::json parameters) {
-    if (parameters["dtype"] != "float32") {
+Factory::create(const std::string& name, const std::string& parameters) {
+    nlohmann::json params = nlohmann::json::parse(parameters);
+
+    if (params["dtype"] != "float32") {
         return nullptr;
     }
     if (name == "hnsw") {
         std::shared_ptr<hnswlib::SpaceInterface> space = nullptr;
-        if (parameters["metric_type"] == "l2") {
-            space = std::make_shared<hnswlib::L2Space>(parameters["dim"]);
+        if (params["metric_type"] == "l2") {
+            space = std::make_shared<hnswlib::L2Space>(params["dim"]);
         } else {
-            space = std::make_shared<hnswlib::InnerProductSpace>(parameters["dim"]);
+            space = std::make_shared<hnswlib::InnerProductSpace>(params["dim"]);
         }
         auto index = std::make_shared<HNSW>(
-            space, parameters["max_elements"], parameters["M"], parameters["ef_construction"]);
-        if (parameters.contains("ef_runtime")) {
-            index->SetEfRuntime(parameters["ef_runtime"]);
+            space, params["max_elements"], params["M"], params["ef_construction"]);
+        if (params.contains("ef_runtime")) {
+            index->SetEfRuntime(params["ef_runtime"]);
         }
         return index;
     } else if (name == "vamana") {

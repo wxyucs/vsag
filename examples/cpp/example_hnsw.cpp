@@ -1,6 +1,8 @@
 #include <iostream>
 #include <random>
 
+#include <nlohmann/json.hpp>
+
 #include "vsag/vsag.h"
 
 /*
@@ -67,7 +69,7 @@ float_hnsw() {
         {"ef_construction", ef_construction},
         // {"ef_runtime", ef_runtime},
     };
-    auto hnsw = vsag::Factory::create("hnsw", index_parameters);
+    auto hnsw = vsag::Factory::create("hnsw", index_parameters.dump());
 
 
     int64_t* ids = new int64_t[max_elements];
@@ -108,7 +110,7 @@ float_hnsw() {
         nlohmann::json parameters{
             {"ef_runtime", ef_runtime},
         };
-        auto result = hnsw->KnnSearch(query, 1, parameters);
+        auto result = hnsw->KnnSearch(query, 1, parameters.dump());
         if (result.GetIds()[0] == i) {
             correct++;
         }

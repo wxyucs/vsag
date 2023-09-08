@@ -1,7 +1,6 @@
 #pragma once
 
 #include <memory>
-#include <nlohmann/json.hpp>
 
 #include "index.h"
 
@@ -20,7 +19,7 @@ public:
       Vamana: Not supported
      */
     static std::shared_ptr<Index>
-    create(const std::string& name, nlohmann::json parameters);
+    create(const std::string& name, const std::string& parameters);
 
 private:
     Factory() = default;

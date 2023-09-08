@@ -21,7 +21,7 @@ Vamana::Build(const Dataset& base) {
 }
 
 Dataset
-Vamana::KnnSearch(const Dataset& query, int64_t k, const nlohmann::json& parameters) {
+Vamana::KnnSearch(const Dataset& query, int64_t k, const std::string& parameters) {
     throw std::runtime_error("not implemented");
     Dataset result;
     return result;

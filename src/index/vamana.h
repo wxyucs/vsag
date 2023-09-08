@@ -24,7 +24,7 @@ public:
     Build(const Dataset& base) override;
 
     Dataset
-    KnnSearch(const Dataset& query, int64_t k, const nlohmann::json& parameters) override;
+    KnnSearch(const Dataset& query, int64_t k, const std::string& parameters) override;
 
 public:
     using rs = std::pair<float, size_t>;

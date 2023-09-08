@@ -1,6 +1,7 @@
 #include <catch2/catch_test_macros.hpp>
 #include <random>
 #include <hnswlib/hnswlib.h>
+#include <nlohmann/json.hpp>
 
 #include "vsag/vsag.h"
 
@@ -34,7 +35,7 @@ TEST_CASE("HNSW Float Recall", "[hnsw]") {
         {"ef_construction", ef_construction},
         {"ef_runtime", ef_runtime},
     };
-    auto hnsw = vsag::Factory::create("hnsw", index_parameters);
+    auto hnsw = vsag::Factory::create("hnsw", index_parameters.dump());
 
     // Generate random data
     std::mt19937 rng;
@@ -65,7 +66,7 @@ TEST_CASE("HNSW Float Recall", "[hnsw]") {
 	query.SetFloat32Vectors(data + i * dim);
 	query.SetOwner(false);
 	nlohmann::json parameters;
-	auto result = hnsw->KnnSearch(query, 1, parameters);
+	auto result = hnsw->KnnSearch(query, 1, parameters.dump());
 	if (result.GetIds()[0] == i) {
 	    correct++;
 	}

@@ -6,6 +6,7 @@
 
 #include <cstdint>
 #include <memory>
+#include <nlohmann/json.hpp>
 
 namespace vsag {
 
@@ -41,9 +42,10 @@ HNSW::Add(const Dataset& base) {
 }
 
 Dataset
-HNSW::KnnSearch(const Dataset& query, int64_t k, const nlohmann::json& parameters) {
-    if (parameters.contains("ef_runtime")) {
-        alg_hnsw->setEf(parameters["ef_runtime"]);
+HNSW::KnnSearch(const Dataset& query, int64_t k, const std::string& parameters) {
+    nlohmann::json params = nlohmann::json::parse(parameters);
+    if (params.contains("ef_runtime")) {
+        alg_hnsw->setEf(params["ef_runtime"]);
     }
 
     int64_t num_elements = query.GetNumElements();

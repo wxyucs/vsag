@@ -25,7 +25,7 @@ public:
     Add(const Dataset& base) override;
 
     Dataset
-    KnnSearch(const Dataset& query, int64_t k, const nlohmann::json& parameters) override;
+    KnnSearch(const Dataset& query, int64_t k, const std::string& parameters) override;
 
 public:
     void
