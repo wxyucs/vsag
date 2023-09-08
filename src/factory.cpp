@@ -35,6 +35,15 @@ Factory::create(const std::string& name, const std::string& parameters) {
     } else if (name == "vamana") {
         std::string dtype = "float32";
         return std::make_shared<Vamana>(diskann::Metric::FAST_L2, 1, 1, dtype);
+    } else if (name == "diskann") {
+        std::string dtype = "float32";
+        auto index = std::make_shared<DiskANN>(diskann::Metric::L2,
+                                               dtype,
+                                               parameters["L"],
+                                               parameters["R"],
+                                               parameters["p_val"],
+                                               parameters["disk_pq_dims"]);
+        return index;
     } else {
         // not support
         return nullptr;
