@@ -67,8 +67,14 @@ target_include_directories(tests PRIVATE ${CMAKE_CURRENT_BINARY_DIR}/spdlog/inst
 target_link_libraries (tests PRIVATE Catch2::Catch2WithMain vsag)
 add_dependencies(tests spdlog Catch2)
 
-# find_package(Python3 REQUIRED COMPONENTS Interpreter Development)
-add_subdirectory(extern/pybind11)
-pybind11_add_module(pyvsag python_bindings/binding.cpp)
-target_link_libraries(pyvsag PRIVATE pybind11::module vsag)
+if (ENABLE_PYBINDS)
+    # find_package(Python3 REQUIRED COMPONENTS Interpreter Development)
+    add_subdirectory(extern/pybind11)
+    pybind11_add_module(pyvsag python_bindings/binding.cpp)
+    target_link_libraries(pyvsag PRIVATE pybind11::module vsag)
+endif ()
 
+install(DIRECTORY include/
+	DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}")
+install(TARGETS vsag
+	LIBRARY DESTINATION "${CMAKE_INSTALL_LIBDIR}")
