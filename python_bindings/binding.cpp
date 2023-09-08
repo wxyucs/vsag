@@ -4,10 +4,11 @@
 
 #include <pybind11/numpy.h>
 #include <pybind11/pybind11.h>
+#include <pybind11/complex.h>
+#include <pybind11/stl.h>
 #include <nlohmann/json.hpp>
-
 #include "vsag/vsag.h"
-
+#include "iostream"
 namespace py = pybind11;
 
 int
@@ -46,7 +47,7 @@ public:
             {"ef_construction", ef_construction},
             {"ef_runtime", ef_runtime},
         };
-        hnsw_ = vsag::Factory::create("hnsw", index_parameters.dump());
+        hnsw_ = vsag::Factory::create("hnsw", index_parameters);
     }
     void
     addPoint(py::array_t<float> point, size_t label) {
@@ -126,6 +127,127 @@ private:
     std::shared_ptr<vsag::Index> vamana_;
 };
 
+
+class DiskAnnIndex {
+public:
+    DiskAnnIndex() {
+
+    }
+
+    void
+    build(py::array_t<float> datas, int max_elements, int dim, int ef_construction, std::string dist_type,  std::string data_type, int R, float p_val, size_t disk_pq_dims) {
+
+        nlohmann::json index_parameters{
+                {"dtype", data_type},
+                {"metric_type", dist_type},
+                {"dim", dim},
+                {"max_elements", max_elements},
+                {"L", ef_construction},
+                {"R", R},
+                {"p_val", p_val},
+                {"disk_pq_dims", disk_pq_dims}
+        };
+        diskann_ = vsag::Factory::create("diskann", index_parameters);
+        vsag::Dataset dataset;
+        long ids[max_elements];
+        for (int i = 0; i < max_elements; ++i) {
+            ids[i] = i;
+        }
+        dataset.SetOwner(false);
+        dataset.SetDim(dim);
+        dataset.SetNumElements(max_elements);
+        dataset.SetIds(ids);
+        dataset.SetFloat32Vectors(datas.mutable_data());
+        diskann_->Build(dataset);
+    }
+
+    py::object
+    searchTopK(py::array_t<float> point, size_t k, size_t ef_search, size_t beam_search, size_t io_limit) {
+        nlohmann::json index_parameters{
+            {"ef_search", ef_search},
+            {"beam_search", beam_search},
+            {"io_limit", io_limit}
+        };
+        vsag::Dataset query;
+        
+        query.SetNumElements(1);
+        query.SetDim(point.size());
+        query.SetFloat32Vectors(point.mutable_data());
+        query.SetOwner(false);
+        auto result = diskann_->KnnSearch(query, k, index_parameters);
+        auto labels = py::array_t<uint32_t>(k);
+        auto dists = py::array_t<float>(k);
+        auto labels_data = labels.mutable_data();
+        auto dists_data = dists.mutable_data();
+        auto ids = result.GetIds();
+        auto distances = result.GetDistances();
+        for (int i = 0; i < k; ++i) {
+            labels_data[i] = static_cast<uint32_t>(ids[i]);
+            dists_data[i] = distances[i];
+        }
+
+        return py::make_tuple(labels, dists);
+    }
+
+
+private:
+    std::shared_ptr<vsag::Index> diskann_;
+};
+
+
+class Index {
+public:
+    Index(std::string index_name, nlohmann::json &index_parameters) {
+        index = vsag::Factory::create(index_name, index_parameters);
+    }
+    void
+    build(py::array_t<float> datas, int max_elements, int dim) {
+        vsag::Dataset dataset;
+        long ids[max_elements];
+        for (int i = 0; i < max_elements; ++i) {
+            ids[i] = i;
+        }
+        dataset.SetOwner(false);
+        dataset.SetDim(dim);
+        dataset.SetNumElements(max_elements);
+        dataset.SetIds(ids);
+        dataset.SetFloat32Vectors(datas.mutable_data());
+        index->Build(dataset);
+    }
+
+    py::object
+    searchTopK(py::array_t<float> point, size_t k, nlohmann::json search_parameters) {
+        vsag::Dataset query;
+        int data_num = search_parameters["data_num"]; 
+        query.SetNumElements(data_num);
+        query.SetDim(point.size());
+        query.SetFloat32Vectors(point.mutable_data());
+        query.SetOwner(false);
+
+        auto result = index->KnnSearch(query, k, search_parameters);
+        
+        auto labels = py::array_t<int64_t>(k);
+        auto dists = py::array_t<float>(k);
+        auto labels_data = labels.mutable_data();
+        auto dists_data = dists.mutable_data();
+        auto ids = result.GetIds();
+        auto distances = result.GetDistances();
+        for (int i = 0; i < data_num * k; ++i) {
+            labels_data[i] = ids[i];
+            dists_data[i] = distances[i];
+        }
+        return py::make_tuple(labels, dists); 
+    }
+
+private:
+    std::shared_ptr<vsag::Index> index;
+};
+
+
+
+
+
+
 PYBIND11_MODULE(pyvsag, m) {
     m.def("add", &add, "A function which adds two numbers");
     m.def("kmeans", &kmeans, "Kmeans");
@@ -156,4 +278,37 @@ PYBIND11_MODULE(pyvsag, m) {
              py::arg("M"),
              py::arg("ef_construction"))
         .def("setEfRuntime", &VamanaIndex::setEfRuntime, py::arg("ef_runtime"));
+
+    py::class_<DiskAnnIndex>(m, "DiskAnnIndex")
+            .def(py::init<>())
+            .def("searchTopK", &DiskAnnIndex::searchTopK,
+             py::arg("point"), 
+             py::arg("k"), 
+             py::arg("ef_search"), 
+             py::arg("beam_search"), 
+             py::arg("io_limit"))
+            .def("build",
+                 &DiskAnnIndex::build,
+                 py::arg("datas"),
+                 py::arg("max_elements"),
+                 py::arg("dim"),
+                 py::arg("ef_construction"),
+                 py::arg("dist_type"),
+                 py::arg("data_type"),
+                 py::arg("R"),
+                 py::arg("p_val"),
+                 py::arg("disk_pq_dims"));
+
+    py::class_<Index>(m, "Index")
+        .def(py::init<std::string, nlohmann::json&>(),
+                py::arg("index_name"), 
+                py::arg("index_parameters"))
+        .def("searchTopK", &Index::searchTopK,
+                py::arg("point"), 
+                py::arg("k"), 
+                py::arg("search_parameters"))
+        .def("build", &Index::build,
+                py::arg("datas"),
+                py::arg("max_elements"),
+                py::arg("dim"));
 }

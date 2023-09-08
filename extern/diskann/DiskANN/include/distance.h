@@ -1,7 +1,7 @@
 #pragma once
 #include "windows_customizations.h"
 #include <cstring>
-
+#include <stdint.h>
 namespace diskann
 {
 enum Metric
