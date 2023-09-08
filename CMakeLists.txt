@@ -56,16 +56,18 @@ endif()
 
 add_subdirectory (examples/cpp)
 
-add_executable (tests
-  tests/test_json.cpp
-  tests/test_log.cpp
-  tests/test_hnsw.cpp
-  tests/test_diskann.cpp
-  tests/test_kmeans.cpp
-  )
-target_include_directories(tests PRIVATE ${CMAKE_CURRENT_BINARY_DIR}/spdlog/install/include)
-target_link_libraries (tests PRIVATE Catch2::Catch2WithMain vsag)
-add_dependencies(tests spdlog Catch2)
+if (ENABLE_TESTS)
+    add_executable (tests
+	tests/test_json.cpp
+	tests/test_log.cpp
+	tests/test_hnsw.cpp
+	tests/test_diskann.cpp
+	tests/test_kmeans.cpp
+    )
+    target_include_directories(tests PRIVATE ${CMAKE_CURRENT_BINARY_DIR}/spdlog/install/include)
+    target_link_libraries (tests PRIVATE Catch2::Catch2WithMain vsag)
+    add_dependencies(tests spdlog Catch2)
+endif ()
 
 if (ENABLE_PYBINDS)
     # find_package(Python3 REQUIRED COMPONENTS Interpreter Development)
