@@ -4,6 +4,7 @@
 
 #include "diskann.h"
 
+#include <nlohmann/json.hpp>
 namespace vsag {
 
 DiskANN::DiskANN(
@@ -58,15 +59,16 @@ DiskANN::Build(const Dataset& base) {
 }
 
 Dataset
-DiskANN::KnnSearch(const Dataset& query, int64_t k, const nlohmann::json& parameters) {
+DiskANN::KnnSearch(const Dataset& query, int64_t k, const std::string& parameters) {
+    nlohmann::json param = nlohmann::json::parse(parameters);
     Dataset result;
     if (!index)
         return result;
     auto query_num = query.GetNumElements();
     auto query_dim = query.GetDim();
-    size_t beam_search = parameters["beam_search"]; 
-    size_t io_limit = parameters["io_limit"];
-    size_t ef_search = parameters["ef_search"];
+    size_t beam_search = param["beam_search"]; 
+    size_t io_limit = param["io_limit"];
+    size_t ef_search = param["ef_search"];
     uint64_t labels[query_num * k];
     auto distances = new float[query_num * k];
     auto ids = new int64_t[query_num * k];

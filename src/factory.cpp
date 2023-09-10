@@ -9,7 +9,7 @@
 
 #include "index/hnsw.h"
 #include "index/vamana.h"
-
+#include "index/diskann.h"
 namespace vsag {
 
 std::shared_ptr<Index>
@@ -39,10 +39,10 @@ Factory::create(const std::string& name, const std::string& parameters) {
         std::string dtype = "float32";
         auto index = std::make_shared<DiskANN>(diskann::Metric::L2,
                                                dtype,
-                                               parameters["L"],
-                                               parameters["R"],
-                                               parameters["p_val"],
-                                               parameters["disk_pq_dims"]);
+                                               params["L"],
+                                               params["R"],
+                                               params["p_val"],
+                                               params["disk_pq_dims"]);
         return index;
     } else {
         // not support

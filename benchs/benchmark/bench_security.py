@@ -56,8 +56,8 @@ def run():
         logging.info(f"dataset:{dataset}")
         with read_dataset(dataset, logging) as file:
             for result_key, key in zip(['ids_512'], ['vector_512']):
-                base = np.array(file[key])[:350000]
-                ids = np.array(file[result_key])[:350000]
+                base = np.array(file[key])[:400000]
+                ids = np.array(file[result_key])[:400000]
                 data_len = base.shape[0]
                 for index_name in ["diskann"]:
                     for M, ef_search, ef_construct, beam_search, chunks_num, io_limit in [
@@ -88,12 +88,12 @@ def run():
                         correct_1 = 0
                         io_sum = 0
                         for i, item in enumerate(base[:300000]):
-                            labels, distances = index.searchTopK(item, k, {
+                            labels, distances = index.searchTopK(item, k, json.dumps({
                                     "data_num": 1,
                                     "ef_search": ef_search, 
                                     "beam_search": beam_search, 
                                     "io_limit": io_limit
-                                }
+                                })
                             )
                             ids_results = [ids[l] for l in labels]
                             io_sum += distances[0]

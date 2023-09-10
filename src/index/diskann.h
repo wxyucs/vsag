@@ -33,7 +33,7 @@ public:
     Build(const Dataset& base) override;
 
     Dataset
-    KnnSearch(const Dataset& query, int64_t k, const nlohmann::json& parameters) override;
+    KnnSearch(const Dataset& query, int64_t k, const std::string& parameters) override;
 
     void
     SetEfRuntime(int64_t ef_runtime);
