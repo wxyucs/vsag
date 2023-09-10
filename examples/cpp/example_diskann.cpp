@@ -3,6 +3,7 @@
 //
 #include "vsag/vsag.h"
 #include <sstream>
+#include <iostream>
 // int venama_memory() {
 
 
@@ -176,6 +177,5 @@ void stream_test() {
 }
 
 int main() {
-    vename_disk_pq();
     return 0;
 }
