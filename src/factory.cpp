@@ -7,9 +7,9 @@
 #include <stdexcept>
 #include <string>
 
+#include "index/diskann.h"
 #include "index/hnsw.h"
 #include "index/vamana.h"
-#include "index/diskann.h"
 namespace vsag {
 
 std::shared_ptr<Index>

@@ -66,16 +66,24 @@ DiskANN::KnnSearch(const Dataset& query, int64_t k, const std::string& parameter
         return result;
     auto query_num = query.GetNumElements();
     auto query_dim = query.GetDim();
-    size_t beam_search = param["beam_search"]; 
+    size_t beam_search = param["beam_search"];
     size_t io_limit = param["io_limit"];
     size_t ef_search = param["ef_search"];
     uint64_t labels[query_num * k];
     auto distances = new float[query_num * k];
     auto ids = new int64_t[query_num * k];
     auto stats = new diskann::QueryStats[query_num];
-    for (int i = 0; i < query_num; i ++) {
-       index->cached_beam_search(query.GetFloat32Vectors() + i * query_dim, k, ef_search, labels + i * k, distances + i * k, beam_search, io_limit, false, stats + i); 
-       distances[i * k] = static_cast<float>(stats->n_ios); 
+    for (int i = 0; i < query_num; i++) {
+        index->cached_beam_search(query.GetFloat32Vectors() + i * query_dim,
+                                  k,
+                                  ef_search,
+                                  labels + i * k,
+                                  distances + i * k,
+                                  beam_search,
+                                  io_limit,
+                                  false,
+                                  stats + i);
+        distances[i * k] = static_cast<float>(stats->n_ios);
     }
     for (int i = 0; i < query_num * k; ++i) {
         ids[i] = static_cast<int64_t>(labels[i]);
@@ -88,6 +96,5 @@ DiskANN::KnnSearch(const Dataset& query, int64_t k, const std::string& parameter
     result.SetIds(ids);
     return result;
 }
-
 
 }  // namespace vsag
