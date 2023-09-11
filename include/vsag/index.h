@@ -3,7 +3,7 @@
 #include <queue>
 #include <stdexcept>
 
-// #include "vsag/binaryset.h"
+#include "vsag/binaryset.h"
 #include "vsag/dataset.h"
 
 namespace vsag {
@@ -37,16 +37,16 @@ public:
     virtual Dataset
     KnnSearch(const Dataset& query, int64_t k, const std::string& parameters) = 0;
 
-    //public:
-    //    virtual BinarySet
-    //    Serialize() {
-    //        throw std::runtime_error("Index not support serialize");
-    //    };
-    //
-    //    virtual void
-    //    Deserialize(const BinarySet& binary_set) {
-    //        throw std::runtime_error("Index not support deserialize");
-    //    }
+public:
+    virtual BinarySet
+    Serialize() {
+        throw std::runtime_error("Index not support serialize");
+    };
+
+    virtual void
+    Deserialize(const BinarySet& binary_set) {
+        throw std::runtime_error("Index not support deserialize");
+    }
 };
 
 }  // namespace vsag

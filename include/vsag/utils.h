@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstddef>
+#include <random>
 #include <string>
 
 namespace vsag {

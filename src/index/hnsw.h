@@ -28,6 +28,13 @@ public:
     KnnSearch(const Dataset& query, int64_t k, const std::string& parameters) override;
 
 public:
+    BinarySet
+    Serialize() override;
+
+    void
+    Deserialize(const BinarySet& binary_set) override;
+
+public:
     void
     SetEfRuntime(int64_t ef_runtime);
 

@@ -1,14 +1,28 @@
 
-
 #include "hnsw.h"
 
 #include <hnswlib/hnswlib.h>
 
 #include <cstdint>
+#include <fstream>
 #include <memory>
 #include <nlohmann/json.hpp>
+#include <sstream>
+#include <stdexcept>
+#include <string>
+
+#include "vsag/binaryset.h"
+#include "vsag/utils.h"
 
 namespace vsag {
+
+inline int64_t
+random_integer(int64_t lower_bound, int64_t upper_bound) {
+    std::random_device rd;
+    std::mt19937 generator(rd());
+    std::uniform_int_distribution<int> distribution(lower_bound, upper_bound);
+    return distribution(generator);
+}
 
 HNSW::HNSW(std::shared_ptr<hnswlib::SpaceInterface> spaceInterface,
            int max_elements,
@@ -68,6 +82,47 @@ HNSW::KnnSearch(const Dataset& query, int64_t k, const std::string& parameters) 
     result.SetDistances(dists);
 
     return result;
+}
+
+BinarySet
+HNSW::Serialize() {
+    // FIXME: index should save to memory buffer directly
+    std::string filename = "/tmp/hnsw-" + std::to_string(random_integer(1'000'000, 9'000'000));
+    alg_hnsw->saveIndex(filename);
+
+    std::ifstream file(filename, std::ios::binary);
+    file.seekg(0, std::ios::end);
+    size_t fileSize = file.tellg();
+    file.seekg(0, std::ios::beg);
+
+    std::shared_ptr<int8_t[]> fileContents(new int8_t[fileSize]);
+    file.read(reinterpret_cast<char*>(fileContents.get()), fileSize);
+    file.close();
+    std::remove(filename.c_str());
+
+    Binary b{
+        .data = fileContents,
+        .size = fileSize,
+    };
+    BinarySet bs;
+    bs.Set(HNSW_DATA, b);
+
+    return bs;
+}
+
+void
+HNSW::Deserialize(const BinarySet& binary_set) {
+    // FIXME: index should load directly
+    if (this->alg_hnsw->getCurrentElementCount() > 0) {
+        throw std::runtime_error("deserialize on existed index");
+    }
+    std::string filename = "/tmp/hnsw-" + std::to_string(random_integer(1'000'000, 9'000'000));
+    std::ofstream file(filename, std::ios::binary);
+    Binary b = binary_set.Get(HNSW_DATA);
+    file.write((const char*)b.data.get(), b.size);
+    file.close();
+    alg_hnsw->loadIndex(filename, this->space.get());
+    std::remove(filename.c_str());
 }
 
 void

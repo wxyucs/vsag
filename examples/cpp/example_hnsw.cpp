@@ -1,8 +1,13 @@
+#include <cstdint>
+#include <fstream>
 #include <iostream>
+#include <memory>
+#include <nlohmann/json.hpp>
 #include <random>
 
-#include <nlohmann/json.hpp>
-
+#include "vsag/binaryset.h"
+#include "vsag/constants.h"
+#include "vsag/factory.h"
 #include "vsag/vsag.h"
 
 /*
@@ -71,7 +76,6 @@ float_hnsw() {
     };
     auto hnsw = vsag::Factory::create("hnsw", index_parameters.dump());
 
-
     int64_t* ids = new int64_t[max_elements];
     float* data = new float[dim * max_elements];
 
@@ -116,6 +120,53 @@ float_hnsw() {
         }
     }
     float recall = correct / max_elements;
+    std::cout << "Recall: " << recall << std::endl;
+
+    // Serialize
+    {
+        vsag::BinarySet bs = hnsw->Serialize();
+        hnsw = nullptr;
+        vsag::Binary b = bs.Get(vsag::HNSW_DATA);
+        std::ofstream file("hnsw.index", std::ios::binary);
+        file.write((const char*)b.data.get(), b.size);
+        file.close();
+    }
+
+    // Deserialize
+    {
+	std::ifstream file("hnsw.index", std::ios::binary);
+	file.seekg(0, std::ios::end);
+	size_t size = file.tellg();
+	file.seekg(0, std::ios::beg);
+	std::shared_ptr<int8_t[]> buff(new int8_t[size]);
+	file.read(reinterpret_cast<char *>(buff.get()), size);
+	vsag::Binary b{
+	    .data = buff,
+	    .size = size,
+	};
+	vsag::BinarySet bs;
+	bs.Set(vsag::HNSW_DATA, b);
+	hnsw = vsag::Factory::create("hnsw", index_parameters.dump());
+	hnsw->Deserialize(bs);
+    }
+
+    // Query the elements for themselves and measure recall
+    correct = 0;
+    for (int i = 0; i < max_elements; i++) {
+        vsag::Dataset query;
+        query.SetNumElements(1);
+        query.SetDim(dim);
+        query.SetFloat32Vectors(data + i * dim);
+        query.SetOwner(false);
+        nlohmann::json parameters{
+            {"ef_runtime", ef_runtime},
+        };
+        auto result = hnsw->KnnSearch(query, 1, parameters.dump());
+        if (result.GetIds()[0] == i) {
+            correct++;
+        }
+    }
+    recall = correct / max_elements;
     std::cout << "Recall: " << recall << std::endl;
 }
 

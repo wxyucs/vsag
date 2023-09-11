@@ -3,9 +3,9 @@
 #include "vsag/factory.h"
 
 #include <memory>
+#include <nlohmann/json.hpp>
 #include <stdexcept>
 #include <string>
-#include <nlohmann/json.hpp>
 
 #include "index/hnsw.h"
 #include "index/vamana.h"
