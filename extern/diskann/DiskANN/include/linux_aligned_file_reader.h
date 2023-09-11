@@ -17,23 +17,23 @@ class LinuxAlignedFileReader : public AlignedFileReader
     LinuxAlignedFileReader();
     ~LinuxAlignedFileReader();
 
-    IOContext &get_ctx();
+    IOContext &get_ctx() override;
 
     // register thread-id for a context
-    void register_thread();
+    void register_thread() override;
 
     // de-register thread-id for a context
-    void deregister_thread();
-    void deregister_all_threads();
+    void deregister_thread() override;
+    void deregister_all_threads() override;
 
     // Open & close ops
     // Blocking calls
-    void open(const std::string &fname);
-    void close();
+    void open(const std::string &fname) override;
+    void close() override;
 
     // process batch of aligned requests in parallel
     // NOTE :: blocking call
-    void read(std::vector<AlignedRead> &read_reqs, IOContext &ctx, bool async = false);
+    void read(std::vector<AlignedRead> &read_reqs, IOContext &ctx, bool async = false) override;
 };
 
 #endif

@@ -77,7 +77,7 @@ class DistanceCosineInt8 : public Distance<int8_t>
     DistanceCosineInt8() : Distance<int8_t>(diskann::Metric::COSINE)
     {
     }
-    DISKANN_DLLEXPORT virtual float compare(const int8_t *a, const int8_t *b, uint32_t length) const;
+    DISKANN_DLLEXPORT virtual float compare(const int8_t *a, const int8_t *b, uint32_t length) const override;
 };
 
 class DistanceL2Int8 : public Distance<int8_t>
@@ -86,7 +86,7 @@ class DistanceL2Int8 : public Distance<int8_t>
     DistanceL2Int8() : Distance<int8_t>(diskann::Metric::L2)
     {
     }
-    DISKANN_DLLEXPORT virtual float compare(const int8_t *a, const int8_t *b, uint32_t size) const;
+    DISKANN_DLLEXPORT virtual float compare(const int8_t *a, const int8_t *b, uint32_t size) const override;
 };
 
 // AVX implementations. Borrowed from HNSW code.
@@ -96,7 +96,7 @@ class AVXDistanceL2Int8 : public Distance<int8_t>
     AVXDistanceL2Int8() : Distance<int8_t>(diskann::Metric::L2)
     {
     }
-    DISKANN_DLLEXPORT virtual float compare(const int8_t *a, const int8_t *b, uint32_t length) const;
+    DISKANN_DLLEXPORT virtual float compare(const int8_t *a, const int8_t *b, uint32_t length) const override;
 };
 
 class DistanceCosineFloat : public Distance<float>
@@ -105,7 +105,7 @@ class DistanceCosineFloat : public Distance<float>
     DistanceCosineFloat() : Distance<float>(diskann::Metric::COSINE)
     {
     }
-    DISKANN_DLLEXPORT virtual float compare(const float *a, const float *b, uint32_t length) const;
+    DISKANN_DLLEXPORT virtual float compare(const float *a, const float *b, uint32_t length) const override;
 };
 
 class DistanceL2Float : public Distance<float>
@@ -118,7 +118,7 @@ class DistanceL2Float : public Distance<float>
 #ifdef _WINDOWS
     DISKANN_DLLEXPORT virtual float compare(const float *a, const float *b, uint32_t size) const;
 #else
-    DISKANN_DLLEXPORT virtual float compare(const float *a, const float *b, uint32_t size) const __attribute__((hot));
+    DISKANN_DLLEXPORT virtual float compare(const float *a, const float *b, uint32_t size) const override __attribute__((hot));
 #endif
 };
 
@@ -128,7 +128,7 @@ class AVXDistanceL2Float : public Distance<float>
     AVXDistanceL2Float() : Distance<float>(diskann::Metric::L2)
     {
     }
-    DISKANN_DLLEXPORT virtual float compare(const float *a, const float *b, uint32_t length) const;
+    DISKANN_DLLEXPORT virtual float compare(const float *a, const float *b, uint32_t length) const override;
 };
 
 template <typename T> class SlowDistanceL2 : public Distance<T>
@@ -137,7 +137,7 @@ template <typename T> class SlowDistanceL2 : public Distance<T>
     SlowDistanceL2() : Distance<T>(diskann::Metric::L2)
     {
     }
-    DISKANN_DLLEXPORT virtual float compare(const T *a, const T *b, uint32_t length) const;
+    DISKANN_DLLEXPORT virtual float compare(const T *a, const T *b, uint32_t length) const override;
 };
 
 class SlowDistanceCosineUInt8 : public Distance<uint8_t>
@@ -146,7 +146,7 @@ class SlowDistanceCosineUInt8 : public Distance<uint8_t>
     SlowDistanceCosineUInt8() : Distance<uint8_t>(diskann::Metric::COSINE)
     {
     }
-    DISKANN_DLLEXPORT virtual float compare(const uint8_t *a, const uint8_t *b, uint32_t length) const;
+    DISKANN_DLLEXPORT virtual float compare(const uint8_t *a, const uint8_t *b, uint32_t length) const override;
 };
 
 class DistanceL2UInt8 : public Distance<uint8_t>
@@ -155,7 +155,7 @@ class DistanceL2UInt8 : public Distance<uint8_t>
     DistanceL2UInt8() : Distance<uint8_t>(diskann::Metric::L2)
     {
     }
-    DISKANN_DLLEXPORT virtual float compare(const uint8_t *a, const uint8_t *b, uint32_t size) const;
+    DISKANN_DLLEXPORT virtual float compare(const uint8_t *a, const uint8_t *b, uint32_t size) const override;
 };
 
 template <typename T> class DistanceInnerProduct : public Distance<T>
@@ -170,7 +170,7 @@ template <typename T> class DistanceInnerProduct : public Distance<T>
     }
     inline float inner_product(const T *a, const T *b, unsigned size) const;
 
-    inline float compare(const T *a, const T *b, unsigned size) const
+    inline float compare(const T *a, const T *b, unsigned size) const override
     {
         float result = inner_product(a, b, size);
         //      if (result < 0)
@@ -198,7 +198,7 @@ class AVXDistanceInnerProductFloat : public Distance<float>
     AVXDistanceInnerProductFloat() : Distance<float>(diskann::Metric::INNER_PRODUCT)
     {
     }
-    DISKANN_DLLEXPORT virtual float compare(const float *a, const float *b, uint32_t length) const;
+    DISKANN_DLLEXPORT virtual float compare(const float *a, const float *b, uint32_t length) const override;
 };
 
 class AVXNormalizedCosineDistanceFloat : public Distance<float>
@@ -213,7 +213,7 @@ class AVXNormalizedCosineDistanceFloat : public Distance<float>
     AVXNormalizedCosineDistanceFloat() : Distance<float>(diskann::Metric::COSINE)
     {
     }
-    DISKANN_DLLEXPORT virtual float compare(const float *a, const float *b, uint32_t length) const
+    DISKANN_DLLEXPORT virtual float compare(const float *a, const float *b, uint32_t length) const override
     {
         // Inner product returns negative values to indicate distance.
         // This will ensure that cosine is between -1 and 1.
@@ -221,7 +221,7 @@ class AVXNormalizedCosineDistanceFloat : public Distance<float>
     }
     DISKANN_DLLEXPORT virtual uint32_t post_normalization_dimension(uint32_t orig_dimension) const override;
 
-    DISKANN_DLLEXPORT virtual bool preprocessing_required() const;
+    DISKANN_DLLEXPORT virtual bool preprocessing_required() const override;
 
     DISKANN_DLLEXPORT virtual void preprocess_base_points(float *original_data, const size_t orig_dim,
                                                           const size_t num_points) override;

@@ -596,7 +596,7 @@ class HierarchicalNSW : public AlgorithmInterface<float> {
     }
 
 
-    void saveIndex(const std::string &location) {
+    void saveIndex(const std::string &location) override {
         std::ofstream output(location, std::ios::binary);
         std::streampos position;
 
@@ -864,7 +864,7 @@ class HierarchicalNSW : public AlgorithmInterface<float> {
     * Adds point. Updates the point if it is already in the index.
     * If replacement of deleted elements is enabled: replaces previously deleted point if any, updating it with new point
     */
-    void addPoint(const void *data_point, labeltype label, bool replace_deleted = false) {
+    void addPoint(const void *data_point, labeltype label, bool replace_deleted = false) override {
         if ((allow_replace_deleted_ == false) && (replace_deleted == true)) {
             throw std::runtime_error("Replacement of deleted elements is disabled in constructor");
         }
@@ -1181,7 +1181,7 @@ class HierarchicalNSW : public AlgorithmInterface<float> {
 
 
     std::priority_queue<std::pair<float, labeltype >>
-    searchKnn(const void *query_data, size_t k, BaseFilterFunctor* isIdAllowed = nullptr) const {
+    searchKnn(const void *query_data, size_t k, BaseFilterFunctor* isIdAllowed = nullptr) const override {
         std::priority_queue<std::pair<float, labeltype >> result;
         if (cur_element_count == 0) return result;
 

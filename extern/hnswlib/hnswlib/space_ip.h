@@ -462,15 +462,15 @@ class InnerProductSpace : public SpaceInterface {
         data_size_ = dim * sizeof(float);
     }
 
-    size_t get_data_size() {
+    size_t get_data_size() override {
         return data_size_;
     }
 
-    DISTFUNC get_dist_func() {
+    DISTFUNC get_dist_func() override {
         return fstdistfunc_;
     }
 
-    void *get_dist_func_param() {
+    void *get_dist_func_param() override {
         return &dim_;
     }
 
@@ -498,15 +498,15 @@ public:
         data_size_ = dim * sizeof(int8_t);
 }
 
-size_t get_data_size() {
+size_t get_data_size() override {
         return data_size_;
 }
 
-DISTFUNC get_dist_func() {
+DISTFUNC get_dist_func() override {
         return fstdistfunc_;
 }
 
-void *get_dist_func_param() {
+void *get_dist_func_param() override {
         return &dim_;
 }
 

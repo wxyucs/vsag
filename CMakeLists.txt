@@ -37,7 +37,7 @@ add_library (vsag SHARED ${CPP_SRCS} ${CPP_INDEX_SRCS})
 target_link_libraries (vsag diskann pthread m dl)
 add_dependencies(vsag spdlog)
 
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fPIC")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fPIC -Werror=suggest-override")
 if(CMAKE_BUILD_TYPE STREQUAL "Debug")
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g -O0")
 elseif(CMAKE_BUILD_TYPE STREQUAL "Release")
