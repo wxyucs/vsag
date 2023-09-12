@@ -2,7 +2,6 @@
 #include <fstream>
 #include <iostream>
 #include <memory>
-#include <nlohmann/json.hpp>
 #include <random>
 
 #include "simpleflat.h"
@@ -54,8 +53,7 @@ main() {
         query.SetDim(dim);
         query.SetFloat32Vectors(data + i * dim);
         query.SetOwner(false);
-        nlohmann::json parameters{};
-        auto result = simpleflat->KnnSearch(query, 1, parameters.dump());
+        auto result = simpleflat->KnnSearch(query, 1, "");
         if (result.GetIds()[0] == i) {
             correct++;
         }
@@ -101,7 +99,6 @@ main() {
         query.SetDim(dim);
         query.SetFloat32Vectors(data + i * dim);
         query.SetOwner(false);
-        nlohmann::json parameters{};
         auto result = simpleflat->KnnSearch(query, 1, parameters.dump());
         if (result.GetIds()[0] == i) {
             correct++;

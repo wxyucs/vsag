@@ -117,8 +117,8 @@ SimpleFlat::knn_search(const float* query, int64_t k) const {
 
     std::vector<SimpleFlat::rs> results;
     while (not q.empty()) {
-	results.push_back(q.top());
-	q.pop();
+        results.push_back(q.top());
+        q.pop();
     }
     return results;
 }

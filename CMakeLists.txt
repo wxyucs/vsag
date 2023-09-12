@@ -31,20 +31,20 @@ include_directories(extern/faiss)
 include_directories(${CMAKE_CURRENT_BINARY_DIR}/spdlog/install/include)
 include_directories(include)
 
-add_subdirectory (mockimpl)
-
 file (GLOB CPP_SRCS "src/*.cpp")
 file (GLOB CPP_INDEX_SRCS "src/index/*.cpp")
 add_library (vsag SHARED ${CPP_SRCS} ${CPP_INDEX_SRCS})
 target_link_libraries (vsag diskann pthread m dl)
 add_dependencies(vsag spdlog)
 
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fPIC -Werror=suggest-override")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++17 -fPIC -Werror=suggest-override")
 if(CMAKE_BUILD_TYPE STREQUAL "Debug")
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g -O0")
 elseif(CMAKE_BUILD_TYPE STREQUAL "Release")
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Ofast")
 endif()
+
+add_subdirectory (mockimpl)
 
 if(CMAKE_HOST_SYSTEM_PROCESSOR MATCHES "(x86_64)|(AMD64|amd64)|(^i.86$)")
 # FIXME: only work on machine with AVX512 support
