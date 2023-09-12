@@ -31,6 +31,8 @@ include_directories(extern/faiss)
 include_directories(${CMAKE_CURRENT_BINARY_DIR}/spdlog/install/include)
 include_directories(include)
 
+add_subdirectory (mock)
+
 file (GLOB CPP_SRCS "src/*.cpp")
 file (GLOB CPP_INDEX_SRCS "src/index/*.cpp")
 add_library (vsag SHARED ${CPP_SRCS} ${CPP_INDEX_SRCS})
