@@ -14,24 +14,6 @@ from itertools import product
 def cartesian_product(*args):
     return list(product(*args))
 
-def build_hnsw(datas, dist_type, data_type, M, ef_construct, ef_runtime):
-    index = pyvsag.HNSWIndex(datas.shape[1], datas.shape[0], dist_type, data_type, M, ef_construct)
-    for i, item in enumerate(datas):
-        index.addPoint(item, i)
-    index.setEfRuntime(ef_runtime)
-    return index
-
-def build_vamana(datas, dist_type, data_type, M, ef_construct, ef_runtime):
-    index = pyvsag.VamanaIndex(datas.shape[1], datas.shape[0], dist_type, data_type)
-    index.build(datas.flatten(), M, ef_construct)
-    index.setEfRuntime(ef_runtime)
-    return index
-
-def build_diskann(datas, dist_type, data_type, M, ef_construct, ef_runtime, beam_search, chunks_num):
-    index = pyvsag.DiskAnnIndex()
-    index.build(datas.flatten(), datas.shape[0], datas.shape[1], ef_construct, dist_type, data_type, M, 0.5, chunks_num)
-    return index
-
 
 def build_index(index_name, datas, index_parameters):
     index = pyvsag.Index(index_name, json.dumps(index_parameters))
@@ -52,7 +34,7 @@ def run():
 
 
     k = 20
-    for dataset in ["security-1m.h5"]:
+    for dataset in ["security-7m.h5"]:
         logging.info(f"dataset:{dataset}")
         with read_dataset(dataset, logging) as file:
             for result_key, key in zip(['ids_512'], ['vector_512']):
@@ -61,15 +43,13 @@ def run():
                 data_len = base.shape[0]
                 for index_name in ["diskann"]:
                     for M, ef_search, ef_construct, beam_search, chunks_num, io_limit in [
-                            (32, 300, 200, 4, 16, 500),
-                            (32, 300, 500, 4, 16, 500),
                             (32, 300, 500, 1, 16, 500),
                             (32, 300, 500, 8, 16, 500),
                             (32, 300, 500, 4, 8, 500),
-                            (32, 300, 500, 4, 32, 500),
-                            (32, 300, 500, 4, 16, 200),
                             (32, 300, 500, 4, 16, 500),
-                            (32, 300, 500, 4, 16, 1000)
+                            (32, 300, 500, 4, 32, 500),
+                            (32, 300, 500, 4, 64, 500),
+                            (32, 300, 500, 4, 128, 500),
                         ]:
 
                         t1 = time.time()
@@ -87,7 +67,7 @@ def run():
                         correct = 0
                         correct_1 = 0
                         io_sum = 0
-                        for i, item in enumerate(base[:300000]):
+                        for i, item in enumerate(base[:30000]):
                             labels, distances = index.searchTopK(item, k, json.dumps({
                                     "data_num": 1,
                                     "ef_search": ef_search, 

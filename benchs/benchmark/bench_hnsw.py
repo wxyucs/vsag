@@ -4,6 +4,7 @@ import numpy as np
 import time
 import h5py
 import pyvsag
+import json
 from .utils import read_dataset
 from datetime import datetime
 import logging
@@ -13,16 +14,20 @@ def measure_all(dataset, X_train, vector_count, ef_construction, M, ef_values, n
     X_test = np.array(dataset['test'])
     results = np.array(dataset['neighbors'])
     logging.info("\nRunning measure_all...")
-
-    hnsw = pyvsag.HNSWIndex(X_train.shape[1], X_train.shape[0], "l2", "float32", M, ef_construction, ef_values[0])
-
-    for i in range(X_train.shape[0]):
-        hnsw.addPoint(X_train[i], i)
+    hnsw = pyvsag.Index("hnsw", json.dumps({
+        "dtype": "float32",
+        "metric_type": "l2",
+        "max_elements": vector_count, 
+        "dim": X_train.shape[1],
+        "M": M,
+        "ef_construction": ef_construction
+    }))
+    print(X_train.shape)
+    hnsw.build(X_train.flatten(), vector_count, X_train.shape[1])
 
 
     for ef_runtime in ef_values:
         logging.info(f"\nRunning queries with ef_runtime ={ef_runtime}...")
-        hnsw.setEfRuntime(ef_runtime)
         correct = 0
         bf_total_time = 0
         bf_min_latency = 10000
@@ -32,7 +37,9 @@ def measure_all(dataset, X_train, vector_count, ef_construction, M, ef_values, n
         hnsw_max_latency = 0
         for i, target_vector, ground_truth in zip(range(num_queries), X_test[:num_queries], results[:num_queries]):
             start = time.time()
-            result, distances = hnsw.searchTopK(target_vector, k)
+            result, distances = hnsw.searchTopK(target_vector, k, json.dumps({
+                "ef_runtime": ef_runtime
+            }))
             query_time = (time.time() - start)
             if query_time > hnsw_max_latency:
                 hnsw_max_latency = query_time
