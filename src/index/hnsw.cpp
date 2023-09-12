@@ -81,7 +81,7 @@ HNSW::KnnSearch(const Dataset& query, int64_t k, const std::string& parameters) 
     result.SetIds(ids);
     result.SetDistances(dists);
 
-    return result;
+    return std::move(result);
 }
 
 BinarySet

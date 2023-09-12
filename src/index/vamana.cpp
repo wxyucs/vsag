@@ -24,7 +24,7 @@ Dataset
 Vamana::KnnSearch(const Dataset& query, int64_t k, const std::string& parameters) {
     throw std::runtime_error("not implemented");
     Dataset result;
-    return result;
+    return std::move(result);
 }
 
 std::priority_queue<Vamana::rs, std::vector<Vamana::rs>, std::less<Vamana::rs>>

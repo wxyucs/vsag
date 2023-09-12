@@ -80,7 +80,7 @@ SimpleFlat::KnnSearch(const Dataset& query, int64_t k, const std::string& parame
     Dataset results;
     results.SetIds(ids);
     results.SetDistances(dists);
-    return results;
+    return std::move(results);
 }
 
 BinarySet
