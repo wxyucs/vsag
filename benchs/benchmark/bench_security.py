@@ -15,9 +15,9 @@ def cartesian_product(*args):
     return list(product(*args))
 
 
-def build_index(index_name, datas, index_parameters):
+def build_index(index_name, datas, ids, index_parameters):
     index = pyvsag.Index(index_name, json.dumps(index_parameters))
-    index.build(datas, datas.shape[0], datas.shape[1])
+    index.build(datas, ids, datas.shape[0], datas.shape[1])
     return index
     
 
@@ -34,26 +34,22 @@ def run():
 
 
     k = 20
-    for dataset in ["security-7m.h5"]:
+    for dataset in ["security-1m.h5"]:
         logging.info(f"dataset:{dataset}")
         with read_dataset(dataset, logging) as file:
             for result_key, key in zip(['ids_512'], ['vector_512']):
-                base = np.array(file[key])[:400000]
-                ids = np.array(file[result_key])[:400000]
+                base = np.array(file[key])[:12000]
+                ids = np.array(file[result_key])[:12000]
                 data_len = base.shape[0]
                 for index_name in ["diskann"]:
                     for M, ef_search, ef_construct, beam_search, chunks_num, io_limit in [
-                            (32, 300, 500, 1, 16, 500),
-                            (32, 300, 500, 8, 16, 500),
-                            (32, 300, 500, 4, 8, 500),
-                            (32, 300, 500, 4, 16, 500),
                             (32, 300, 500, 4, 32, 500),
                             (32, 300, 500, 4, 64, 500),
                             (32, 300, 500, 4, 128, 500),
                         ]:
 
                         t1 = time.time()
-                        index = build_index(index_name, base, {
+                        index = build_index(index_name, base, ids, {
                                 "dtype": "float32",
                                 "metric_type": "l2",
                                 "dim": base.shape[1],

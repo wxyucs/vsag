@@ -33,16 +33,12 @@ public:
         index = vsag::Factory::create(index_name, index_parameters);
     }
     void
-    build(py::array_t<float> datas, int max_elements, int dim) {
+    build(py::array_t<float> datas, py::array_t<int64_t> ids, size_t max_elements, size_t dim) {
         vsag::Dataset dataset;
-        long ids[max_elements];
-        for (int i = 0; i < max_elements; ++i) {
-            ids[i] = i;
-        }
         dataset.SetOwner(false);
         dataset.SetDim(dim);
         dataset.SetNumElements(max_elements);
-        dataset.SetIds(ids);
+        dataset.SetIds(ids.mutable_data());
         dataset.SetFloat32Vectors(datas.mutable_data());
         index->Build(dataset);
     }
@@ -93,6 +89,7 @@ PYBIND11_MODULE(pyvsag, m) {
                 py::arg("search_parameters"))
         .def("build", &Index::build,
                 py::arg("datas"),
+                py::arg("ids"),
                 py::arg("max_elements"),
                 py::arg("dim"));
 }

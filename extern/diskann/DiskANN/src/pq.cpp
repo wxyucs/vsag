@@ -1397,7 +1397,7 @@ void generate_disk_quantized_data(std::stringstream &data_stream, std::stringstr
 {
     size_t train_size, train_dim;
     float *train_data;
-
+    data_stream.seekg(0);
     std::stringstream tmp_data_stream;
     tmp_data_stream << data_stream.rdbuf();
     // instantiates train_data with random sample updates train_size

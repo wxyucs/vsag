@@ -38,15 +38,25 @@ public:
     void
     SetEfRuntime(int64_t ef_runtime);
 
+    void
+    Deserialize(const BinarySet& binary_set) override;
+
+    BinarySet 
+    Serialize() override;
+
+
 private:
     std::shared_ptr<AlignedFileReader> reader;
     std::shared_ptr<diskann::PQFlashIndex<float>> index;
+    std::stringstream pq_pivots_stream_;
+    std::stringstream disk_pq_compressed_vectors_;
     diskann::Metric metric_;
     std::string data_type_;
     int L_ = 200;
     int R_ = 64;
     float p_val_ = 0.5;
     size_t disk_pq_dims_ = 8;
+    std::string disk_layout_file = "/tmp/index.out";
 };
 
 }  // namespace vsag

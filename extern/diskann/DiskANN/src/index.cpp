@@ -3772,6 +3772,7 @@ template DISKANN_DLLEXPORT class Index<uint8_t, int64_t, uint16_t>;
 template DISKANN_DLLEXPORT class Index<float, uint64_t, uint16_t>;
 template DISKANN_DLLEXPORT class Index<int8_t, uint64_t, uint16_t>;
 template DISKANN_DLLEXPORT class Index<uint8_t, uint64_t, uint16_t>;
+template DISKANN_DLLEXPORT class Index<float, int64_t, int64_t>;
 
 template DISKANN_DLLEXPORT std::pair<uint32_t, uint32_t> Index<float, uint64_t, uint32_t>::search<uint64_t>(
     const float *query, const size_t K, const uint32_t L, uint64_t *indices, float *distances);
