@@ -83,7 +83,7 @@ DiskANN::KnnSearch(const Dataset& query, int64_t k, const std::string& parameter
                                   io_limit,
                                   false,
                                   stats + i);
-        distances[i * k] = static_cast<float>(stats->n_ios);
+//        distances[i * k] = static_cast<float>(stats->n_ios);
     }
     for (int i = 0; i < query_num * k; ++i) {
         ids[i] = static_cast<int64_t>(labels[i]);
@@ -124,7 +124,7 @@ DiskANN::Serialize() {
         .data = layout_file,
         .size = disk_layout_file.size(),
     };
-    bs.Set(DISKANN_COMPRESSED_VECTOR, layout_binary);
+    bs.Set(DISKANN_LAYOUT_FILE, layout_binary);
     return bs;
 }
 
