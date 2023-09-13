@@ -213,7 +213,7 @@ void float_diskann() {
 
     // Query the elements for themselves and measure recall
     float correct = 0;
-    for (int i = 0; i < 100; i++) {
+    for (int i = 0; i <  max_elements; i++) {
         vsag::Dataset query;
         query.SetNumElements(1);
         query.SetDim(dim);
@@ -300,7 +300,7 @@ void float_diskann() {
     }
     // Query the elements for themselves and measure recall 1@2
     correct = 0;
-    for (int i = 0; i < 100; i++) {
+    for (int i = 0; i < max_elements; i++) {
         vsag::Dataset query;
         query.SetNumElements(1);
         query.SetDim(dim);
