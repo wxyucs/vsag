@@ -1,5 +1,7 @@
 #pragma once
 
+#include <cstddef>
+#include <cstdint>
 #include <queue>
 #include <stdexcept>
 
@@ -32,20 +34,38 @@ public:
       * 
       * @param query should contains dim, num_elements, ids and vectors
       * @param k the result size of every query
-      * @return result contains ids and distances
+      * @return result contains 
+      *                - num_elements: equals to num_elements in query
+      *                - ids, distances: length is (num_elements * k)
       */
     virtual Dataset
     KnnSearch(const Dataset& query, int64_t k, const std::string& parameters) = 0;
 
 public:
+    /**
+      * Serialize index to a set of byte array
+      *
+      * @return binaryset contains all parts of the index
+      */
     virtual BinarySet
     Serialize() {
         throw std::runtime_error("Index not support serialize");
     };
 
+    /**
+      * Deserialize index from a set of byte array. Causing exception if this index is not empty
+      *
+      * @param binaryset contains all parts of the index
+      */
     virtual void
     Deserialize(const BinarySet& binary_set) {
         throw std::runtime_error("Index not support deserialize");
+    }
+
+public:
+    virtual int64_t
+    GetNumElements() const {
+        throw std::runtime_error("not implemented");
     }
 };
 

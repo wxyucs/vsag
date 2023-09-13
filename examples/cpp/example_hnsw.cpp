@@ -93,6 +93,7 @@ float_hnsw() {
     dataset.SetIds(ids);
     dataset.SetFloat32Vectors(data);
     hnsw->Build(dataset);
+    std::cout << "After Build(), Index constains: " << hnsw->GetNumElements() << std::endl;
 
     // Adding data after index built
     vsag::Dataset incremental;
@@ -102,6 +103,7 @@ float_hnsw() {
     incremental.SetFloat32Vectors(data + (max_elements - 1) * dim);
     incremental.SetOwner(false);
     hnsw->Add(incremental);
+    std::cout << "After Add(), Index constains: " << hnsw->GetNumElements() << std::endl;
 
     // Query the elements for themselves and measure recall
     float correct = 0;
@@ -150,7 +152,7 @@ float_hnsw() {
 	hnsw->Deserialize(bs);
     }
 
-    // Query the elements for themselves and measure recall
+    // Query the elements for themselves and measure recall 1@2
     correct = 0;
     for (int i = 0; i < max_elements; i++) {
         vsag::Dataset query;
@@ -161,10 +163,13 @@ float_hnsw() {
         nlohmann::json parameters{
             {"ef_runtime", ef_runtime},
         };
-        auto result = hnsw->KnnSearch(query, 1, parameters.dump());
-        if (result.GetIds()[0] == i) {
-            correct++;
-        }
+	int64_t k = 2;
+        auto result = hnsw->KnnSearch(query, k, parameters.dump());
+	if (result.GetNumElements() == 1) {
+	    if (result.GetIds()[0] == i or result.GetIds()[1] == i) {
+		correct++;
+	    }
+	}
     }
     recall = correct / max_elements;
     std::cout << "Recall: " << recall << std::endl;

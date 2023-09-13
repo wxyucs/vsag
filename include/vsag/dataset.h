@@ -24,13 +24,14 @@ public:
         delete[] this->GetFloat32Vectors();
     }
 
-    Dataset (const Dataset&) = delete;
-    Dataset& operator= (const Dataset&) = delete;
+    Dataset(const Dataset&) = delete;
+    Dataset&
+    operator=(const Dataset&) = delete;
 
     Dataset(Dataset&& other) noexcept {
-	this->owner_ = other.owner_;
-	other.owner_ = false;
-	this->data_ = other.data_;
+        this->owner_ = other.owner_;
+        other.owner_ = false;
+        this->data_ = other.data_;
         other.data_.clear();
     }
 

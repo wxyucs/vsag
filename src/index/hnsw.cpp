@@ -78,6 +78,7 @@ HNSW::KnnSearch(const Dataset& query, int64_t k, const std::string& parameters) 
             results.pop();
         }
     }
+    result.SetNumElements(num_elements);
     result.SetIds(ids);
     result.SetDistances(dists);
 

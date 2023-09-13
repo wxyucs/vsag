@@ -35,6 +35,12 @@ public:
     Deserialize(const BinarySet& binary_set) override;
 
 public:
+    int64_t
+    GetNumElements() const override {
+        return alg_hnsw->cur_element_count;
+    }
+
+public:
     void
     SetEfRuntime(int64_t ef_runtime);
 
