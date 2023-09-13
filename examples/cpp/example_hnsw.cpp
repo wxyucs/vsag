@@ -105,7 +105,7 @@ float_hnsw() {
     hnsw->Add(incremental);
     std::cout << "After Add(), Index constains: " << hnsw->GetNumElements() << std::endl;
 
-    // Query the elements for themselves and measure recall
+    // Query the elements for themselves and measure recall 1@1
     float correct = 0;
     for (int i = 0; i < max_elements; i++) {
         vsag::Dataset query;
@@ -116,7 +116,8 @@ float_hnsw() {
         nlohmann::json parameters{
             {"ef_runtime", ef_runtime},
         };
-        auto result = hnsw->KnnSearch(query, 1, parameters.dump());
+	int64_t k = 10;
+        auto result = hnsw->KnnSearch(query, k, parameters.dump());
         if (result.GetIds()[0] == i) {
             correct++;
         }
@@ -152,7 +153,7 @@ float_hnsw() {
 	hnsw->Deserialize(bs);
     }
 
-    // Query the elements for themselves and measure recall 1@2
+    // Query the elements for themselves and measure recall 1@10
     correct = 0;
     for (int i = 0; i < max_elements; i++) {
         vsag::Dataset query;
@@ -163,7 +164,7 @@ float_hnsw() {
         nlohmann::json parameters{
             {"ef_runtime", ef_runtime},
         };
-	int64_t k = 2;
+	int64_t k = 10;
         auto result = hnsw->KnnSearch(query, k, parameters.dump());
 	if (result.GetNumElements() == 1) {
 	    if (result.GetIds()[0] == i or result.GetIds()[1] == i) {

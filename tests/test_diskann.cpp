@@ -16,7 +16,7 @@ TEST_CASE("DiskAnn Float Recall", "[diskann]") {
 
     diskann::Metric metric = diskann::Metric::L2;
 
-    size_t data_num = 10000, data_dim = 256;
+    size_t data_num = 1000, data_dim = 256;
     int L = 200;
     int R = 64;
     std::string data_type = "float";

@@ -57,7 +57,7 @@ TEST_CASE("HNSW Float Recall", "[hnsw]") {
     dataset.SetFloat32Vectors(data);
     hnsw->Build(dataset);
 
-    // Query the elements for themselves and measure recall
+    // Query the elements for themselves and measure recall 1@1
     float correct = 0;
     for (int i = 0; i < max_elements; i++) {
 	vsag::Dataset query;
@@ -66,7 +66,8 @@ TEST_CASE("HNSW Float Recall", "[hnsw]") {
 	query.SetFloat32Vectors(data + i * dim);
 	query.SetOwner(false);
 	nlohmann::json parameters;
-	auto result = hnsw->KnnSearch(query, 1, parameters.dump());
+	int64_t k = 10;
+	auto result = hnsw->KnnSearch(query, k, parameters.dump());
 	if (result.GetIds()[0] == i) {
 	    correct++;
 	}

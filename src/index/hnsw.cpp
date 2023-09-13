@@ -72,7 +72,7 @@ HNSW::KnnSearch(const Dataset& query, int64_t k, const std::string& parameters) 
     for (int64_t i = 0; i < num_elements; ++i) {
         std::priority_queue<std::pair<float, size_t>> results =
             alg_hnsw->searchKnn((const void*)(vectors + i * dim), k);
-        for (int64_t j = 0; j < k; ++j) {
+        for (int64_t j = k - 1; j >= 0; --j) {
             dists[i * k + j] = results.top().first;
             ids[i * k + j] = results.top().second;
             results.pop();
