@@ -5,9 +5,6 @@
 #include <nlohmann/json.hpp>
 #include <random>
 
-#include "vsag/binaryset.h"
-#include "vsag/constants.h"
-#include "vsag/factory.h"
 #include "vsag/vsag.h"
 
 /*
