@@ -179,6 +179,7 @@ void float_diskann() {
     int ef_runtime = 200;
     int p_val = 0.5;  // p_val represents how much original data is selected during the training of pq compressed vectors.
     int chunks_num = 32; // chunks_num represents the dimensionality of the compressed vector.
+    std::string disk_layout_file = "/tmp/index.out";
     // Initing index
     nlohmann::json index_parameters{
             {"dtype", "float32"},
@@ -188,8 +189,8 @@ void float_diskann() {
             {"R", M},
             {"L", ef_construction},
             {"p_val", 0.5},
-            {"disk_pq_dims", chunks_num}
-            // {"ef_runtime", ef_runtime},
+            {"disk_pq_dims", chunks_num},
+            {"disk_layout_file", disk_layout_file},
     };
     auto diskann = vsag::Factory::create("diskann", index_parameters.dump());
 
@@ -211,28 +212,6 @@ void float_diskann() {
     dataset.SetFloat32Vectors(data);
     diskann->Build(dataset);
 
-    // Query the elements for themselves and measure recall
-    float correct = 0;
-    for (int i = 0; i <  max_elements; i++) {
-        vsag::Dataset query;
-        query.SetNumElements(1);
-        query.SetDim(dim);
-        query.SetFloat32Vectors(data + i * dim);
-        query.SetOwner(false);
-        nlohmann::json parameters{
-                {"data_num", 1},
-                {"ef_search", ef_runtime},
-                {"beam_search", 4},
-                {"io_limit", 200}
-        };
-        auto result = diskann->KnnSearch(query, 1, parameters.dump());
-        if (result.GetIds()[0] == i) {
-            correct++;
-        }
-    }
-    float recall = correct / max_elements;
-    std::cout << "Recall: " << recall << std::endl;
-
     // Serialize
     {
         vsag::BinarySet bs = diskann->Serialize();
@@ -249,7 +228,7 @@ void float_diskann() {
         compressed.close();
 
         vsag::Binary layout_file_b = bs.Get(vsag::DISKANN_LAYOUT_FILE);
-        std::ofstream layout("diskann_layout.index", std::ios::binary);
+        std::ofstream layout(disk_layout_file, std::ios::binary);
         layout.write((const char*)layout_file_b.data.get(), layout_file_b.size);
         layout.close();
     }
@@ -281,25 +260,13 @@ void float_diskann() {
         };
         bs.Set(vsag::DISKANN_COMPRESSED_VECTOR, compressed_vector_b);
 
-        std::ifstream layout("diskann_layout.index", std::ios::binary);
-        layout.seekg(0, std::ios::end);
-        size = layout.tellg();
-        layout.seekg(0, std::ios::beg);
-        buff.reset(new int8_t[size]);
-        layout.read(reinterpret_cast<char *>(buff.get()), size);
-        vsag::Binary layout_file_b{
-                .data = buff,
-                .size = size,
-        };
-        bs.Set(vsag::DISKANN_LAYOUT_FILE, layout_file_b);
-
         diskann = vsag::Factory::create("diskann", index_parameters.dump());
 
         std::cout << "#####" << std::endl;
         diskann->Deserialize(bs);
     }
     // Query the elements for themselves and measure recall 1@2
-    correct = 0;
+    float correct = 0;
     for (int i = 0; i < max_elements; i++) {
         vsag::Dataset query;
         query.SetNumElements(1);
@@ -315,12 +282,12 @@ void float_diskann() {
         int64_t k = 2;
         auto result = diskann->KnnSearch(query, k, parameters.dump());
         if (result.GetNumElements() == 1) {
-            if (result.GetIds()[0] == i or result.GetIds()[1] == i) {
+            if (result.GetIds()[0] == i) {
                 correct++;
             }
         }
     }
-    recall = correct / max_elements;
+    float recall = correct / max_elements;
     std::cout << "Recall: " << recall << std::endl;
 }
 

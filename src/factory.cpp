@@ -42,7 +42,8 @@ Factory::create(const std::string& name, const std::string& parameters) {
                                                params["L"],
                                                params["R"],
                                                params["p_val"],
-                                               params["disk_pq_dims"]);
+                                               params["disk_pq_dims"],
+                                               params["disk_layout_file"]);
         return index;
     } else {
         // not support

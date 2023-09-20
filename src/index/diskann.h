@@ -27,7 +27,8 @@ public:
             int L,
             int R,
             float p_val,
-            size_t disk_pq_dims);
+            size_t disk_pq_dims,
+            std::string disk_layout_file);
 
     void
     Build(const Dataset& base) override;
@@ -36,27 +37,25 @@ public:
     KnnSearch(const Dataset& query, int64_t k, const std::string& parameters) override;
 
     void
-    SetEfRuntime(int64_t ef_runtime);
-
-    void
     Deserialize(const BinarySet& binary_set) override;
 
-    BinarySet 
+    BinarySet
     Serialize() override;
-
 
 private:
     std::shared_ptr<AlignedFileReader> reader;
     std::shared_ptr<diskann::PQFlashIndex<float>> index;
+    std::shared_ptr<diskann::Index<float, int64_t, int64_t>> build_index;
     std::stringstream pq_pivots_stream_;
     std::stringstream disk_pq_compressed_vectors_;
+    std::stringstream disk_layout_stream_;
     diskann::Metric metric_;
     std::string data_type_;
     int L_ = 200;
     int R_ = 64;
     float p_val_ = 0.5;
     size_t disk_pq_dims_ = 8;
-    std::string disk_layout_file = "/tmp/index.out";
+    std::string disk_layout_file_ = "/tmp/index.out";
 };
 
 }  // namespace vsag

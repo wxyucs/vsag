@@ -45,6 +45,7 @@ _deps
 
 /build/
 .idea/
+.vscode/
 venv/
 /*.egg-info/
 dataset/
