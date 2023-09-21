@@ -107,17 +107,16 @@ HNSW::Serialize() {
 
 void
 HNSW::Deserialize(const BinarySet& binary_set) {
-    // FIXME: index should load directly
     if (this->alg_hnsw->getCurrentElementCount() > 0) {
         throw std::runtime_error("deserialize on existed index");
     }
-    std::string filename = "/tmp/hnsw-" + std::to_string(random_integer(1'000'000, 9'000'000));
-    std::ofstream file(filename, std::ios::binary);
+
     Binary b = binary_set.Get(HNSW_DATA);
-    file.write((const char*)b.data.get(), b.size);
-    file.close();
-    alg_hnsw->loadIndex(filename, this->space.get());
-    std::remove(filename.c_str());
+    auto func = [&](uint64_t offset, uint64_t len, void* dest) -> void {
+	std::memcpy(dest, b.data.get() + offset, len);
+    };
+
+    alg_hnsw->loadIndex(func, this->space.get());
 }
 
 void
