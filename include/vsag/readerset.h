@@ -16,14 +16,8 @@ public:
     ~Reader() = default;
 
 public:
-    // offset: uint64, len: uint64, dest: void*
-    using read_request = std::tuple<uint64_t, uint64_t, void*>;
-
     virtual void
     Read(uint64_t offset, uint64_t len, void* dest) = 0;
-
-    virtual void
-    BatchRead(const std::vector<read_request>& requests) = 0;
 
     virtual uint64_t
     Size() const = 0;

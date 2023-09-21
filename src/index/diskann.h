@@ -36,11 +36,14 @@ public:
     Dataset
     KnnSearch(const Dataset& query, int64_t k, const std::string& parameters) override;
 
+    BinarySet
+    Serialize() override;
+
     void
     Deserialize(const BinarySet& binary_set) override;
 
-    BinarySet
-    Serialize() override;
+    void
+    Deserialize(const ReaderSet& reader_set) override;
 
 private:
     std::shared_ptr<AlignedFileReader> reader;

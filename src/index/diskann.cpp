@@ -4,10 +4,13 @@
 
 #include "diskann.h"
 
+#include <functional>
 #include <nlohmann/json.hpp>
 #include <utility>
 
 #include "vsag/index.h"
+#include "vsag/readerset.h"
+
 namespace vsag {
 
 DiskANN::DiskANN(diskann::Metric metric,
@@ -150,6 +153,13 @@ DiskANN::Deserialize(const BinarySet& binary_set) {
                                     disk_layout_file_.c_str(),
                                     pq_pivots_stream_,
                                     disk_pq_compressed_vectors_);
+}
+
+void
+DiskANN::Deserialize(const ReaderSet& reader_set) {
+    // offset: uint64, len: uint64, dest: void*
+    using read_request = std::tuple<uint64_t, uint64_t, void*>;
+    auto batch_read = [&](const std::vector<read_request>& requests) -> void {};
 }
 
 }  // namespace vsag
