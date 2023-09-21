@@ -34,6 +34,9 @@ public:
     void
     Deserialize(const BinarySet& binary_set) override;
 
+    void
+    Deserialize(const ReaderSet& reader_set) override;
+
 public:
     int64_t
     GetNumElements() const override {

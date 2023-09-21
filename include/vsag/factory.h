@@ -3,6 +3,7 @@
 #include <memory>
 
 #include "index.h"
+#include "readerset.h"
 
 namespace vsag {
 
@@ -19,7 +20,10 @@ public:
       Vamana: Not supported
      */
     static std::shared_ptr<Index>
-    create(const std::string& name, const std::string& parameters);
+    CreateIndex(const std::string& name, const std::string& parameters);
+
+    static std::shared_ptr<Reader>
+    CreateLocalFileReader(const std::string& filename);
 
 private:
     Factory() = default;

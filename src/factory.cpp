@@ -2,6 +2,9 @@
 
 #include "vsag/factory.h"
 
+#include <cstdint>
+#include <fstream>
+#include <ios>
 #include <memory>
 #include <nlohmann/json.hpp>
 #include <stdexcept>
@@ -13,7 +16,7 @@
 namespace vsag {
 
 std::shared_ptr<Index>
-Factory::create(const std::string& name, const std::string& parameters) {
+Factory::CreateIndex(const std::string& name, const std::string& parameters) {
     nlohmann::json params = nlohmann::json::parse(parameters);
 
     if (params["dtype"] != "float32") {
@@ -49,6 +52,40 @@ Factory::create(const std::string& name, const std::string& parameters) {
         // not support
         return nullptr;
     }
+}
+
+class LocalFileReader : public Reader {
+public:
+    LocalFileReader(const std::string& filename)
+        : filename_(filename), file_(std::ifstream(filename)) {
+        file_.seekg(std::ios::end);
+        size_ = file_.tellg();
+    }
+
+    ~LocalFileReader() {
+        file_.close();
+    }
+
+    virtual void
+    Read(uint64_t offset, uint64_t len, void* dest) override {
+        file_.seekg(offset, std::ios::beg);
+        file_.read((char*)dest, len);
+    }
+
+    virtual uint64_t
+    Size() const override {
+        return size_;
+    }
+
+private:
+    const std::string filename_;
+    std::ifstream file_;
+    uint64_t size_;
+};
+
+std::shared_ptr<Reader>
+Factory::CreateLocalFileReader(const std::string& filename) {
+    return std::make_shared<LocalFileReader>(filename);
 }
 
 }  // namespace vsag

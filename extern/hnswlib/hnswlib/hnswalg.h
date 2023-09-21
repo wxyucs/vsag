@@ -3,12 +3,15 @@
 #include "visited_list_pool.h"
 #include "hnswlib.h"
 #include <atomic>
+#include <cstdint>
 #include <cstring>
+#include <iterator>
 #include <random>
 #include <stdlib.h>
 #include <assert.h>
 #include <unordered_set>
 #include <list>
+#include <functional>
 
 namespace hnswlib {
 typedef unsigned int tableint;
@@ -741,6 +744,145 @@ class HierarchicalNSW : public AlgorithmInterface<float> {
     }
 
 
+    template<typename T>
+    void
+    readFromReader(std::function<void(uint64_t, uint64_t, void*)> read_func,
+		   uint64_t &cursor,
+		   T &var) {
+	read_func(cursor, sizeof(T), &var);
+	cursor += sizeof(T);
+    }
+
+    // load using reader
+    void loadIndex(std::function<void(uint64_t, uint64_t, void*)> read_func, SpaceInterface *s, size_t max_elements_i = 0) {
+        // std::ifstream input(location, std::ios::binary);
+
+        // if (!input.is_open())
+        //     throw std::runtime_error("Cannot open file");
+
+        // get file size:
+        // input.seekg(0, input.end);
+        // std::streampos total_filesize = input.tellg();
+        // input.seekg(0, input.beg);
+
+	uint64_t cursor = 0;
+
+        // readBinaryPOD(input, offsetLevel0_);
+	readFromReader(read_func, cursor, offsetLevel0_);
+        // readBinaryPOD(input, max_elements_);
+	readFromReader(read_func, cursor, max_elements_);
+        // readBinaryPOD(input, cur_element_count);
+	readFromReader(read_func, cursor, cur_element_count);
+
+        size_t max_elements = max_elements_i;
+        if (max_elements < cur_element_count)
+            max_elements = max_elements_;
+        max_elements_ = max_elements;
+        // readBinaryPOD(input, size_data_per_element_);
+	readFromReader(read_func, cursor, size_data_per_element_);
+        // readBinaryPOD(input, label_offset_);
+	readFromReader(read_func, cursor, label_offset_);
+        // readBinaryPOD(input, offsetData_);
+	readFromReader(read_func, cursor, offsetData_);
+        // readBinaryPOD(input, maxlevel_);
+	readFromReader(read_func, cursor, maxlevel_);
+        // readBinaryPOD(input, enterpoint_node_);
+	readFromReader(read_func, cursor, enterpoint_node_);
+
+        // readBinaryPOD(input, maxM_);
+	readFromReader(read_func, cursor, maxM_);
+        // readBinaryPOD(input, maxM0_);
+	readFromReader(read_func, cursor, maxM0_);
+        // readBinaryPOD(input, M_);
+	readFromReader(read_func, cursor, M_);
+        // readBinaryPOD(input, mult_);
+	readFromReader(read_func, cursor, mult_);
+        // readBinaryPOD(input, ef_construction_);
+	readFromReader(read_func, cursor, ef_construction_);
+
+        data_size_ = s->get_data_size();
+        fstdistfunc_ = s->get_dist_func();
+        dist_func_param_ = s->get_dist_func_param();
+
+        // auto pos = input.tellg();
+
+        /// Optional - check if index is ok:
+        // input.seekg(cur_element_count * size_data_per_element_, input.cur);
+        // for (size_t i = 0; i < cur_element_count; i++) {
+        //     if (input.tellg() < 0 || input.tellg() >= total_filesize) {
+        //         throw std::runtime_error("Index seems to be corrupted or unsupported");
+        //     }
+
+        //     unsigned int linkListSize;
+        //     readBinaryPOD(input, linkListSize);
+        //     if (linkListSize != 0) {
+        //         input.seekg(linkListSize, input.cur);
+        //     }
+        // }
+
+        // throw exception if it either corrupted or old index
+        // if (input.tellg() != total_filesize)
+        //     throw std::runtime_error("Index seems to be corrupted or unsupported");
+
+        // input.clear();
+        /// Optional check end
+
+        // input.seekg(pos, input.beg);
+
+        data_level0_memory_ = (char *) malloc(max_elements * size_data_per_element_);
+        if (data_level0_memory_ == nullptr)
+            throw std::runtime_error("Not enough memory: loadIndex failed to allocate level0");
+        // input.read(data_level0_memory_, cur_element_count * size_data_per_element_);
+	read_func(cursor, cur_element_count * size_data_per_element_, data_level0_memory_);
+	cursor += cur_element_count * size_data_per_element_;
+
+        size_links_per_element_ = maxM_ * sizeof(tableint) + sizeof(linklistsizeint);
+
+        size_links_level0_ = maxM0_ * sizeof(tableint) + sizeof(linklistsizeint);
+        std::vector<std::mutex>(max_elements).swap(link_list_locks_);
+        std::vector<std::mutex>(MAX_LABEL_OPERATION_LOCKS).swap(label_op_locks_);
+
+        visited_list_pool_ = new VisitedListPool(1, max_elements);
+
+        linkLists_ = (char **) malloc(sizeof(void *) * max_elements);
+        if (linkLists_ == nullptr)
+            throw std::runtime_error("Not enough memory: loadIndex failed to allocate linklists");
+        element_levels_ = std::vector<int>(max_elements);
+        revSize_ = 1.0 / mult_;
+        ef_ = 10;
+        for (size_t i = 0; i < cur_element_count; i++) {
+            label_lookup_[getExternalLabel(i)] = i;
+            unsigned int linkListSize;
+            // readBinaryPOD(input, linkListSize);
+	    readFromReader(read_func, cursor, linkListSize);
+            if (linkListSize == 0) {
+                element_levels_[i] = 0;
+                linkLists_[i] = nullptr;
+            } else {
+                element_levels_[i] = linkListSize / size_links_per_element_;
+                linkLists_[i] = (char *) malloc(linkListSize);
+                if (linkLists_[i] == nullptr)
+                    throw std::runtime_error("Not enough memory: loadIndex failed to allocate linklist");
+                // input.read(linkLists_[i], linkListSize);
+		read_func(cursor, linkListSize, linkLists_[i]);
+		cursor += linkListSize;
+            }
+        }
+
+        for (size_t i = 0; i < cur_element_count; i++) {
+            if (isMarkedDeleted(i)) {
+                num_deleted_ += 1;
+                if (allow_replace_deleted_) deleted_elements.insert(i);
+            }
+        }
+
+        // input.close();
+
+        return;
+    }
+
+
+    // origin load function
     void loadIndex(const std::string &location, SpaceInterface *s, size_t max_elements_i = 0) {
         std::ifstream input(location, std::ios::binary);
 

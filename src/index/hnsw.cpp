@@ -3,8 +3,10 @@
 
 #include <hnswlib/hnswlib.h>
 
+#include <cstddef>
 #include <cstdint>
 #include <fstream>
+#include <functional>
 #include <memory>
 #include <nlohmann/json.hpp>
 #include <sstream>
@@ -12,6 +14,7 @@
 #include <string>
 
 #include "vsag/binaryset.h"
+#include "vsag/constants.h"
 #include "vsag/utils.h"
 
 namespace vsag {
@@ -115,6 +118,19 @@ HNSW::Deserialize(const BinarySet& binary_set) {
     file.close();
     alg_hnsw->loadIndex(filename, this->space.get());
     std::remove(filename.c_str());
+}
+
+void
+HNSW::Deserialize(const ReaderSet& reader_set) {
+    if (this->alg_hnsw->getCurrentElementCount() > 0) {
+        throw std::runtime_error("deserialize on existed index");
+    }
+
+    auto func = [&](uint64_t offset, uint64_t len, void* dest) -> void {
+        reader_set.Get(HNSW_DATA)->Read(offset, len, dest);
+    };
+
+    alg_hnsw->loadIndex(func, this->space.get());
 }
 
 void

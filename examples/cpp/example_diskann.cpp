@@ -192,7 +192,7 @@ void float_diskann() {
             {"disk_pq_dims", chunks_num},
             {"disk_layout_file", disk_layout_file},
     };
-    auto diskann = vsag::Factory::create("diskann", index_parameters.dump());
+    auto diskann = vsag::Factory::CreateIndex("diskann", index_parameters.dump());
 
     int64_t* ids = new int64_t[max_elements];
     float* data = new float[dim * max_elements];
@@ -260,7 +260,7 @@ void float_diskann() {
         };
         bs.Set(vsag::DISKANN_COMPRESSED_VECTOR, compressed_vector_b);
 
-        diskann = vsag::Factory::create("diskann", index_parameters.dump());
+        diskann = vsag::Factory::CreateIndex("diskann", index_parameters.dump());
 
         std::cout << "#####" << std::endl;
         diskann->Deserialize(bs);

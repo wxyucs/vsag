@@ -46,7 +46,7 @@ DiskANN::Build(const Dataset& base) {
         build_index->save(graph_stream, tag_stream, data_stream);
     }
 
-    {   // build disk layout
+    {  // build disk layout
         //        std::stringstream diskann_stream;
         //        diskann::create_disk_layout<float>(data_stream, graph_stream, diskann_stream, "");
         //        std::ofstream output(disk_layout_file);

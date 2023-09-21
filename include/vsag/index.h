@@ -7,6 +7,7 @@
 
 #include "vsag/binaryset.h"
 #include "vsag/dataset.h"
+#include "vsag/readerset.h"
 
 namespace vsag {
 class Index {
@@ -60,6 +61,11 @@ public:
     virtual void
     Deserialize(const BinarySet& binary_set) {
         throw std::runtime_error("Index not support deserialize");
+    }
+
+    virtual void
+    Deserialize(const ReaderSet& reader_set) {
+        throw std::runtime_error("Index not support deserialize from reader");
     }
 
 public:

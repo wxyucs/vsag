@@ -5,52 +5,9 @@
 #include <nlohmann/json.hpp>
 #include <random>
 
+#include "vsag/factory.h"
+#include "vsag/readerset.h"
 #include "vsag/vsag.h"
-
-/*
-void
-int8_hnsw() {
-    int dim = 16;               // Dimension of the elements
-    int max_elements = 1000;    // Maximum number of elements, should be known beforehand
-    int M = 16;                 // Tightly connected with internal dimensionality of the data
-                                // strongly affects the memory consumption
-    int ef_construction = 200;  // Controls index search speed/build speed tradeoff
-    int ef_runtime = 200;
-    // Initing index
-
-    vsag::HNSW hnsw(std::make_shared<hnswlib::InnerProductSpaceInt8>(dim),
-                    max_elements,
-                    M,
-                    ef_construction,
-                    ef_runtime);
-
-    // Generate random data
-    std::mt19937 rng;
-    rng.seed(47);
-    std::uniform_real_distribution<> distrib_real;
-    int8_t* data = new int8_t[dim * max_elements];
-    for (int i = 0; i < dim * max_elements; i++) {
-        data[i] = distrib_real(rng) * 256;
-    }
-
-    // Add data to index
-    for (int i = 0; i < max_elements; i++) {
-        hnsw.addPoint(data + i * dim, i);
-    }
-
-    // Query the elements for themselves and measure recall
-    float correct = 0;
-    for (int i = 0; i < max_elements; i++) {
-        std::priority_queue<std::pair<float, hnswlib::labeltype>> result =
-            hnsw.searchTopK(data + i * dim, 1);
-        hnswlib::labeltype label = result.top().second;
-        if (label == i)
-            correct++;
-    }
-    float recall = correct / max_elements;
-    std::cout << "Recall: " << recall << "\n";
-}
-*/
 
 void
 float_hnsw() {
@@ -71,7 +28,7 @@ float_hnsw() {
         {"ef_construction", ef_construction},
         // {"ef_runtime", ef_runtime},
     };
-    auto hnsw = vsag::Factory::create("hnsw", index_parameters.dump());
+    auto hnsw = vsag::Factory::CreateIndex("hnsw", index_parameters.dump());
 
     int64_t* ids = new int64_t[max_elements];
     float* data = new float[dim * max_elements];
@@ -146,8 +103,39 @@ float_hnsw() {
 	};
 	vsag::BinarySet bs;
 	bs.Set(vsag::HNSW_DATA, b);
-	hnsw = vsag::Factory::create("hnsw", index_parameters.dump());
+	hnsw = vsag::Factory::CreateIndex("hnsw", index_parameters.dump());
 	hnsw->Deserialize(bs);
+    }
+
+    // Query the elements for themselves and measure recall 1@10
+    correct = 0;
+    for (int i = 0; i < max_elements; i++) {
+        vsag::Dataset query;
+        query.SetNumElements(1);
+        query.SetDim(dim);
+        query.SetFloat32Vectors(data + i * dim);
+        query.SetOwner(false);
+        nlohmann::json parameters{
+            {"ef_runtime", ef_runtime},
+        };
+	int64_t k = 10;
+        auto result = hnsw->KnnSearch(query, k, parameters.dump());
+	if (result.GetNumElements() == 1) {
+	    if (result.GetIds()[0] == i or result.GetIds()[1] == i) {
+		correct++;
+	    }
+	}
+    }
+    recall = correct / max_elements;
+    std::cout << "Recall: " << recall << std::endl;
+
+    // Deserialize
+    {
+	auto file_reader = vsag::Factory::CreateLocalFileReader("hnsw.index");
+	vsag::ReaderSet rs;
+	rs.Set(vsag::HNSW_DATA, file_reader);
+	hnsw = vsag::Factory::CreateIndex("hnsw", index_parameters.dump());
+	hnsw->Deserialize(rs);
     }
 
     // Query the elements for themselves and measure recall 1@10
@@ -175,7 +163,6 @@ float_hnsw() {
 
 int
 main() {
-    // int8_hnsw();
     float_hnsw();
     return 0;
 }

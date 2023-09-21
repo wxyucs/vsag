@@ -30,7 +30,7 @@ kmeans(py::array_t<float, py::array::c_style | py::array::forcecast>& datas,
 class Index {
 public:
     Index(std::string index_name, const std::string &index_parameters) {
-        index = vsag::Factory::create(index_name, index_parameters);
+        index = vsag::Factory::CreateIndex(index_name, index_parameters);
     }
     void
     build(py::array_t<float> datas, py::array_t<int64_t> ids, size_t max_elements, size_t dim) {

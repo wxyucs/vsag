@@ -35,7 +35,7 @@ TEST_CASE("HNSW Float Recall", "[hnsw]") {
         {"ef_construction", ef_construction},
         {"ef_runtime", ef_runtime},
     };
-    auto hnsw = vsag::Factory::create("hnsw", index_parameters.dump());
+    auto hnsw = vsag::Factory::CreateIndex("hnsw", index_parameters.dump());
 
     // Generate random data
     std::mt19937 rng;
