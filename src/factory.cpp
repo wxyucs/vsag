@@ -72,6 +72,14 @@ public:
         file_.read((char*)dest, len);
     }
 
+    virtual void
+    BatchRead(const std::vector<read_request>& requests) override {
+        for (auto req : requests) {
+            file_.seekg(std::get<0>(req), std::ios::beg);
+            file_.read((char*)std::get<2>(req), std::get<1>(req));
+        }
+    }
+
     virtual uint64_t
     Size() const override {
         return size_;

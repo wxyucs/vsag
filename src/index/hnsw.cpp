@@ -113,7 +113,7 @@ HNSW::Deserialize(const BinarySet& binary_set) {
 
     Binary b = binary_set.Get(HNSW_DATA);
     auto func = [&](uint64_t offset, uint64_t len, void* dest) -> void {
-	std::memcpy(dest, b.data.get() + offset, len);
+        std::memcpy(dest, b.data.get() + offset, len);
     };
 
     alg_hnsw->loadIndex(func, this->space.get());
