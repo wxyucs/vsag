@@ -3,10 +3,12 @@ version: "1.5"
 only:
   triggerType:
     - push
+    - pullRequest
   triggerBranch:
+    prTargetBranch:
+      - ^master$
     pushOriginalBranch:
       - ^master$
-      - ^feature_diskann$
 
 parameters:
   image: reg.docker.alibaba-inc.com/tbase/tbase:dev-20230605
