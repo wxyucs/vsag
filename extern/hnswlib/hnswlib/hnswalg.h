@@ -3,6 +3,7 @@
 #include "visited_list_pool.h"
 #include "hnswlib.h"
 #include <atomic>
+#include <cstring>
 #include <random>
 #include <stdlib.h>
 #include <assert.h>
@@ -593,6 +594,119 @@ class HierarchicalNSW : public AlgorithmInterface<float> {
         linkLists_ = linkLists_new;
 
         max_elements_ = new_max_elements;
+    }
+
+    template<typename T>
+    static void
+    writeVarToMem(char *&dest, const T &ref) {
+	std::memcpy(dest, (char *)&ref, sizeof(T));
+	dest += sizeof(T);
+    }
+
+
+    static void
+    writeBinaryToMem(char *&dest, const char *src, size_t len) {
+	std::memcpy(dest, src, len);
+	dest += len;
+    }
+
+
+    void saveIndex(void *d) {
+	// std::ofstream output(location, std::ios::binary);
+        // std::streampos position;
+	char *dest = (char *)d;
+
+        // writeBinaryPOD(output, offsetLevel0_);
+	writeVarToMem(dest, offsetLevel0_);
+        // writeBinaryPOD(output, max_elements_);
+	writeVarToMem(dest, max_elements_);
+        // writeBinaryPOD(output, cur_element_count);
+	writeVarToMem(dest, cur_element_count);
+        // writeBinaryPOD(output, size_data_per_element_);
+	writeVarToMem(dest, size_data_per_element_);
+        // writeBinaryPOD(output, label_offset_);
+	writeVarToMem(dest, label_offset_);
+        // writeBinaryPOD(output, offsetData_);
+	writeVarToMem(dest, offsetData_);
+        // writeBinaryPOD(output, maxlevel_);
+	writeVarToMem(dest, maxlevel_);
+        // writeBinaryPOD(output, enterpoint_node_);
+	writeVarToMem(dest, enterpoint_node_);
+        // writeBinaryPOD(output, maxM_);
+	writeVarToMem(dest, maxM_);
+
+        // writeBinaryPOD(output, maxM0_);
+	writeVarToMem(dest, maxM0_);
+        // writeBinaryPOD(output, M_);
+	writeVarToMem(dest, M_);
+        // writeBinaryPOD(output, mult_);
+	writeVarToMem(dest, mult_);
+        // writeBinaryPOD(output, ef_construction_);
+	writeVarToMem(dest, ef_construction_);
+
+        // output.write(data_level0_memory_, cur_element_count * size_data_per_element_);
+	writeBinaryToMem(dest, data_level0_memory_, cur_element_count * size_data_per_element_);
+
+        for (size_t i = 0; i < cur_element_count; i++) {
+            unsigned int linkListSize = element_levels_[i] > 0 ? size_links_per_element_ * element_levels_[i] : 0;
+            // writeBinaryPOD(output, linkListSize);
+	    writeVarToMem(dest, linkListSize);
+            if (linkListSize) {
+                // output.write(linkLists_[i], linkListSize);
+		writeBinaryToMem(dest, linkLists_[i], linkListSize);
+	    }
+        }
+        // output.close();
+    }
+
+
+    size_t calcSerializeSize() {
+        // std::ofstream output(location, std::ios::binary);
+        // std::streampos position;
+	size_t size = 0;
+
+        // writeBinaryPOD(output, offsetLevel0_);
+	size += sizeof(offsetLevel0_);
+        // writeBinaryPOD(output, max_elements_);
+	size += sizeof(max_elements_);
+        // writeBinaryPOD(output, cur_element_count);
+	size += sizeof(cur_element_count);
+        // writeBinaryPOD(output, size_data_per_element_);
+	size += sizeof(size_data_per_element_);
+        // writeBinaryPOD(output, label_offset_);
+	size += sizeof(label_offset_);
+        // writeBinaryPOD(output, offsetData_);
+	size += sizeof(offsetData_);
+        // writeBinaryPOD(output, maxlevel_);
+	size += sizeof(maxlevel_);
+        // writeBinaryPOD(output, enterpoint_node_);
+	size += sizeof(enterpoint_node_);
+        // writeBinaryPOD(output, maxM_);
+	size += sizeof(maxM_);
+
+        // writeBinaryPOD(output, maxM0_);
+	size += sizeof(maxM0_);
+        // writeBinaryPOD(output, M_);
+	size += sizeof(M_);
+        // writeBinaryPOD(output, mult_);
+	size += sizeof(mult_);
+        // writeBinaryPOD(output, ef_construction_);
+	size += sizeof(ef_construction_);
+
+        // output.write(data_level0_memory_, cur_element_count * size_data_per_element_);
+	size += cur_element_count * size_data_per_element_;
+
+        for (size_t i = 0; i < cur_element_count; i++) {
+            unsigned int linkListSize = element_levels_[i] > 0 ? size_links_per_element_ * element_levels_[i] : 0;
+            // writeBinaryPOD(output, linkListSize);
+	    size += sizeof(linkListSize);
+            if (linkListSize) {
+                // output.write(linkLists_[i], linkListSize);
+		size += linkListSize;
+	    }
+        }
+        // output.close();
+	return size;
     }
 
 

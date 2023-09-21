@@ -87,23 +87,14 @@ HNSW::KnnSearch(const Dataset& query, int64_t k, const std::string& parameters) 
 
 BinarySet
 HNSW::Serialize() {
-    // FIXME: index should save to memory buffer directly
-    std::string filename = "/tmp/hnsw-" + std::to_string(random_integer(1'000'000, 9'000'000));
-    alg_hnsw->saveIndex(filename);
-
-    std::ifstream file(filename, std::ios::binary);
-    file.seekg(0, std::ios::end);
-    size_t fileSize = file.tellg();
-    file.seekg(0, std::ios::beg);
-
-    std::shared_ptr<int8_t[]> fileContents(new int8_t[fileSize]);
-    file.read(reinterpret_cast<char*>(fileContents.get()), fileSize);
-    file.close();
-    std::remove(filename.c_str());
+    size_t num_bytes = alg_hnsw->calcSerializeSize();
+    // std::cout << "num_bytes: " << std::to_string(num_bytes) << std::endl;
+    std::shared_ptr<int8_t[]> bin(new int8_t[num_bytes]);
+    alg_hnsw->saveIndex(bin.get());
 
     Binary b{
-        .data = fileContents,
-        .size = fileSize,
+        .data = bin,
+        .size = num_bytes,
     };
     BinarySet bs;
     bs.Set(HNSW_DATA, b);
