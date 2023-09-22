@@ -77,45 +77,64 @@ TEST_CASE("HNSW Float Recall", "[hnsw]") {
     REQUIRE(recall == 1);
 }
 
-/*
-TEST_CASE("HNSW Int8 Recall", "[hnsw]") {
-    int dim = 256;
+TEST_CASE("Two HNSW", "[hnsw]") {
+    int dim = 128;
     int max_elements = 10000;
     int M = 64;
     int ef_construction = 200;
     int ef_runtime = 200;
     // Initing index
-    vsag::HNSW hnsw(std::make_shared<hnswlib::InnerProductSpaceInt8>(dim),
-                    max_elements,
-                    M,
-                    ef_construction,
-                    ef_runtime = 200);
+    nlohmann::json index_parameters{
+	{"dtype", "float32"},
+	{"metric_type", "l2"},
+	{"dim", dim},
+        {"max_elements", max_elements},
+        {"M", M},
+        {"ef_construction", ef_construction},
+        {"ef_runtime", ef_runtime},
+    };
+    auto hnsw = vsag::Factory::CreateIndex("hnsw", index_parameters.dump());
+    auto hnsw2 = vsag::Factory::CreateIndex("hnsw", index_parameters.dump());
 
     // Generate random data
     std::mt19937 rng;
     rng.seed(47);
     std::uniform_real_distribution<> distrib_real;
-    int8_t* data = new int8_t[dim * max_elements];
-    for (int i = 0; i < dim * max_elements; i++) {
-        data[i] = distrib_real(rng) * 256;
-    }
-
-    // Add data to index
+    int64_t* ids = new int64_t[max_elements];
+    float* data = new float[dim * max_elements];
     for (int i = 0; i < max_elements; i++) {
-        hnsw.addPoint(data + i * dim, i);
+        ids[i] = i;
+    }
+    for (int i = 0; i < dim * max_elements; i++) {
+        data[i] = distrib_real(rng);
     }
 
-    // Query the elements for themselves and measure recall
+    vsag::Dataset dataset;
+    dataset.SetDim(dim);
+    dataset.SetNumElements(max_elements);
+    dataset.SetIds(ids);
+    dataset.SetFloat32Vectors(data);
+    hnsw->Build(dataset);
+    hnsw2->Build(dataset);
+
+    // Query the elements for themselves and measure recall 1@1
     float correct = 0;
     for (int i = 0; i < max_elements; i++) {
-        std::priority_queue<std::pair<float, hnswlib::labeltype>> result =
-            hnsw.searchTopK(data + i * dim, 1);
-        hnswlib::labeltype label = result.top().second;
-        if (label == i)
-            correct++;
+	vsag::Dataset query;
+	query.SetNumElements(1);
+	query.SetDim(dim);
+	query.SetFloat32Vectors(data + i * dim);
+	query.SetOwner(false);
+	nlohmann::json parameters;
+	int64_t k = 10;
+	auto result = hnsw->KnnSearch(query, k, parameters.dump());
+	auto result2 = hnsw->KnnSearch(query, k, parameters.dump());
+	if (result.GetIds()[0] == i or result2.GetIds()[0]) {
+	    correct++;
+	}
     }
     float recall = correct / max_elements;
 
     REQUIRE(recall == 1);
 }
-*/
+
