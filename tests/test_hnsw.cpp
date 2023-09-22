@@ -26,15 +26,14 @@ TEST_CASE("HNSW Float Recall", "[hnsw]") {
     int ef_construction = 200;
     int ef_runtime = 200;
     // Initing index
-    nlohmann::json index_parameters{
-	{"dtype", "float32"},
-	{"metric_type", "l2"},
-	{"dim", dim},
+    nlohmann::json hnsw_parameters{
         {"max_elements", max_elements},
         {"M", M},
         {"ef_construction", ef_construction},
         {"ef_runtime", ef_runtime},
     };
+    nlohmann::json index_parameters{
+        {"dtype", "float32"}, {"metric_type", "l2"}, {"dim", dim}, {"hnsw", hnsw_parameters}};
     auto hnsw = vsag::Factory::CreateIndex("hnsw", index_parameters.dump());
 
     // Generate random data
@@ -84,15 +83,14 @@ TEST_CASE("Two HNSW", "[hnsw]") {
     int ef_construction = 200;
     int ef_runtime = 200;
     // Initing index
-    nlohmann::json index_parameters{
-	{"dtype", "float32"},
-	{"metric_type", "l2"},
-	{"dim", dim},
+    nlohmann::json hnsw_parameters{
         {"max_elements", max_elements},
         {"M", M},
         {"ef_construction", ef_construction},
         {"ef_runtime", ef_runtime},
     };
+    nlohmann::json index_parameters{
+        {"dtype", "float32"}, {"metric_type", "l2"}, {"dim", dim}, {"hnsw", hnsw_parameters}};
     auto hnsw = vsag::Factory::CreateIndex("hnsw", index_parameters.dump());
     auto hnsw2 = vsag::Factory::CreateIndex("hnsw", index_parameters.dump());
 

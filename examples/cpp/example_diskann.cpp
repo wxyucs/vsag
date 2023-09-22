@@ -1,13 +1,13 @@
 //
 // Created by inabao on 2023/8/21.
 //
-#include "vsag/vsag.h"
-#include <sstream>
-#include <nlohmann/json.hpp>
-#include <iostream>
 #include <fstream>
-// int venama_memory() {
+#include <iostream>
+#include <nlohmann/json.hpp>
+#include <sstream>
 
+#include "vsag/vsag.h"
+// int venama_memory() {
 
 //     diskann::Metric metric = diskann::Metric::L2;
 
@@ -74,8 +74,6 @@
 //     std::stringstream tag_stream;
 //     std::stringstream data_stream;
 
-
-
 //     index.save(graph_stream, tag_stream, data_stream);
 
 //     std::cout << graph_stream.str().size() << std::endl;
@@ -109,7 +107,6 @@
 //     float p_val = 0.5;
 //     size_t disk_pq_dims = 8;
 
-
 //     auto index_build_params = diskann::IndexWriteParametersBuilder(L, R)
 //             .build();
 
@@ -138,7 +135,6 @@
 //                                  disk_pq_compressed_vectors, metric, p_val, disk_pq_dims);
 
 //     std::stringstream diskann_stream;
-
 
 //     diskann::create_disk_layout<float>(data_stream, graph_stream, diskann_stream, "");
 
@@ -170,27 +166,32 @@
 //     return 0;
 // }
 
-void float_diskann() {
-    int dim = 256;               // Dimension of the elements
-    int max_elements = 10000;    // Maximum number of elements, should be known beforehand
-    int M = 16;                 // Tightly connected with internal dimensionality of the data
+void
+float_diskann() {
+    int dim = 256;             // Dimension of the elements
+    int max_elements = 10000;  // Maximum number of elements, should be known beforehand
+    int M = 16;                // Tightly connected with internal dimensionality of the data
     // strongly affects the memory consumption
     int ef_construction = 200;  // Controls index search speed/build speed tradeoff
     int ef_runtime = 200;
-    int p_val = 0.5;  // p_val represents how much original data is selected during the training of pq compressed vectors.
-    int chunks_num = 32; // chunks_num represents the dimensionality of the compressed vector.
+    int p_val =
+        0.5;  // p_val represents how much original data is selected during the training of pq compressed vectors.
+    int chunks_num = 32;  // chunks_num represents the dimensionality of the compressed vector.
     std::string disk_layout_file = "/tmp/index.out";
     // Initing index
+    nlohmann::json diskann_parameters{
+        {"R", M},
+        {"L", ef_construction},
+        {"p_val", 0.5},
+        {"disk_pq_dims", chunks_num},
+        {"disk_layout_file", disk_layout_file},
+    };
     nlohmann::json index_parameters{
-            {"dtype", "float32"},
-            {"metric_type", "l2"},
-            {"dim", dim},
-            {"max_elements", max_elements},
-            {"R", M},
-            {"L", ef_construction},
-            {"p_val", 0.5},
-            {"disk_pq_dims", chunks_num},
-            {"disk_layout_file", disk_layout_file},
+        {"dtype", "float32"},
+        {"metric_type", "l2"},
+        {"dim", dim},
+        {"max_elements", max_elements},
+        {"diskann", diskann_parameters},
     };
     auto diskann = vsag::Factory::CreateIndex("diskann", index_parameters.dump());
 
@@ -241,10 +242,10 @@ void float_diskann() {
         size_t size = pq.tellg();
         pq.seekg(0, std::ios::beg);
         std::shared_ptr<int8_t[]> buff(new int8_t[size]);
-        pq.read(reinterpret_cast<char *>(buff.get()), size);
+        pq.read(reinterpret_cast<char*>(buff.get()), size);
         vsag::Binary pq_b{
-                .data = buff,
-                .size = size,
+            .data = buff,
+            .size = size,
         };
         bs.Set(vsag::DISKANN_PQ, pq_b);
 
@@ -253,10 +254,10 @@ void float_diskann() {
         size = compressed.tellg();
         compressed.seekg(0, std::ios::beg);
         buff.reset(new int8_t[size]);
-        compressed.read(reinterpret_cast<char *>(buff.get()), size);
+        compressed.read(reinterpret_cast<char*>(buff.get()), size);
         vsag::Binary compressed_vector_b{
-                .data = buff,
-                .size = size,
+            .data = buff,
+            .size = size,
         };
         bs.Set(vsag::DISKANN_COMPRESSED_VECTOR, compressed_vector_b);
 
@@ -274,11 +275,7 @@ void float_diskann() {
         query.SetFloat32Vectors(data + i * dim);
         query.SetOwner(false);
         nlohmann::json parameters{
-                {"data_num", 1},
-                {"ef_search", ef_runtime},
-                {"beam_search", 4},
-                {"io_limit", 200}
-        };
+            {"data_num", 1}, {"ef_search", ef_runtime}, {"beam_search", 4}, {"io_limit", 200}};
         int64_t k = 2;
         auto result = diskann->KnnSearch(query, k, parameters.dump());
         if (result.GetNumElements() == 1) {
@@ -291,17 +288,17 @@ void float_diskann() {
     std::cout << "Recall: " << recall << std::endl;
 }
 
-
-int main() {
+int
+main() {
     float_diskann();
-//
-//    uint32_t a, b;
-//    uint64_t c, d;
-//    std::ifstream in("/tmp/index.out");
-//    in.read((char *)&a, sizeof(uint32_t));
-//    in.read((char *)&b, sizeof(uint32_t));
-//    in.read((char *)&c, sizeof(uint64_t));
-//    in.read((char *)&d, sizeof(uint64_t));
+    //
+    //    uint32_t a, b;
+    //    uint64_t c, d;
+    //    std::ifstream in("/tmp/index.out");
+    //    in.read((char *)&a, sizeof(uint32_t));
+    //    in.read((char *)&b, sizeof(uint32_t));
+    //    in.read((char *)&c, sizeof(uint64_t));
+    //    in.read((char *)&d, sizeof(uint64_t));
 
     return 0;
 }
