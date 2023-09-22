@@ -6,6 +6,7 @@
 #include <fstream>
 #include <ios>
 #include <memory>
+#include <mutex>
 #include <nlohmann/json.hpp>
 #include <stdexcept>
 #include <string>
@@ -68,6 +69,7 @@ public:
 
     virtual void
     Read(uint64_t offset, uint64_t len, void* dest) override {
+        std::lock_guard<std::mutex> lock(mutex_);
         file_.seekg(offset, std::ios::beg);
         file_.read((char*)dest, len);
     }
@@ -81,6 +83,7 @@ private:
     const std::string filename_;
     std::ifstream file_;
     uint64_t size_;
+    std::mutex mutex_;
 };
 
 std::shared_ptr<Reader>

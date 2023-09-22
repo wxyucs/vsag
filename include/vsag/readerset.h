@@ -16,6 +16,8 @@ public:
     ~Reader() = default;
 
 public:
+    // Read len bytes from file/memory to the memory pointed to by dest.
+    // thread-safe
     virtual void
     Read(uint64_t offset, uint64_t len, void* dest) = 0;
 
