@@ -83,9 +83,9 @@ struct AlignedRead
 
     AlignedRead(uint64_t offset, uint64_t len, void *buf) : offset(offset), len(len), buf(buf)
     {
-        assert(IS_512_ALIGNED(offset));
-        assert(IS_512_ALIGNED(len));
-        assert(IS_512_ALIGNED(buf));
+//        assert(IS_512_ALIGNED(offset));
+//        assert(IS_512_ALIGNED(len));
+//        assert(IS_512_ALIGNED(buf));
         // assert(malloc_usable_size(buf) >= len);
     }
 };

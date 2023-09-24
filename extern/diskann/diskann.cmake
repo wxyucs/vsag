@@ -14,6 +14,7 @@ set(DISKANN_SOURCES
     extern/diskann/DiskANN/src/in_mem_graph_store.cpp
     extern/diskann/DiskANN/src/in_mem_data_store.cpp
     extern/diskann/DiskANN/src/linux_aligned_file_reader.cpp
+    extern/diskann/DiskANN/src/local_file_reader.cpp
     extern/diskann/DiskANN/src/math_utils.cpp
     extern/diskann/DiskANN/src/natural_number_map.cpp
     extern/diskann/DiskANN/src/in_mem_data_store.cpp

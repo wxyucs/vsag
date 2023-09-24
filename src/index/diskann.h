@@ -13,6 +13,7 @@
 #include <pq_flash_index.h>
 
 #include <cstring>
+#include <functional>
 #include <queue>
 
 #include "vsag/index.h"
@@ -22,13 +23,18 @@ namespace vsag {
 class DiskANN : public Index {
 public:
     using rs = std::pair<float, size_t>;
+
+    // offset: uint64, len: uint64, dest: void*
+    using read_request = std::tuple<uint64_t, uint64_t, void*>;
+
     DiskANN(diskann::Metric metric,
             std::string data_type,
             int L,
             int R,
             float p_val,
-            size_t disk_pq_dims,
-            std::string disk_layout_file);
+            size_t disk_pq_dims);
+
+    ~DiskANN() = default;
 
     void
     Build(const Dataset& base) override;
@@ -52,13 +58,14 @@ private:
     std::stringstream pq_pivots_stream_;
     std::stringstream disk_pq_compressed_vectors_;
     std::stringstream disk_layout_stream_;
+    std::function<void(const std::vector<read_request>&)> batch_read;
     diskann::Metric metric_;
+    std::shared_ptr<Reader> disk_layout_reader;
     std::string data_type_;
     int L_ = 200;
     int R_ = 64;
     float p_val_ = 0.5;
     size_t disk_pq_dims_ = 8;
-    std::string disk_layout_file_ = "/tmp/index.out";
 };
 
 }  // namespace vsag

@@ -11,6 +11,7 @@
 #include "windows_aligned_file_reader.h"
 #else
 #include "linux_aligned_file_reader.h"
+#include "local_file_reader.h"
 #endif
 
 #define READ_U64(stream, val) stream.read((char *)&val, sizeof(uint64_t))
@@ -1335,6 +1336,139 @@ int PQFlashIndex<T, LabelT>::load_from_separate_paths(uint32_t num_threads, cons
     diskann::cout << "done.." << std::endl;
     return 0;
 }
+
+template <typename T, typename LabelT>
+int PQFlashIndex<T, LabelT>::load_from_separate_paths(uint32_t num_threads,
+                                                          std::stringstream &pivots_stream, std::stringstream &compressed_stream)
+{
+
+    size_t num_pts_in_label_file = 0;
+
+    size_t pq_file_dim, pq_file_num_centroids;
+    get_bin_metadata(pivots_stream, pq_file_num_centroids, pq_file_dim, 40);
+
+
+    if (pq_file_num_centroids != 256)
+    {
+        diskann::cout << "Error. Number of PQ centroids is not 256. Exiting." << std::endl;
+        return -1;
+    }
+
+    this->data_dim = pq_file_dim;
+    // will reset later if we use PQ on disk
+    this->disk_data_dim = this->data_dim;
+    // will change later if we use PQ on disk or if we are using
+    // inner product without PQ
+    this->disk_bytes_per_point = this->data_dim * sizeof(T);
+    this->aligned_dim = ROUND_UP(pq_file_dim, 8);
+
+    size_t npts_u64, nchunks_u64;
+    diskann::load_bin<uint8_t>(compressed_stream, this->data, npts_u64, nchunks_u64);
+
+    this->num_points = npts_u64;
+    this->n_chunks = nchunks_u64;
+    pq_table.load_pq_centroid_bin(pivots_stream, nchunks_u64);
+    diskann::cout << "Loaded PQ centroids and in-memory compressed vectors. #points: " << num_points
+                  << " #dim: " << data_dim << " #aligned_dim: " << aligned_dim << " #chunks: " << n_chunks << std::endl;
+
+    if (n_chunks > MAX_PQ_CHUNKS)
+    {
+        std::stringstream stream;
+        stream << "Error loading index. Ensure that max PQ bytes for in-memory "
+                  "PQ data does not exceed "
+               << MAX_PQ_CHUNKS << std::endl;
+        throw diskann::ANNException(stream.str(), -1, __FUNCSIG__, __FILE__, __LINE__);
+    }
+
+//    use_disk_index_pq = true;
+//    // giving 0 chunks to make the pq_table infer from the
+//    // chunk_offsets file the correct value
+//    disk_pq_table.load_pq_centroid_bin(pivots_stream, 0);
+//    disk_pq_n_chunks = disk_pq_table.get_num_chunks();
+//    disk_bytes_per_point =
+//            disk_pq_n_chunks * sizeof(uint8_t); // revising disk_bytes_per_point since DISK PQ is used.
+//    diskann::cout << "Disk index uses PQ data compressed down to " << disk_pq_n_chunks << " bytes per point."
+//                  << std::endl;
+
+// read index metadata
+
+    uint32_t nr, nc; // metadata itself is stored as bin format (nr is number of
+
+    uint64_t disk_nnodes;
+    uint64_t disk_ndims; // can be disk PQ dim if disk_PQ is set to true
+
+    size_t medoid_id_on_file;
+    uint64_t file_frozen_id;
+    // metadata, nc should be 1)
+    std::vector<AlignedRead> read_reqs;
+    uint64_t start = 0;
+    read_reqs.emplace_back(0, 4, &nr);
+    read_reqs.emplace_back(4, 4, &nc);
+    read_reqs.emplace_back(8, 8, &disk_nnodes);
+    read_reqs.emplace_back(16, 8, &disk_ndims);
+    read_reqs.emplace_back(24, 8, &medoid_id_on_file);
+    read_reqs.emplace_back(32, 8, &max_node_len);
+    read_reqs.emplace_back(40, 8, &nnodes_per_sector);
+    read_reqs.emplace_back(48, 8, &this->num_frozen_points);
+    read_reqs.emplace_back(56, 8, &file_frozen_id);
+    read_reqs.emplace_back(64, 8, &this->reorder_data_exists);
+    reader->read(read_reqs, reader->get_ctx());
+//    READ_U32(index_metadata, nr);
+//    READ_U32(index_metadata, nc);
+//    READ_U64(index_metadata, disk_nnodes);
+//    READ_U64(index_metadata, disk_ndims);
+//    READ_U64(index_metadata, medoid_id_on_file);
+//    READ_U64(index_metadata, max_node_len);
+//    READ_U64(index_metadata, nnodes_per_sector);
+//    READ_U64(index_metadata, this->num_frozen_points);
+//    READ_U64(index_metadata, file_frozen_id);
+//    READ_U64(index_metadata, this->reorder_data_exists);
+
+    if (disk_nnodes != num_points)
+    {
+        diskann::cout << "Mismatch in #points for compressed data file and disk "
+                         "index file: "
+                      << disk_nnodes << " vs " << num_points << std::endl;
+        return -1;
+    }
+    max_degree = ((max_node_len - disk_bytes_per_point) / sizeof(uint32_t)) - 1;
+
+    if (max_degree > MAX_GRAPH_DEGREE)
+    {
+        std::stringstream stream;
+        stream << "Error loading index. Ensure that max graph degree (R) does "
+                  "not exceed "
+               << MAX_GRAPH_DEGREE << std::endl;
+        throw diskann::ANNException(stream.str(), -1, __FUNCSIG__, __FILE__, __LINE__);
+    }
+
+    // setting up concept of frozen points in disk index for streaming-DiskANN
+    if (this->num_frozen_points == 1)
+        this->frozen_location = file_frozen_id;
+    if (this->num_frozen_points == 1)
+    {
+        diskann::cout << " Detected frozen point in index at location " << this->frozen_location
+                      << ". Will not output it at search time." << std::endl;
+    }
+
+    diskann::cout << "Disk-Index File Meta-data: ";
+    diskann::cout << "# nodes per sector: " << nnodes_per_sector;
+    diskann::cout << ", max node len (bytes): " << max_node_len;
+    diskann::cout << ", max node degree: " << max_degree << std::endl;
+    num_medoids = 1;
+    medoids = new uint32_t[1];
+    medoids[0] = (uint32_t)(medoid_id_on_file);
+
+    this->setup_thread_data(num_threads);
+    this->max_nthreads = num_threads;
+
+    use_medoids_data_as_centroids();
+    diskann::cout << "done.." << std::endl;
+    return 0;
+}
+
+
+
 #ifdef USE_BING_INFRA
 bool getNextCompletedRequest(const IOContext &ctx, size_t size, int &completedIndex)
 {

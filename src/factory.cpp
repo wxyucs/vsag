@@ -58,8 +58,7 @@ Factory::CreateIndex(const std::string& name, const std::string& parameters) {
                                                params["diskann"]["L"],
                                                params["diskann"]["R"],
                                                params["diskann"]["p_val"],
-                                               params["diskann"]["disk_pq_dims"],
-                                               params["diskann"]["disk_layout_file"]);
+                                               params["diskann"]["disk_pq_dims"]);
         return index;
     } else {
         // not support
@@ -70,8 +69,8 @@ Factory::CreateIndex(const std::string& name, const std::string& parameters) {
 class LocalFileReader : public Reader {
 public:
     LocalFileReader(const std::string& filename)
-        : filename_(filename), file_(std::ifstream(filename)) {
-        file_.seekg(std::ios::end);
+        : filename_(filename), file_(std::ifstream(filename, std::ios::binary)) {
+        file_.seekg(0, std::ios::end);
         size_ = file_.tellg();
     }
 

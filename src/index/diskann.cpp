@@ -4,7 +4,10 @@
 
 #include "diskann.h"
 
+#include <local_file_reader.h>
+
 #include <functional>
+#include <future>
 #include <nlohmann/json.hpp>
 #include <utility>
 
@@ -13,20 +16,59 @@
 
 namespace vsag {
 
-DiskANN::DiskANN(diskann::Metric metric,
-                 std::string data_type,
-                 int L,
-                 int R,
-                 float p_val,
-                 size_t disk_pq_dims,
-                 std::string disk_layout_file)
+class LocalMemoryReader : public Reader {
+public:
+    LocalMemoryReader(std::stringstream& file) {
+        file_ << file.rdbuf();
+        file_.seekg(0, std::ios::end);
+        size_ = file_.tellg();
+    }
+
+    ~LocalMemoryReader() = default;
+
+    virtual void
+    Read(uint64_t offset, uint64_t len, void* dest) override {
+        file_.seekg(offset, std::ios::beg);
+        file_.read((char*)dest, len);
+    }
+
+    virtual uint64_t
+    Size() const override {
+        return size_;
+    }
+
+private:
+    std::stringstream file_;
+    uint64_t size_;
+};
+
+DiskANN::DiskANN(
+    diskann::Metric metric, std::string data_type, int L, int R, float p_val, size_t disk_pq_dims)
     : metric_(metric),
       L_(L),
       R_(R),
       p_val_(p_val),
       data_type_(data_type),
-      disk_pq_dims_(disk_pq_dims),
-      disk_layout_file_(disk_layout_file) {
+      disk_pq_dims_(disk_pq_dims) {
+    batch_read = [&](const std::vector<read_request>& requests) -> void {
+        std::vector<std::future<void>> futures;
+        for (int i = 0; i < requests.size(); ++i) {
+            futures.push_back(std::async(
+                std::launch::async,
+                [&](uint64_t a, uint64_t b, void* c) { disk_layout_reader->Read(a, b, c); },
+                std::get<0>(requests[i]),
+                std::get<1>(requests[i]),
+                std::get<2>(requests[i])));
+        }
+        for (int i = 0; i < requests.size(); ++i) {
+            futures[i].wait();
+        }
+
+        //        for (int i = 0; i < requests.size(); ++i) {
+        //            disk_layout_reader->Read(
+        //                std::get<0>(requests[i]), std::get<1>(requests[i]), std::get<2>(requests[i]));
+        //        }
+    };
 }
 
 void
@@ -65,6 +107,13 @@ DiskANN::Build(const Dataset& base) {
                                                  disk_pq_dims_);
 
     diskann::create_disk_layout<float>(data_stream, graph_stream, disk_layout_stream_, "");
+
+    disk_layout_reader = std::make_shared<LocalMemoryReader>(disk_layout_stream_);
+
+    reader.reset(new LocalFileReader(batch_read));
+    index.reset(new diskann::PQFlashIndex<float>(reader, metric_));
+    index->load_from_separate_paths(
+        omp_get_num_procs(), pq_pivots_stream_, disk_pq_compressed_vectors_);
 }
 
 Dataset
@@ -147,19 +196,39 @@ DiskANN::Deserialize(const BinarySet& binary_set) {
     auto compressed_vector = binary_set.Get(DISKANN_COMPRESSED_VECTOR);
     disk_pq_compressed_vectors_.write((char*)compressed_vector.data.get(), compressed_vector.size);
 
-    reader.reset(new LinuxAlignedFileReader());
+    auto disk_layout = binary_set.Get(DISKANN_LAYOUT_FILE);
+    disk_layout_stream_.write((char*)disk_layout.data.get(), disk_layout.size);
+
+    disk_layout_reader = std::make_shared<LocalMemoryReader>(disk_layout_stream_);
+
+    reader.reset(new LocalFileReader(batch_read));
     index.reset(new diskann::PQFlashIndex<float>(reader, metric_));
-    index->load_from_separate_paths(omp_get_num_procs(),
-                                    disk_layout_file_.c_str(),
-                                    pq_pivots_stream_,
-                                    disk_pq_compressed_vectors_);
+    index->load_from_separate_paths(
+        omp_get_num_procs(), pq_pivots_stream_, disk_pq_compressed_vectors_);
 }
 
 void
 DiskANN::Deserialize(const ReaderSet& reader_set) {
-    // offset: uint64, len: uint64, dest: void*
-    using read_request = std::tuple<uint64_t, uint64_t, void*>;
-    auto batch_read = [&](const std::vector<read_request>& requests) -> void {};
+    {
+        auto pq_reader = reader_set.Get(DISKANN_PQ);
+        char pq_pivots_data[pq_reader->Size()];
+        pq_reader->Read(0, pq_reader->Size(), pq_pivots_data);
+        pq_pivots_stream_.write(pq_pivots_data, pq_reader->Size());
+        pq_pivots_stream_.seekg(0);
+    }
+
+    {
+        auto compressed_vector_reader = reader_set.Get(DISKANN_COMPRESSED_VECTOR);
+        char compressed_vector_data[compressed_vector_reader->Size()];
+        compressed_vector_reader->Read(0, compressed_vector_reader->Size(), compressed_vector_data);
+        disk_pq_compressed_vectors_.write(compressed_vector_data, compressed_vector_reader->Size());
+        disk_pq_compressed_vectors_.seekg(0);
+    }
+    disk_layout_reader = reader_set.Get(DISKANN_LAYOUT_FILE);
+    reader.reset(new LocalFileReader(batch_read));
+    index.reset(new diskann::PQFlashIndex<float>(reader, metric_));
+    index->load_from_separate_paths(
+        omp_get_num_procs(), pq_pivots_stream_, disk_pq_compressed_vectors_);
 }
 
 }  // namespace vsag
