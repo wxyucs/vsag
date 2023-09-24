@@ -61,8 +61,8 @@ HNSW::Add(const Dataset& base) {
 Dataset
 HNSW::KnnSearch(const Dataset& query, int64_t k, const std::string& parameters) {
     nlohmann::json params = nlohmann::json::parse(parameters);
-    if (params.contains("ef_runtime")) {
-        alg_hnsw->setEf(params["ef_runtime"]);
+    if (params.contains("hnsw") and params["hnsw"].contains("ef_runtime")) {
+        alg_hnsw->setEf(params["hnsw"]["ef_runtime"]);
     }
 
     int64_t num_elements = query.GetNumElements();

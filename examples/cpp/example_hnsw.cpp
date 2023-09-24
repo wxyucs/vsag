@@ -67,9 +67,9 @@ float_hnsw() {
         query.SetFloat32Vectors(data + i * dim);
         query.SetOwner(false);
         nlohmann::json parameters{
-            {"ef_runtime", ef_runtime},
+            {"hnsw", {"ef_runtime", ef_runtime}},
         };
-	int64_t k = 10;
+        int64_t k = 10;
         auto result = hnsw->KnnSearch(query, k, parameters.dump());
         if (result.GetIds()[0] == i) {
             correct++;
@@ -90,20 +90,20 @@ float_hnsw() {
 
     // Deserialize
     {
-	std::ifstream file("hnsw.index", std::ios::binary);
-	file.seekg(0, std::ios::end);
-	size_t size = file.tellg();
-	file.seekg(0, std::ios::beg);
-	std::shared_ptr<int8_t[]> buff(new int8_t[size]);
-	file.read(reinterpret_cast<char *>(buff.get()), size);
-	vsag::Binary b{
-	    .data = buff,
-	    .size = size,
-	};
-	vsag::BinarySet bs;
-	bs.Set(vsag::HNSW_DATA, b);
-	hnsw = vsag::Factory::CreateIndex("hnsw", index_parameters.dump());
-	hnsw->Deserialize(bs);
+        std::ifstream file("hnsw.index", std::ios::binary);
+        file.seekg(0, std::ios::end);
+        size_t size = file.tellg();
+        file.seekg(0, std::ios::beg);
+        std::shared_ptr<int8_t[]> buff(new int8_t[size]);
+        file.read(reinterpret_cast<char*>(buff.get()), size);
+        vsag::Binary b{
+            .data = buff,
+            .size = size,
+        };
+        vsag::BinarySet bs;
+        bs.Set(vsag::HNSW_DATA, b);
+        hnsw = vsag::Factory::CreateIndex("hnsw", index_parameters.dump());
+        hnsw->Deserialize(bs);
     }
 
     // Query the elements for themselves and measure recall 1@10
@@ -115,26 +115,26 @@ float_hnsw() {
         query.SetFloat32Vectors(data + i * dim);
         query.SetOwner(false);
         nlohmann::json parameters{
-            {"ef_runtime", ef_runtime},
+            {"hnsw", {"ef_runtime", ef_runtime}},
         };
-	int64_t k = 10;
+        int64_t k = 10;
         auto result = hnsw->KnnSearch(query, k, parameters.dump());
-	if (result.GetNumElements() == 1) {
-	    if (result.GetIds()[0] == i or result.GetIds()[1] == i) {
-		correct++;
-	    }
-	}
+        if (result.GetNumElements() == 1) {
+            if (result.GetIds()[0] == i or result.GetIds()[1] == i) {
+                correct++;
+            }
+        }
     }
     recall = correct / max_elements;
     std::cout << "Recall: " << recall << std::endl;
 
     // Deserialize
     {
-	auto file_reader = vsag::Factory::CreateLocalFileReader("hnsw.index");
-	vsag::ReaderSet rs;
-	rs.Set(vsag::HNSW_DATA, file_reader);
-	hnsw = vsag::Factory::CreateIndex("hnsw", index_parameters.dump());
-	hnsw->Deserialize(rs);
+        auto file_reader = vsag::Factory::CreateLocalFileReader("hnsw.index");
+        vsag::ReaderSet rs;
+        rs.Set(vsag::HNSW_DATA, file_reader);
+        hnsw = vsag::Factory::CreateIndex("hnsw", index_parameters.dump());
+        hnsw->Deserialize(rs);
     }
 
     // Query the elements for themselves and measure recall 1@10
@@ -146,15 +146,15 @@ float_hnsw() {
         query.SetFloat32Vectors(data + i * dim);
         query.SetOwner(false);
         nlohmann::json parameters{
-            {"ef_runtime", ef_runtime},
+            {"hnsw", {"ef_runtime", ef_runtime}},
         };
-	int64_t k = 10;
+        int64_t k = 10;
         auto result = hnsw->KnnSearch(query, k, parameters.dump());
-	if (result.GetNumElements() == 1) {
-	    if (result.GetIds()[0] == i or result.GetIds()[1] == i) {
-		correct++;
-	    }
-	}
+        if (result.GetNumElements() == 1) {
+            if (result.GetIds()[0] == i or result.GetIds()[1] == i) {
+                correct++;
+            }
+        }
     }
     recall = correct / max_elements;
     std::cout << "Recall: " << recall << std::endl;

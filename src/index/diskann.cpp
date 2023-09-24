@@ -124,9 +124,9 @@ DiskANN::KnnSearch(const Dataset& query, int64_t k, const std::string& parameter
         return std::move(result);
     auto query_num = query.GetNumElements();
     auto query_dim = query.GetDim();
-    size_t beam_search = param["beam_search"];
-    size_t io_limit = param["io_limit"];
-    size_t ef_search = param["ef_search"];
+    size_t beam_search = param["diskann"]["beam_search"];
+    size_t io_limit = param["diskann"]["io_limit"];
+    size_t ef_search = param["diskann"]["ef_search"];
     uint64_t labels[query_num * k];
     auto distances = new float[query_num * k];
     auto ids = new int64_t[query_num * k];

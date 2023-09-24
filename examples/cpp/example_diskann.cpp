@@ -221,11 +221,8 @@ float_diskann() {
         query.SetFloat32Vectors(data + i * dim);
         query.SetOwner(false);
         nlohmann::json parameters{
-                {"data_num", 1},
-                {"ef_search", ef_runtime},
-                {"beam_search", 4},
-                {"io_limit", 200}
-        };
+            {"diskann",
+             {{"data_num", 1}, {"ef_search", ef_runtime}, {"beam_search", 4}, {"io_limit", 200}}}};
         int64_t k = 2;
         auto result = diskann->KnnSearch(query, k, parameters.dump());
         if (result.GetNumElements() == 1) {
@@ -257,11 +254,12 @@ float_diskann() {
         layout.close();
     }
 
-//     Deserialize
+    //     Deserialize
     {
         vsag::ReaderSet rs;
         auto pq_reader = vsag::Factory::CreateLocalFileReader("diskann_pq.index");
-        auto compressed_vector_reader = vsag::Factory::CreateLocalFileReader("diskann_compressed_vector.index");
+        auto compressed_vector_reader =
+            vsag::Factory::CreateLocalFileReader("diskann_compressed_vector.index");
         auto disk_layout_reader = vsag::Factory::CreateLocalFileReader(disk_layout_file);
         rs.Set(vsag::DISKANN_PQ, pq_reader);
         rs.Set(vsag::DISKANN_COMPRESSED_VECTOR, compressed_vector_reader);
@@ -283,11 +281,8 @@ float_diskann() {
         query.SetFloat32Vectors(data + i * dim);
         query.SetOwner(false);
         nlohmann::json parameters{
-                {"data_num", 1},
-                {"ef_search", ef_runtime},
-                {"beam_search", 4},
-                {"io_limit", 200}
-        };
+            {"diskann",
+             {{"data_num", 1}, {"ef_search", ef_runtime}, {"beam_search", 4}, {"io_limit", 200}}}};
         int64_t k = 2;
         auto result = diskann->KnnSearch(query, k, parameters.dump());
         if (result.GetNumElements() == 1) {
@@ -327,17 +322,15 @@ float_diskann() {
         };
         bs.Set(vsag::DISKANN_COMPRESSED_VECTOR, compressed_vector_b);
 
-
-
         std::ifstream disk_layout(disk_layout_file, std::ios::binary);
         disk_layout.seekg(0, std::ios::end);
         size = disk_layout.tellg();
         disk_layout.seekg(0, std::ios::beg);
         buff.reset(new int8_t[size]);
-        disk_layout.read(reinterpret_cast<char *>(buff.get()), size);
+        disk_layout.read(reinterpret_cast<char*>(buff.get()), size);
         vsag::Binary disk_layout_b{
-                .data = buff,
-                .size = size,
+            .data = buff,
+            .size = size,
         };
         bs.Set(vsag::DISKANN_LAYOUT_FILE, disk_layout_b);
 
@@ -356,7 +349,8 @@ float_diskann() {
         query.SetFloat32Vectors(data + i * dim);
         query.SetOwner(false);
         nlohmann::json parameters{
-            {"data_num", 1}, {"ef_search", ef_runtime}, {"beam_search", 4}, {"io_limit", 200}};
+            {"diskann",
+             {{"data_num", 1}, {"ef_search", ef_runtime}, {"beam_search", 4}, {"io_limit", 200}}}};
         int64_t k = 2;
         auto result = diskann->KnnSearch(query, k, parameters.dump());
         if (result.GetNumElements() == 1) {
