@@ -19,6 +19,17 @@ float_hnsw() {
     int ef_runtime = 200;
 
     // Initing index
+    // {
+    //   "dim": 16,
+    //   "dtype": "float32",
+    //   "metric_type": "l2",
+    //   "hnsw": {
+    //     "M": 16,
+    //     "ef_construction": 200,
+    //     "ef_runtime": 200,
+    //     "max_elements": 1000
+    //   }
+    // }
     nlohmann::json hnsw_parameters{
         {"max_elements", max_elements},
         {"M", M},
@@ -66,6 +77,11 @@ float_hnsw() {
         query.SetDim(dim);
         query.SetFloat32Vectors(data + i * dim);
         query.SetOwner(false);
+	// {
+	//   "hnsw": {
+	//     "ef_runtime": 200
+	//   }
+	// }
         nlohmann::json parameters{
             {"hnsw", {"ef_runtime", ef_runtime}},
         };

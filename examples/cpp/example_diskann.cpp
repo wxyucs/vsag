@@ -179,18 +179,27 @@ float_diskann() {
     int chunks_num = 32;  // chunks_num represents the dimensionality of the compressed vector.
     std::string disk_layout_file = "/tmp/index.out";
     // Initing index
+    // {
+    // 	"dim": 256,
+    // 	"dtype": "float32",
+    // 	"metric_type": "l2",
+    // 	"diskann": {
+    // 	    "L": 200,
+    // 	    "R": 16,
+    // 	    "disk_pq_dims": 32,
+    // 	    "p_val": 0.5
+    // 	}
+    // }
     nlohmann::json diskann_parameters{
         {"R", M},
         {"L", ef_construction},
         {"p_val", 0.5},
         {"disk_pq_dims", chunks_num},
-        {"disk_layout_file", disk_layout_file},
     };
     nlohmann::json index_parameters{
         {"dtype", "float32"},
         {"metric_type", "l2"},
         {"dim", dim},
-        {"max_elements", max_elements},
         {"diskann", diskann_parameters},
     };
     auto diskann = vsag::Factory::CreateIndex("diskann", index_parameters.dump());
@@ -220,9 +229,16 @@ float_diskann() {
         query.SetDim(dim);
         query.SetFloat32Vectors(data + i * dim);
         query.SetOwner(false);
+	// {
+	//  "diskann": {
+	//    "ef_search": 200,
+	//    "beam_search": 4,
+	//    "io_limit": 200
+	//  }
+	// }
         nlohmann::json parameters{
             {"diskann",
-             {{"data_num", 1}, {"ef_search", ef_runtime}, {"beam_search", 4}, {"io_limit", 200}}}};
+             {{"ef_search", ef_runtime}, {"beam_search", 4}, {"io_limit", 200}}}};
         int64_t k = 2;
         auto result = diskann->KnnSearch(query, k, parameters.dump());
         if (result.GetNumElements() == 1) {
