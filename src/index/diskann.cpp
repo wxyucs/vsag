@@ -55,7 +55,9 @@ DiskANN::DiskANN(
         for (int i = 0; i < requests.size(); ++i) {
             futures.push_back(std::async(
                 std::launch::async,
-                [&](uint64_t a, uint64_t b, void* c) { disk_layout_reader->Read(a, b, c); },
+                [&](uint64_t offset, uint64_t len, void* dest) {
+                    disk_layout_reader->Read(offset, len, dest);
+                },
                 std::get<0>(requests[i]),
                 std::get<1>(requests[i]),
                 std::get<2>(requests[i])));
@@ -89,14 +91,6 @@ DiskANN::Build(const Dataset& base) {
         auto index_build_params = diskann::IndexWriteParametersBuilder(L_, R_).build();
         build_index->build(vectors, data_num, index_build_params, tags);
         build_index->save(graph_stream, tag_stream, data_stream);
-    }
-
-    {  // build disk layout
-        //        std::stringstream diskann_stream;
-        //        diskann::create_disk_layout<float>(data_stream, graph_stream, diskann_stream, "");
-        //        std::ofstream output(disk_layout_file);
-        //        output << diskann_stream.rdbuf();
-        //        output.close();
     }
 
     diskann::generate_disk_quantized_data<float>(data_stream,

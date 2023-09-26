@@ -128,6 +128,7 @@ TEST_CASE("Two HNSW", "[hnsw]") {
 	auto result = hnsw->KnnSearch(query, k, parameters.dump());
 	auto result2 = hnsw->KnnSearch(query, k, parameters.dump());
 	if (result.GetIds()[0] == i or result2.GetIds()[0]) {
+REQUIRE(!std::isinf(result.GetDistances()[0]));
 	    correct++;
 	}
     }
