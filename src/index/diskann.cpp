@@ -28,6 +28,7 @@ public:
 
     virtual void
     Read(uint64_t offset, uint64_t len, void* dest) override {
+        std::lock_guard<std::mutex> lock(mutex_);
         file_.seekg(offset, std::ios::beg);
         file_.read((char*)dest, len);
     }
@@ -40,6 +41,7 @@ public:
 private:
     std::stringstream file_;
     uint64_t size_;
+    std::mutex mutex_;
 };
 
 DiskANN::DiskANN(
@@ -50,6 +52,7 @@ DiskANN::DiskANN(
       p_val_(p_val),
       data_type_(data_type),
       disk_pq_dims_(disk_pq_dims) {
+    status = IndexStatus::EMPTY;
     batch_read = [&](const std::vector<read_request>& requests) -> void {
         std::vector<std::future<void>> futures;
         for (int i = 0; i < requests.size(); ++i) {
@@ -108,6 +111,7 @@ DiskANN::Build(const Dataset& base) {
     index.reset(new diskann::PQFlashIndex<float>(reader, metric_));
     index->load_from_separate_paths(
         omp_get_num_procs(), pq_pivots_stream_, disk_pq_compressed_vectors_);
+    status = IndexStatus::MEMORY;
 }
 
 Dataset
@@ -199,6 +203,7 @@ DiskANN::Deserialize(const BinarySet& binary_set) {
     index.reset(new diskann::PQFlashIndex<float>(reader, metric_));
     index->load_from_separate_paths(
         omp_get_num_procs(), pq_pivots_stream_, disk_pq_compressed_vectors_);
+    status = IndexStatus::MEMORY;
 }
 
 void
@@ -223,6 +228,7 @@ DiskANN::Deserialize(const ReaderSet& reader_set) {
     index.reset(new diskann::PQFlashIndex<float>(reader, metric_));
     index->load_from_separate_paths(
         omp_get_num_procs(), pq_pivots_stream_, disk_pq_compressed_vectors_);
+    status = IndexStatus::HYBRID;
 }
 
 }  // namespace vsag

@@ -20,6 +20,13 @@
 
 namespace vsag {
 
+
+enum IndexStatus {
+    EMPTY = 0,
+    MEMORY = 1,
+    HYBRID = 2
+};
+
 class DiskANN : public Index {
 public:
     using rs = std::pair<float, size_t>;
@@ -66,6 +73,7 @@ private:
     int R_ = 64;
     float p_val_ = 0.5;
     size_t disk_pq_dims_ = 8;
+    IndexStatus status;
 };
 
 }  // namespace vsag
