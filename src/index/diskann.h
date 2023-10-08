@@ -20,12 +20,7 @@
 
 namespace vsag {
 
-
-enum IndexStatus {
-    EMPTY = 0,
-    MEMORY = 1,
-    HYBRID = 2
-};
+enum IndexStatus { EMPTY = 0, MEMORY = 1, HYBRID = 2 };
 
 class DiskANN : public Index {
 public:
@@ -57,6 +52,13 @@ public:
 
     void
     Deserialize(const ReaderSet& reader_set) override;
+
+    int64_t
+    GetNumElements() const override {
+        if (status == EMPTY)
+            return 0;
+        return index->get_data_num();
+    }
 
 private:
     std::shared_ptr<AlignedFileReader> reader;

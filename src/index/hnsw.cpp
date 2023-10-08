@@ -17,6 +17,8 @@
 #include "vsag/constants.h"
 #include "vsag/utils.h"
 
+const static int64_t EXPANSION_NUM = 1000000;
+
 namespace vsag {
 
 inline int64_t
@@ -40,6 +42,12 @@ void
 HNSW::Build(const Dataset& base) {
     int64_t num_elements = base.GetNumElements();
     int64_t dim = base.GetDim();
+    int64_t max_elements_ = alg_hnsw->getMaxElements();
+    if (max_elements_ < num_elements) {
+        max_elements_ = num_elements;
+        alg_hnsw->resizeIndex(max_elements_);
+    }
+
     auto ids = base.GetIds();
     auto vectors = base.GetFloat32Vectors();
     for (int64_t i = 0; i < num_elements; ++i) {
@@ -53,6 +61,16 @@ HNSW::Add(const Dataset& base) {
     int64_t dim = base.GetDim();
     auto ids = base.GetIds();
     auto vectors = base.GetFloat32Vectors();
+    int64_t max_elements_ = alg_hnsw->getMaxElements();
+    if (num_elements + GetNumElements() > max_elements_) {
+        if (max_elements_ > EXPANSION_NUM) {
+            max_elements_ += EXPANSION_NUM;
+        } else {
+            max_elements_ *= 2;
+        }
+        alg_hnsw->resizeIndex(max_elements_);
+    }
+
     for (int64_t i = 0; i < num_elements; ++i) {
         alg_hnsw->addPoint((const void*)(vectors + i * dim), ids[i]);
     }
@@ -64,6 +82,7 @@ HNSW::KnnSearch(const Dataset& query, int64_t k, const std::string& parameters) 
     if (params.contains("hnsw") and params["hnsw"].contains("ef_runtime")) {
         alg_hnsw->setEf(params["hnsw"]["ef_runtime"]);
     }
+    k = std::min(k, GetNumElements());
 
     int64_t num_elements = query.GetNumElements();
     int64_t dim = query.GetDim();
@@ -81,6 +100,7 @@ HNSW::KnnSearch(const Dataset& query, int64_t k, const std::string& parameters) 
             results.pop();
         }
     }
+    result.SetDim(k);
     result.SetNumElements(num_elements);
     result.SetIds(ids);
     result.SetDistances(dists);

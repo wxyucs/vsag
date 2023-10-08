@@ -2034,6 +2034,10 @@ template <typename T, typename LabelT> uint64_t PQFlashIndex<T, LabelT>::get_dat
 {
     return data_dim;
 }
+template <typename T, typename LabelT> uint64_t PQFlashIndex<T, LabelT>::get_data_num()
+{
+    return num_points;
+}
 
 template <typename T, typename LabelT> diskann::Metric PQFlashIndex<T, LabelT>::get_metric()
 {

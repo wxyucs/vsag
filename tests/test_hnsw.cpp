@@ -137,3 +137,59 @@ REQUIRE(!std::isinf(result.GetDistances()[0]));
     REQUIRE(recall == 1);
 }
 
+
+TEST_CASE("HNSW build test", "[hnsw build]") {
+    int dim = 128;
+    int max_elements = 10000;
+    int M = 64;
+    int ef_construction = 200;
+    int ef_runtime = 200;
+    // Initing index
+    nlohmann::json hnsw_parameters{
+            {"max_elements", 0},
+            {"M", M},
+            {"ef_construction", ef_construction},
+            {"ef_runtime", ef_runtime},
+    };
+    nlohmann::json index_parameters{
+            {"dtype", "float32"}, {"metric_type", "l2"}, {"dim", dim}, {"hnsw", hnsw_parameters}};
+    auto hnsw = vsag::Factory::CreateIndex("hnsw", index_parameters.dump());
+
+    // Generate random data
+    std::mt19937 rng;
+    rng.seed(47);
+    std::uniform_real_distribution<> distrib_real;
+    int64_t* ids = new int64_t[2 * max_elements];
+    float* data = new float[2 * dim * max_elements];
+    for (int i = 0; i < max_elements; i++) {
+        ids[i] = i;
+    }
+    for (int i = 0; i < dim * max_elements; i++) {
+        data[i] = distrib_real(rng);
+    }
+    vsag::Dataset dataset;
+    dataset.SetDim(dim);
+    dataset.SetNumElements(max_elements);
+    dataset.SetIds(ids);
+    dataset.SetFloat32Vectors(data);
+    hnsw->Build(dataset);
+
+    for (int i = max_elements; i < 2 * max_elements; i++) {
+        ids[i] = i + max_elements;
+    }
+    for (int i = max_elements; i < 2 * dim * max_elements; i++) {
+        data[i] = distrib_real(rng);
+    }
+
+    for (int i = max_elements; i < 2 * max_elements; i++) {
+        vsag::Dataset dataset;
+        dataset.SetOwner(false);
+        dataset.SetDim(dim);
+        dataset.SetNumElements(1);
+        dataset.SetIds(ids + i);
+        dataset.SetFloat32Vectors(data + i * dim);
+        hnsw->Add(dataset);
+    }
+
+    REQUIRE(hnsw->GetNumElements() == max_elements * 2);
+}

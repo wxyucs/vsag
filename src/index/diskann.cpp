@@ -120,6 +120,7 @@ DiskANN::KnnSearch(const Dataset& query, int64_t k, const std::string& parameter
     Dataset result;
     if (!index)
         return std::move(result);
+    k = std::min(k, GetNumElements());
     auto query_num = query.GetNumElements();
     auto query_dim = query.GetDim();
     size_t beam_search = param["diskann"]["beam_search"];
