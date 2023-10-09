@@ -5,12 +5,14 @@
 #include <cstdint>
 #include <cstring>
 #include <functional>
+#include <iostream>
+#include <nlohmann/json.hpp>
 #include <queue>
 #include <stdexcept>
 #include <string>
 #include <utility>
 
-#include "nlohmann/json.hpp"
+#include "vsag/readerset.h"
 
 namespace vsag {
 
@@ -85,12 +87,91 @@ SimpleFlat::KnnSearch(const Dataset& query, int64_t k, const std::string& parame
 
 BinarySet
 SimpleFlat::Serialize() {
-    throw std::runtime_error("not support yet");
+    BinarySet bs;
+    size_t ids_size = num_elements_ * sizeof(int64_t);
+    size_t vector_size = num_elements_ * dim_ * sizeof(float);
+
+    std::shared_ptr<int8_t[]> ids(new int8_t[sizeof(int64_t) * 2 + ids_size]);
+    std::shared_ptr<int8_t[]> vectors(new int8_t[vector_size]);
+
+    int8_t* tmp_ptr = ids.get();
+    std::memcpy(tmp_ptr, &num_elements_, sizeof(int64_t));
+
+    tmp_ptr += sizeof(int64_t);
+    std::memcpy(tmp_ptr, &dim_, sizeof(int64_t));
+
+    tmp_ptr += sizeof(int64_t);
+    std::memcpy(tmp_ptr, ids_.data(), ids_size);
+
+    std::memcpy(vectors.get(), data_.data(), vector_size);
+
+    Binary ids_binary{
+        .data = ids,
+        .size = sizeof(int64_t) + sizeof(int64_t) + ids_size,
+    };
+    bs.Set(SIMPLEFLAT_IDS, ids_binary);
+
+    Binary vectors_binary{
+        .data = vectors,
+        .size = vector_size,
+    };
+    bs.Set(SIMPLEFLAT_VECTORS, vectors_binary);
+    return bs;
 }
 
 void
 SimpleFlat::Deserialize(const BinarySet& binary_set) {
-    throw std::runtime_error("not support yet");
+    Binary ids_binary = binary_set.Get(SIMPLEFLAT_IDS);
+    Binary data_binary = binary_set.Get(SIMPLEFLAT_VECTORS);
+
+    int8_t* tmp_ptr = ids_binary.data.get();
+    std::memcpy(&num_elements_, tmp_ptr, sizeof(int64_t));
+    tmp_ptr += sizeof(int64_t);
+
+    std::memcpy(&dim_, tmp_ptr, sizeof(int64_t));
+    tmp_ptr += sizeof(int64_t);
+
+    size_t ids_size = num_elements_ * sizeof(int64_t);
+    size_t vector_size = num_elements_ * dim_ * sizeof(float);
+
+    if (sizeof(int64_t) + sizeof(int64_t) + ids_size != ids_binary.size ||
+        vector_size != data_binary.size) {
+        throw std::runtime_error("bs parse error");
+    }
+
+    ids_.resize(this->num_elements_);
+    std::memcpy(ids_.data(), tmp_ptr, ids_size);
+
+    data_.resize(this->num_elements_ * this->dim_);
+    std::memcpy(data_.data(), data_binary.data.get(), vector_size);
+}
+
+void
+SimpleFlat::Deserialize(const ReaderSet& reader_set) {
+    BinarySet bs;
+
+    std::shared_ptr<Reader> vectors_reader = reader_set.Get(SIMPLEFLAT_VECTORS);
+    std::shared_ptr<Reader> ids_reader = reader_set.Get(SIMPLEFLAT_IDS);
+
+    std::shared_ptr<int8_t[]> vectors(new int8_t[vectors_reader->Size()]);
+    std::shared_ptr<int8_t[]> ids(new int8_t[ids_reader->Size()]);
+
+    vectors_reader->Read(0, vectors_reader->Size(), vectors.get());
+    ids_reader->Read(0, ids_reader->Size(), ids.get());
+
+    Binary vectors_binary{
+        .data = vectors,
+        .size = vectors_reader->Size(),
+    };
+    bs.Set(SIMPLEFLAT_VECTORS, vectors_binary);
+
+    Binary ids_binary{
+        .data = ids,
+        .size = ids_reader->Size(),
+    };
+    bs.Set(SIMPLEFLAT_IDS, ids_binary);
+
+    Deserialize(bs);
 }
 
 std::vector<SimpleFlat::rs>

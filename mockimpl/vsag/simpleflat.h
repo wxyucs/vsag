@@ -27,6 +27,9 @@ public:
     void
     Deserialize(const BinarySet& binary_set) override;
 
+    void
+    Deserialize(const ReaderSet& reader_set) override;
+
 private:
     using rs = std::pair<float, int64_t>;
 
