@@ -1,9 +1,11 @@
 #pragma once
 
+#include <algorithm>
 #include <memory>
 #include <set>
 #include <string>
 #include <unordered_map>
+#include <vector>
 
 namespace vsag {
 
@@ -29,6 +31,14 @@ public:
             return Binary();
         }
         return data_.at(name);
+    }
+
+    std::vector<std::string>
+    GetKeys() const {
+        std::vector<std::string> keys;
+        keys.resize(data_.size());
+        transform(data_.begin(), data_.end(), keys.begin(), [](auto pair) { return pair.first; });
+        return keys;
     }
 
 private:
