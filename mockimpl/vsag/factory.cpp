@@ -51,7 +51,7 @@ private:
 };
 
 std::shared_ptr<Reader>
-Factory::CreateLocalFileReader(const std::string& filename) {
+Factory::CreateLocalFileReader(const std::string& filename, int64_t base_offset) {
     return std::make_shared<LocalFileReader>(filename);
 }
 
