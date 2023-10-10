@@ -7,6 +7,7 @@
 
 #include "local_file_reader.h"
 #include "vsag/binaryset.h"
+#include "vsag/errors.h"
 #include "vsag/factory.h"
 #include "vsag/readerset.h"
 #include "vsag/vsag.h"
@@ -72,8 +73,12 @@ float_hnsw() {
     dataset.SetNumElements(max_elements - 1);
     dataset.SetIds(ids);
     dataset.SetFloat32Vectors(data);
-    hnsw->Build(dataset);
-    std::cout << "After Build(), Index constains: " << hnsw->GetNumElements() << std::endl;
+    if (const auto num = hnsw->Build(dataset); num.has_value()) {
+        std::cout << "After Build(), Index constains: " << hnsw->GetNumElements() << std::endl;
+    } else if (num.error() == vsag::index_error::internal_error) {
+        std::cerr << "Failed to build index: internal error" << std::endl;
+        exit(-1);
+    }
 
     // Adding data after index built
     vsag::Dataset incremental;
@@ -102,9 +107,12 @@ float_hnsw() {
             {"hnsw", {"ef_runtime", ef_runtime}},
         };
         int64_t k = 10;
-        auto result = hnsw->KnnSearch(query, k, parameters.dump());
-        if (result.GetIds()[0] == i) {
-            correct++;
+        if (auto result = hnsw->KnnSearch(query, k, parameters.dump()); result.has_value()) {
+            if (result->GetIds()[0] == i) {
+                correct++;
+            }
+        } else if (result.error() == vsag::index_error::internal_error) {
+            std::cerr << "failed to perform knn search on index" << std::endl;
         }
     }
     float recall = correct / max_elements;
@@ -112,20 +120,23 @@ float_hnsw() {
 
     // Serialize(multi-file)
     {
-        vsag::BinarySet bs = hnsw->Serialize();
-        hnsw = nullptr;
-        auto keys = bs.GetKeys();
-        for (auto key : keys) {
-            vsag::Binary b = bs.Get(key);
-            std::ofstream file(tmp_dir + "hnsw.index." + key, std::ios::binary);
-            file.write((const char*)b.data.get(), b.size);
-            file.close();
+        if (auto bs = hnsw->Serialize(); bs.has_value()) {
+            hnsw = nullptr;
+            auto keys = bs->GetKeys();
+            for (auto key : keys) {
+                vsag::Binary b = bs->Get(key);
+                std::ofstream file(tmp_dir + "hnsw.index." + key, std::ios::binary);
+                file.write((const char*)b.data.get(), b.size);
+                file.close();
+            }
+            std::ofstream metafile(tmp_dir + "hnsw.index._meta", std::ios::out);
+            for (auto key : keys) {
+                metafile << key << std::endl;
+            }
+            metafile.close();
+        } else if (bs.error() == vsag::index_error::no_enough_memory) {
+            std::cerr << "no enough memory to serialize index" << std::endl;
         }
-        std::ofstream metafile(tmp_dir + "hnsw.index._meta", std::ios::out);
-        for (auto key : keys) {
-            metafile << key << std::endl;
-        }
-        metafile.close();
     }
 
     // Deserialize(binaryset)
@@ -165,11 +176,12 @@ float_hnsw() {
             {"hnsw", {"ef_runtime", ef_runtime}},
         };
         int64_t k = 10;
-        auto result = hnsw->KnnSearch(query, k, parameters.dump());
-        if (result.GetNumElements() == 1) {
-            if (result.GetIds()[0] == i or result.GetIds()[1] == i) {
+        if (auto result = hnsw->KnnSearch(query, k, parameters.dump()); result.has_value()) {
+            if (result->GetIds()[0] == i or result->GetIds()[1] == i) {
                 correct++;
             }
+        } else if (result.error() == vsag::index_error::internal_error) {
+            std::cerr << "failed to perform knn search on index" << std::endl;
         }
     }
     recall = correct / max_elements;
@@ -206,11 +218,14 @@ float_hnsw() {
             {"hnsw", {"ef_runtime", ef_runtime}},
         };
         int64_t k = 10;
-        auto result = hnsw->KnnSearch(query, k, parameters.dump());
-        if (result.GetNumElements() == 1) {
-            if (result.GetIds()[0] == i or result.GetIds()[1] == i) {
-                correct++;
+        if (auto result = hnsw->KnnSearch(query, k, parameters.dump()); result.has_value()) {
+            if (result->GetNumElements() == 1) {
+                if (result->GetIds()[0] == i or result->GetIds()[1] == i) {
+                    correct++;
+                }
             }
+        } else if (result.error() == vsag::index_error::internal_error) {
+            std::cerr << "failed to perform search on index" << std::endl;
         }
     }
     recall = correct / max_elements;
@@ -218,34 +233,37 @@ float_hnsw() {
 
     // Serialize(single-file)
     {
-        vsag::BinarySet bs = hnsw->Serialize();
-        hnsw = nullptr;
-        auto keys = bs.GetKeys();
-        std::vector<uint64_t> offsets;
+        if (auto bs = hnsw->Serialize(); bs.has_value()) {
+            hnsw = nullptr;
+            auto keys = bs->GetKeys();
+            std::vector<uint64_t> offsets;
 
-        std::ofstream file(tmp_dir + "hnsw.index", std::ios::binary);
-        uint64_t offset = 0;
-        for (auto key : keys) {
-            // [len][data...][len][data...]...
-            vsag::Binary b = bs.Get(key);
-            writeBinaryPOD(file, b.size);
-            file.write((const char*)b.data.get(), b.size);
-            offsets.push_back(offset);
-            offset += sizeof(b.size) + b.size;
+            std::ofstream file(tmp_dir + "hnsw.index", std::ios::binary);
+            uint64_t offset = 0;
+            for (auto key : keys) {
+                // [len][data...][len][data...]...
+                vsag::Binary b = bs->Get(key);
+                writeBinaryPOD(file, b.size);
+                file.write((const char*)b.data.get(), b.size);
+                offsets.push_back(offset);
+                offset += sizeof(b.size) + b.size;
+            }
+            // footer
+            for (uint64_t i = 0; i < keys.size(); ++i) {
+                // [len][key...][offset][len][key...][offset]...
+                const auto& key = keys[i];
+                int64_t len = key.length();
+                writeBinaryPOD(file, len);
+                file.write(key.c_str(), key.length());
+                writeBinaryPOD(file, offsets[i]);
+            }
+            // [num_keys][footer_offset]$
+            writeBinaryPOD(file, keys.size());
+            writeBinaryPOD(file, offset);
+            file.close();
+        } else if (bs.error() == vsag::index_error::no_enough_memory) {
+            std::cerr << "no enough memory to serialize index" << std::endl;
         }
-        // footer
-        for (uint64_t i = 0; i < keys.size(); ++i) {
-            // [len][key...][offset][len][key...][offset]...
-            const auto& key = keys[i];
-            int64_t len = key.length();
-            writeBinaryPOD(file, len);
-            file.write(key.c_str(), key.length());
-            writeBinaryPOD(file, offsets[i]);
-        }
-        // [num_keys][footer_offset]$
-        writeBinaryPOD(file, keys.size());
-        writeBinaryPOD(file, offset);
-        file.close();
     }
 
     // Deserialize(binaryset)
@@ -323,8 +341,9 @@ float_hnsw() {
 
         vsag::ReaderSet rs;
         for (uint64_t i = 0; i < num_keys; ++i) {
-	    auto file_reader = vsag::Factory::CreateLocalFileReader(tmp_dir + "hnsw.index", offsets[i] + sizeof(uint64_t));
-	    rs.Set(keys[i], file_reader);
+            auto file_reader = vsag::Factory::CreateLocalFileReader(tmp_dir + "hnsw.index",
+                                                                    offsets[i] + sizeof(uint64_t));
+            rs.Set(keys[i], file_reader);
         }
 
         hnsw = vsag::Factory::CreateIndex("hnsw", index_parameters.dump());
@@ -343,11 +362,14 @@ float_hnsw() {
             {"hnsw", {"ef_runtime", ef_runtime}},
         };
         int64_t k = 10;
-        auto result = hnsw->KnnSearch(query, k, parameters.dump());
-        if (result.GetNumElements() == 1) {
-            if (result.GetIds()[0] == i or result.GetIds()[1] == i) {
-                correct++;
+        if (auto result = hnsw->KnnSearch(query, k, parameters.dump()); result.has_value()) {
+            if (result->GetNumElements() == 1) {
+                if (result->GetIds()[0] == i or result->GetIds()[1] == i) {
+                    correct++;
+                }
             }
+        } else if (result.error() == vsag::index_error::internal_error) {
+            std::cerr << "failed to perform search on index" << std::endl;
         }
     }
     recall = correct / max_elements;

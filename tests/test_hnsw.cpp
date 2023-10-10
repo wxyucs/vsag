@@ -1,8 +1,11 @@
-#include <catch2/catch_test_macros.hpp>
-#include <random>
 #include <hnswlib/hnswlib.h>
-#include <nlohmann/json.hpp>
 
+#include <spdlog/spdlog.h>
+#include <catch2/catch_test_macros.hpp>
+#include <nlohmann/json.hpp>
+#include <random>
+
+#include "vsag/errors.h"
 #include "vsag/vsag.h"
 
 using namespace std;
@@ -59,17 +62,20 @@ TEST_CASE("HNSW Float Recall", "[hnsw]") {
     // Query the elements for themselves and measure recall 1@1
     float correct = 0;
     for (int i = 0; i < max_elements; i++) {
-	vsag::Dataset query;
-	query.SetNumElements(1);
-	query.SetDim(dim);
-	query.SetFloat32Vectors(data + i * dim);
-	query.SetOwner(false);
-	nlohmann::json parameters;
-	int64_t k = 10;
-	auto result = hnsw->KnnSearch(query, k, parameters.dump());
-	if (result.GetIds()[0] == i) {
-	    correct++;
-	}
+        vsag::Dataset query;
+        query.SetNumElements(1);
+        query.SetDim(dim);
+        query.SetFloat32Vectors(data + i * dim);
+        query.SetOwner(false);
+        nlohmann::json parameters;
+        int64_t k = 10;
+        if (auto result = hnsw->KnnSearch(query, k, parameters.dump()); result.has_value()) {
+            if (result->GetIds()[0] == i) {
+                correct++;
+            }
+        } else if (result.error() == vsag::index_error::internal_error) {
+	    std::cerr << "failed to perform knn search on index" << std::endl;
+        }
     }
     float recall = correct / max_elements;
 
@@ -118,25 +124,25 @@ TEST_CASE("Two HNSW", "[hnsw]") {
     // Query the elements for themselves and measure recall 1@1
     float correct = 0;
     for (int i = 0; i < max_elements; i++) {
-	vsag::Dataset query;
-	query.SetNumElements(1);
-	query.SetDim(dim);
-	query.SetFloat32Vectors(data + i * dim);
-	query.SetOwner(false);
-	nlohmann::json parameters;
-	int64_t k = 10;
-	auto result = hnsw->KnnSearch(query, k, parameters.dump());
-	auto result2 = hnsw->KnnSearch(query, k, parameters.dump());
-	if (result.GetIds()[0] == i or result2.GetIds()[0]) {
-REQUIRE(!std::isinf(result.GetDistances()[0]));
-	    correct++;
-	}
+        vsag::Dataset query;
+        query.SetNumElements(1);
+        query.SetDim(dim);
+        query.SetFloat32Vectors(data + i * dim);
+        query.SetOwner(false);
+        nlohmann::json parameters;
+        int64_t k = 10;
+
+        auto result = hnsw->KnnSearch(query, k, parameters.dump());
+	REQUIRE(result.has_value());
+        if (result->GetIds()[0] == i) {
+            REQUIRE(!std::isinf(result->GetDistances()[0]));
+            correct++;
+        }
     }
     float recall = correct / max_elements;
 
     REQUIRE(recall == 1);
 }
-
 
 TEST_CASE("HNSW build test", "[hnsw build]") {
     int dim = 128;
@@ -146,13 +152,13 @@ TEST_CASE("HNSW build test", "[hnsw build]") {
     int ef_runtime = 200;
     // Initing index
     nlohmann::json hnsw_parameters{
-            {"max_elements", 0},
-            {"M", M},
-            {"ef_construction", ef_construction},
-            {"ef_runtime", ef_runtime},
+        {"max_elements", 0},
+        {"M", M},
+        {"ef_construction", ef_construction},
+        {"ef_runtime", ef_runtime},
     };
     nlohmann::json index_parameters{
-            {"dtype", "float32"}, {"metric_type", "l2"}, {"dim", dim}, {"hnsw", hnsw_parameters}};
+        {"dtype", "float32"}, {"metric_type", "l2"}, {"dim", dim}, {"hnsw", hnsw_parameters}};
     auto hnsw = vsag::Factory::CreateIndex("hnsw", index_parameters.dump());
 
     // Generate random data

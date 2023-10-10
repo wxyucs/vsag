@@ -15,13 +15,13 @@ Vamana::Vamana(diskann::Metric metric, size_t data_dim, size_t data_num, std::st
     }
 }
 
-void
+tl::expected<int64_t, index_error>
 Vamana::Build(const Dataset& base) {
     throw std::runtime_error("not implemented");
 }
 
-Dataset
-Vamana::KnnSearch(const Dataset& query, int64_t k, const std::string& parameters) {
+tl::expected<Dataset, index_error>
+Vamana::KnnSearch(const Dataset& query, int64_t k, const std::string& parameters) const {
     throw std::runtime_error("not implemented");
     Dataset result;
     return std::move(result);

@@ -7,25 +7,30 @@
 
 #include "vsag/binaryset.h"
 #include "vsag/dataset.h"
+#include "vsag/errors.h"
+#include "vsag/expected.hpp"
 #include "vsag/readerset.h"
 
 namespace vsag {
+
 class Index {
 public:
     /**
       * Building index with all vectors
       * 
       * @param base should contains dim, num_elements, ids and vectors
+      * @return number of elements in the index
       */
-    virtual void
+    virtual tl::expected<int64_t, index_error>
     Build(const Dataset& base) = 0;
 
     /**
       * Adding vectors into a built index, only HNSW supported now, called on other index will cause exception
       * 
       * @param base should contains dim, num_elements, ids and vectors
+      * @return number of elements have been added into the index
       */
-    virtual void
+    virtual tl::expected<int64_t, index_error>
     Add(const Dataset& base) {
         throw std::runtime_error("Index not support addding vectors");
     }
@@ -39,8 +44,8 @@ public:
       *                - num_elements: equals to num_elements in query
       *                - ids, distances: length is (num_elements * k)
       */
-    virtual Dataset
-    KnnSearch(const Dataset& query, int64_t k, const std::string& parameters) = 0;
+    virtual tl::expected<Dataset, index_error>
+    KnnSearch(const Dataset& query, int64_t k, const std::string& parameters) const = 0;
 
 public:
     /**
@@ -48,8 +53,8 @@ public:
       *
       * @return binaryset contains all parts of the index
       */
-    virtual BinarySet
-    Serialize() {
+    virtual tl::expected<BinarySet, index_error>
+    Serialize() const {
         throw std::runtime_error("Index not support serialize");
     };
 
@@ -58,12 +63,17 @@ public:
       *
       * @param binaryset contains all parts of the index
       */
-    virtual void
+    virtual tl::expected<void, index_error>
     Deserialize(const BinarySet& binary_set) {
         throw std::runtime_error("Index not support deserialize");
     }
 
-    virtual void
+    /**
+      * Deserialize index from a set of reader array. Causing exception if this index is not empty
+      *
+      * @param reader contains all parts of the index
+      */
+    virtual tl::expected<void, index_error>
     Deserialize(const ReaderSet& reader_set) {
         throw std::runtime_error("Index not support deserialize from reader");
     }

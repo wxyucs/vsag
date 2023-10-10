@@ -6,6 +6,7 @@
 #include <iostream>
 #include <nlohmann/json.hpp>
 
+#include "vsag/errors.h"
 #include "vsag/vsag.h"
 
 TEST_CASE("DiskAnn Float Recall", "[diskann]") {
@@ -62,12 +63,16 @@ TEST_CASE("DiskAnn Float Recall", "[diskann]") {
         nlohmann::json parameters{
             {"diskann", {{"ef_search", ef_runtime}, {"beam_search", 4}, {"io_limit", 200}}}};
         int64_t k = 2;
-        auto result = diskann->KnnSearch(query, k, parameters.dump());
-        if (result.GetNumElements() == 1) {
-            REQUIRE(!std::isinf(result.GetDistances()[0]));
-            if (result.GetIds()[0] == i) {
-                correct++;
+        if (auto result = diskann->KnnSearch(query, k, parameters.dump()); result.has_value()) {
+            if (result->GetNumElements() == 1) {
+                REQUIRE(!std::isinf(result->GetDistances()[0]));
+                if (result->GetIds()[0] == i) {
+                    correct++;
+                }
             }
+        } else if (result.error() == vsag::index_error::internal_error) {
+            std::cerr << "failed to search on index: internal error" << std::endl;
+            exit(-1);
         }
     }
     float recall = correct / max_elements;
@@ -76,20 +81,21 @@ TEST_CASE("DiskAnn Float Recall", "[diskann]") {
     REQUIRE(recall > 0.85);
     // Serialize
     {
-        vsag::BinarySet bs = diskann->Serialize();
+        auto bs = diskann->Serialize();
+        REQUIRE(bs.has_value());
         diskann = nullptr;
 
-        vsag::Binary pq_b = bs.Get(vsag::DISKANN_PQ);
+        vsag::Binary pq_b = bs->Get(vsag::DISKANN_PQ);
         std::ofstream pq("diskann_pq.index", std::ios::binary);
         pq.write((const char*)pq_b.data.get(), pq_b.size);
         pq.close();
 
-        vsag::Binary compressed_vector_b = bs.Get(vsag::DISKANN_COMPRESSED_VECTOR);
+        vsag::Binary compressed_vector_b = bs->Get(vsag::DISKANN_COMPRESSED_VECTOR);
         std::ofstream compressed("diskann_compressed_vector.index", std::ios::binary);
         compressed.write((const char*)compressed_vector_b.data.get(), compressed_vector_b.size);
         compressed.close();
 
-        vsag::Binary layout_file_b = bs.Get(vsag::DISKANN_LAYOUT_FILE);
+        vsag::Binary layout_file_b = bs->Get(vsag::DISKANN_LAYOUT_FILE);
         std::ofstream layout(disk_layout_file, std::ios::binary);
         layout.write((const char*)layout_file_b.data.get(), layout_file_b.size);
         layout.close();
@@ -124,12 +130,16 @@ TEST_CASE("DiskAnn Float Recall", "[diskann]") {
         nlohmann::json parameters{
             {"diskann", {{"ef_search", ef_runtime}, {"beam_search", 4}, {"io_limit", 200}}}};
         int64_t k = 2;
-        auto result = diskann->KnnSearch(query, k, parameters.dump());
-        if (result.GetNumElements() == 1) {
-            REQUIRE(!std::isinf(result.GetDistances()[0]));
-            if (result.GetIds()[0] == i) {
-                correct++;
+        if (auto result = diskann->KnnSearch(query, k, parameters.dump()); result.has_value()) {
+            if (result->GetNumElements() == 1) {
+                REQUIRE(!std::isinf(result->GetDistances()[0]));
+                if (result->GetIds()[0] == i) {
+                    correct++;
+                }
             }
+        } else if (result.error() == vsag::index_error::internal_error) {
+            std::cerr << "failed to search on index: internal error" << std::endl;
+            exit(-1);
         }
     }
     recall = correct / max_elements;
@@ -192,11 +202,15 @@ TEST_CASE("DiskAnn Float Recall", "[diskann]") {
         nlohmann::json parameters{
             {"diskann", {{"ef_search", ef_runtime}, {"beam_search", 4}, {"io_limit", 200}}}};
         int64_t k = 2;
-        auto result = diskann->KnnSearch(query, k, parameters.dump());
-        if (result.GetNumElements() == 1) {
-            REQUIRE(!std::isinf(result.GetDistances()[0]));
-            if (result.GetIds()[0] == i) {
-                correct++;
+        if (auto result = diskann->KnnSearch(query, k, parameters.dump()); result.has_value()) {
+            if (result->GetNumElements() == 1) {
+                REQUIRE(!std::isinf(result->GetDistances()[0]));
+                if (result->GetIds()[0] == i) {
+                    correct++;
+                }
+            } else if (result.error() == vsag::index_error::internal_error) {
+                std::cerr << "failed to search on index: internal error" << std::endl;
+                exit(-1);
             }
         }
     }

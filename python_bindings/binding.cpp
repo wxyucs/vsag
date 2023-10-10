@@ -4,8 +4,9 @@
 
 #include <pybind11/numpy.h>
 #include <pybind11/pybind11.h>
-#include "vsag/vsag.h"
+
 #include "iostream"
+#include "vsag/vsag.h"
 namespace py = pybind11;
 
 int
@@ -26,10 +27,9 @@ kmeans(py::array_t<float, py::array::c_style | py::array::forcecast>& datas,
     return centroids;
 }
 
-
 class Index {
 public:
-    Index(std::string index_name, const std::string &index_parameters) {
+    Index(std::string index_name, const std::string& index_parameters) {
         index = vsag::Factory::CreateIndex(index_name, index_parameters);
     }
     void
@@ -44,7 +44,7 @@ public:
     }
 
     py::object
-    searchTopK(py::array_t<float> point, size_t k, std::string &search_parameters) {
+    searchTopK(py::array_t<float> point, size_t k, std::string& search_parameters) {
         vsag::Dataset query;
         size_t data_num = 1;
         query.SetNumElements(data_num);
@@ -52,44 +52,42 @@ public:
         query.SetFloat32Vectors(point.mutable_data());
         query.SetOwner(false);
 
-        auto result = index->KnnSearch(query, k, search_parameters);
-        
         auto labels = py::array_t<int64_t>(k);
         auto dists = py::array_t<float>(k);
-        auto labels_data = labels.mutable_data();
-        auto dists_data = dists.mutable_data();
-        auto ids = result.GetIds();
-        auto distances = result.GetDistances();
-        for (int i = 0; i < data_num * k; ++i) {
-            labels_data[i] = ids[i];
-            dists_data[i] = distances[i];
+        if (auto result = index->KnnSearch(query, k, search_parameters); result.has_value()) {
+            auto labels_data = labels.mutable_data();
+            auto dists_data = dists.mutable_data();
+            auto ids = result->GetIds();
+            auto distances = result->GetDistances();
+            for (int i = 0; i < data_num * k; ++i) {
+                labels_data[i] = ids[i];
+                dists_data[i] = distances[i];
+            }
         }
-        return py::make_tuple(labels, dists); 
+
+        return py::make_tuple(labels, dists);
     }
 
 private:
     std::shared_ptr<vsag::Index> index;
 };
 
-
-
-
-
-
 PYBIND11_MODULE(pyvsag, m) {
     m.def("add", &add, "A function which adds two numbers");
     m.def("kmeans", &kmeans, "Kmeans");
     py::class_<Index>(m, "Index")
         .def(py::init<std::string, std::string&>(),
-                py::arg("index_name"), 
-                py::arg("index_parameters"))
-        .def("searchTopK", &Index::searchTopK,
-                py::arg("point"), 
-                py::arg("k"), 
-                py::arg("search_parameters"))
-        .def("build", &Index::build,
-                py::arg("datas"),
-                py::arg("ids"),
-                py::arg("max_elements"),
-                py::arg("dim"));
+             py::arg("index_name"),
+             py::arg("index_parameters"))
+        .def("searchTopK",
+             &Index::searchTopK,
+             py::arg("point"),
+             py::arg("k"),
+             py::arg("search_parameters"))
+        .def("build",
+             &Index::build,
+             py::arg("datas"),
+             py::arg("ids"),
+             py::arg("max_elements"),
+             py::arg("dim"));
 }

@@ -14,6 +14,7 @@
 #include "index/diskann.h"
 #include "index/hnsw.h"
 #include "index/vamana.h"
+
 namespace vsag {
 
 std::shared_ptr<Index>

@@ -1,7 +1,10 @@
 
+#include <iostream>
+
 #include <catch2/catch_test_macros.hpp>
 #include <nlohmann/json.hpp>
 
+#include "vsag/errors.h"
 #include "vsag/vsag.h"
 
 TEST_CASE("index params", "[factory]") {
@@ -51,9 +54,12 @@ TEST_CASE("index params", "[factory]") {
         query.SetOwner(false);
         nlohmann::json parameters;
         int64_t k = 10;
-        auto result = hnsw->KnnSearch(query, k, parameters.dump());
-        if (result.GetIds()[0] == i) {
-            correct++;
+        if (auto result = hnsw->KnnSearch(query, k, parameters.dump()); result.has_value()) {
+            if (result->GetIds()[0] == i) {
+                correct++;
+            }
+        } else if (result.error() == vsag::index_error::internal_error) {
+            std::cerr << "failed to search on index: internal error" << std::endl;
         }
     }
     float recall = correct / max_elements;

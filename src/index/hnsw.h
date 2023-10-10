@@ -18,23 +18,23 @@ public:
          int M,
          int ef_construction);
 
-    void
+    tl::expected<int64_t, index_error>
     Build(const Dataset& base) override;
 
-    void
+    tl::expected<int64_t, index_error>
     Add(const Dataset& base) override;
 
-    Dataset
-    KnnSearch(const Dataset& query, int64_t k, const std::string& parameters) override;
+    tl::expected<Dataset, index_error>
+    KnnSearch(const Dataset& query, int64_t k, const std::string& parameters) const override;
 
 public:
-    BinarySet
-    Serialize() override;
+    tl::expected<BinarySet, index_error>
+    Serialize() const override;
 
-    void
+    tl::expected<void, index_error>
     Deserialize(const BinarySet& binary_set) override;
 
-    void
+    tl::expected<void, index_error>
     Deserialize(const ReaderSet& reader_set) override;
 
 public:

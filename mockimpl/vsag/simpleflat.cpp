@@ -12,6 +12,8 @@
 #include <string>
 #include <utility>
 
+#include "vsag/errors.h"
+#include "vsag/expected.hpp"
 #include "vsag/readerset.h"
 
 namespace vsag {
@@ -19,10 +21,10 @@ namespace vsag {
 SimpleFlat::SimpleFlat(const std::string& metric_type) : metric_type_(metric_type) {
 }
 
-void
+tl::expected<int64_t, index_error>
 SimpleFlat::Build(const Dataset& base) {
     if (not this->data_.empty()) {
-        throw std::runtime_error("cannot build index twice, use ::Add() to adding vectors");
+        return tl::unexpected(index_error::build_twice);
     }
 
     this->num_elements_ = base.GetNumElements();
@@ -35,14 +37,15 @@ SimpleFlat::Build(const Dataset& base) {
     std::memcpy(this->data_.data(),
                 base.GetFloat32Vectors(),
                 base.GetNumElements() * this->dim_ * sizeof(float));
+
+    return this->GetNumElements();
 }
 
-void
+tl::expected<int64_t, index_error>
 SimpleFlat::Add(const Dataset& base) {
     if (not this->data_.empty()) {
         if (this->dim_ != base.GetDim()) {
-            throw std::runtime_error("cannot adding vector(dim=" + std::to_string(base.GetDim()) +
-                                     ") into index(dim=" + std::to_string(this->dim_) + ")");
+            return tl::unexpected(index_error::dimension_not_equal);
         }
     }
 
@@ -58,15 +61,16 @@ SimpleFlat::Add(const Dataset& base) {
     std::memcpy(this->data_.data() + num_elements_existed * this->dim_,
                 base.GetFloat32Vectors(),
                 base.GetNumElements() * this->dim_ * sizeof(float));
+
+    return base.GetNumElements();
 }
 
-Dataset
-SimpleFlat::KnnSearch(const Dataset& query, int64_t k, const std::string& parameters) {
+tl::expected<Dataset, index_error>
+SimpleFlat::KnnSearch(const Dataset& query, int64_t k, const std::string& parameters) const {
     int64_t nq = query.GetNumElements();
     int64_t dim = query.GetDim();
     if (this->dim_ != dim) {
-        throw std::runtime_error("dimension not equal: index(" + std::to_string(this->dim_) +
-                                 ") query(" + std::to_string(dim) + ")");
+        return tl::unexpected(index_error::dimension_not_equal);
     }
 
     int64_t* ids = new int64_t[nq * k];
@@ -85,41 +89,45 @@ SimpleFlat::KnnSearch(const Dataset& query, int64_t k, const std::string& parame
     return std::move(results);
 }
 
-BinarySet
-SimpleFlat::Serialize() {
-    BinarySet bs;
-    size_t ids_size = num_elements_ * sizeof(int64_t);
-    size_t vector_size = num_elements_ * dim_ * sizeof(float);
+tl::expected<BinarySet, index_error>
+SimpleFlat::Serialize() const {
+    try {
+        BinarySet bs;
+        size_t ids_size = num_elements_ * sizeof(int64_t);
+        size_t vector_size = num_elements_ * dim_ * sizeof(float);
 
-    std::shared_ptr<int8_t[]> ids(new int8_t[sizeof(int64_t) * 2 + ids_size]);
-    std::shared_ptr<int8_t[]> vectors(new int8_t[vector_size]);
+        std::shared_ptr<int8_t[]> ids(new int8_t[sizeof(int64_t) * 2 + ids_size]);
+        std::shared_ptr<int8_t[]> vectors(new int8_t[vector_size]);
 
-    int8_t* tmp_ptr = ids.get();
-    std::memcpy(tmp_ptr, &num_elements_, sizeof(int64_t));
+        int8_t* tmp_ptr = ids.get();
+        std::memcpy(tmp_ptr, &num_elements_, sizeof(int64_t));
 
-    tmp_ptr += sizeof(int64_t);
-    std::memcpy(tmp_ptr, &dim_, sizeof(int64_t));
+        tmp_ptr += sizeof(int64_t);
+        std::memcpy(tmp_ptr, &dim_, sizeof(int64_t));
 
-    tmp_ptr += sizeof(int64_t);
-    std::memcpy(tmp_ptr, ids_.data(), ids_size);
+        tmp_ptr += sizeof(int64_t);
+        std::memcpy(tmp_ptr, ids_.data(), ids_size);
 
-    std::memcpy(vectors.get(), data_.data(), vector_size);
+        std::memcpy(vectors.get(), data_.data(), vector_size);
 
-    Binary ids_binary{
-        .data = ids,
-        .size = sizeof(int64_t) + sizeof(int64_t) + ids_size,
-    };
-    bs.Set(SIMPLEFLAT_IDS, ids_binary);
+        Binary ids_binary{
+            .data = ids,
+            .size = sizeof(int64_t) + sizeof(int64_t) + ids_size,
+        };
+        bs.Set(SIMPLEFLAT_IDS, ids_binary);
 
-    Binary vectors_binary{
-        .data = vectors,
-        .size = vector_size,
-    };
-    bs.Set(SIMPLEFLAT_VECTORS, vectors_binary);
-    return bs;
+        Binary vectors_binary{
+            .data = vectors,
+            .size = vector_size,
+        };
+        bs.Set(SIMPLEFLAT_VECTORS, vectors_binary);
+        return bs;
+    } catch (const std::bad_alloc& e) {
+        return tl::unexpected(index_error::no_enough_memory);
+    }
 }
 
-void
+tl::expected<void, index_error>
 SimpleFlat::Deserialize(const BinarySet& binary_set) {
     Binary ids_binary = binary_set.Get(SIMPLEFLAT_IDS);
     Binary data_binary = binary_set.Get(SIMPLEFLAT_VECTORS);
@@ -136,7 +144,7 @@ SimpleFlat::Deserialize(const BinarySet& binary_set) {
 
     if (sizeof(int64_t) + sizeof(int64_t) + ids_size != ids_binary.size ||
         vector_size != data_binary.size) {
-        throw std::runtime_error("bs parse error");
+	return tl::unexpected(index_error::invalid_binary);
     }
 
     ids_.resize(this->num_elements_);
@@ -144,9 +152,11 @@ SimpleFlat::Deserialize(const BinarySet& binary_set) {
 
     data_.resize(this->num_elements_ * this->dim_);
     std::memcpy(data_.data(), data_binary.data.get(), vector_size);
+
+    return {};
 }
 
-void
+tl::expected<void, index_error>
 SimpleFlat::Deserialize(const ReaderSet& reader_set) {
     BinarySet bs;
 
@@ -172,6 +182,8 @@ SimpleFlat::Deserialize(const ReaderSet& reader_set) {
     bs.Set(SIMPLEFLAT_IDS, ids_binary);
 
     Deserialize(bs);
+
+    return {};
 }
 
 std::vector<SimpleFlat::rs>

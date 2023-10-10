@@ -6,6 +6,7 @@
 #include <nlohmann/json.hpp>
 #include <sstream>
 
+#include "vsag/errors.h"
 #include "vsag/vsag.h"
 
 const std::string tmp_dir = "/tmp/";
@@ -64,7 +65,12 @@ float_diskann() {
     dataset.SetNumElements(max_elements);
     dataset.SetIds(ids);
     dataset.SetFloat32Vectors(data);
-    diskann->Build(dataset);
+    if (const auto num = diskann->Build(dataset); num.has_value()) {
+        std::cout << "After Build(), Index constains: " << diskann->GetNumElements() << std::endl;
+    } else if (num.error() == vsag::index_error::internal_error) {
+        std::cerr << "Failed to build index: internal error" << std::endl;
+        exit(-1);
+    }
 
     float correct = 0;
     for (int i = 0; i < max_elements; i++) {
@@ -73,45 +79,49 @@ float_diskann() {
         query.SetDim(dim);
         query.SetFloat32Vectors(data + i * dim);
         query.SetOwner(false);
-	// {
-	//  "diskann": {
-	//    "ef_search": 200,
-	//    "beam_search": 4,
-	//    "io_limit": 200
-	//  }
-	// }
+        // {
+        //  "diskann": {
+        //    "ef_search": 200,
+        //    "beam_search": 4,
+        //    "io_limit": 200
+        //  }
+        // }
         nlohmann::json parameters{
-            {"diskann",
-             {{"ef_search", ef_runtime}, {"beam_search", 4}, {"io_limit", 200}}}};
+            {"diskann", {{"ef_search", ef_runtime}, {"beam_search", 4}, {"io_limit", 200}}}};
         int64_t k = 2;
-        auto result = diskann->KnnSearch(query, k, parameters.dump());
-        if (result.GetNumElements() == 1) {
-            if (result.GetIds()[0] == i) {
-                correct++;
+        if (auto result = diskann->KnnSearch(query, k, parameters.dump()); result.has_value()) {
+            if (result->GetNumElements() == 1) {
+                if (result->GetIds()[0] == i) {
+                    correct++;
+                }
             }
+        } else if (result.error() == vsag::index_error::internal_error) {
+            std::cerr << "failed to perform knn search on index" << std::endl;
         }
     }
     float recall = correct / max_elements;
     std::cout << "Stard Recall: " << recall << std::endl;
     // Serialize
     {
-        vsag::BinarySet bs = diskann->Serialize();
-        diskann = nullptr;
+        if (auto bs = diskann->Serialize(); bs.has_value()) {
+            diskann = nullptr;
+            vsag::Binary pq_b = bs->Get(vsag::DISKANN_PQ);
+            std::ofstream pq(tmp_dir + "diskann_pq.index", std::ios::binary);
+            pq.write((const char*)pq_b.data.get(), pq_b.size);
+            pq.close();
 
-        vsag::Binary pq_b = bs.Get(vsag::DISKANN_PQ);
-        std::ofstream pq(tmp_dir + "diskann_pq.index", std::ios::binary);
-        pq.write((const char*)pq_b.data.get(), pq_b.size);
-        pq.close();
+            vsag::Binary compressed_vector_b = bs->Get(vsag::DISKANN_COMPRESSED_VECTOR);
+            std::ofstream compressed(tmp_dir + "diskann_compressed_vector.index", std::ios::binary);
+            compressed.write((const char*)compressed_vector_b.data.get(), compressed_vector_b.size);
+            compressed.close();
 
-        vsag::Binary compressed_vector_b = bs.Get(vsag::DISKANN_COMPRESSED_VECTOR);
-        std::ofstream compressed(tmp_dir + "diskann_compressed_vector.index", std::ios::binary);
-        compressed.write((const char*)compressed_vector_b.data.get(), compressed_vector_b.size);
-        compressed.close();
-
-        vsag::Binary layout_file_b = bs.Get(vsag::DISKANN_LAYOUT_FILE);
-        std::ofstream layout(tmp_dir + disk_layout_file, std::ios::binary);
-        layout.write((const char*)layout_file_b.data.get(), layout_file_b.size);
-        layout.close();
+            vsag::Binary layout_file_b = bs->Get(vsag::DISKANN_LAYOUT_FILE);
+            std::ofstream layout(tmp_dir + disk_layout_file, std::ios::binary);
+            layout.write((const char*)layout_file_b.data.get(), layout_file_b.size);
+            layout.close();
+        } else if (bs.error() == vsag::index_error::no_enough_memory) {
+            std::cerr << "no enough memory to serialize index" << std::endl;
+        }
     }
 
     //     Deserialize
@@ -141,14 +151,16 @@ float_diskann() {
         query.SetFloat32Vectors(data + i * dim);
         query.SetOwner(false);
         nlohmann::json parameters{
-            {"diskann",
-             {{"ef_search", ef_runtime}, {"beam_search", 4}, {"io_limit", 200}}}};
+            {"diskann", {{"ef_search", ef_runtime}, {"beam_search", 4}, {"io_limit", 200}}}};
         int64_t k = 2;
-        auto result = diskann->KnnSearch(query, k, parameters.dump());
-        if (result.GetNumElements() == 1) {
-            if (result.GetIds()[0] == i) {
-                correct++;
+        if (auto result = diskann->KnnSearch(query, k, parameters.dump()); result.has_value()) {
+            if (result->GetNumElements() == 1) {
+                if (result->GetIds()[0] == i) {
+                    correct++;
+                }
             }
+        } else if (result.error() == vsag::index_error::internal_error) {
+            std::cerr << "failed to perform knn search on index" << std::endl;
         }
     }
     recall = correct / max_elements;
@@ -209,14 +221,16 @@ float_diskann() {
         query.SetFloat32Vectors(data + i * dim);
         query.SetOwner(false);
         nlohmann::json parameters{
-            {"diskann",
-             {{"ef_search", ef_runtime}, {"beam_search", 4}, {"io_limit", 200}}}};
+            {"diskann", {{"ef_search", ef_runtime}, {"beam_search", 4}, {"io_limit", 200}}}};
         int64_t k = 2;
-        auto result = diskann->KnnSearch(query, k, parameters.dump());
-        if (result.GetNumElements() == 1) {
-            if (result.GetIds()[0] == i) {
-                correct++;
+        if (auto result = diskann->KnnSearch(query, k, parameters.dump()); result.has_value()) {
+            if (result->GetNumElements() == 1) {
+                if (result->GetIds()[0] == i) {
+                    correct++;
+                }
             }
+        } else if (result.error() == vsag::index_error::internal_error) {
+            std::cerr << "failed to perform knn search on index" << std::endl;
         }
     }
     recall = correct / max_elements;

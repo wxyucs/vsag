@@ -5,6 +5,7 @@
 #include <nlohmann/json.hpp>
 #include <random>
 
+#include "vsag/errors.h"
 #include "vsag/factory.h"
 
 int
@@ -56,9 +57,12 @@ main() {
         query.SetDim(dim);
         query.SetFloat32Vectors(data + i * dim);
         query.SetOwner(false);
-        auto result = simpleflat->KnnSearch(query, 1, "");
-        if (result.GetIds()[0] == i) {
-            correct++;
+        if (auto result = simpleflat->KnnSearch(query, 1, ""); result.has_value()) {
+            if (result->GetIds()[0] == i) {
+                correct++;
+            }
+        } else if (result.error() == vsag::index_error::internal_error) {
+            std::cerr << "failed to perform knn search on index" << std::endl;
         }
     }
     float recall = correct / max_elements;
@@ -68,17 +72,20 @@ main() {
 
     // Serialize
     {
-        vsag::BinarySet bs = simpleflat->Serialize();
-        simpleflat = nullptr;
-        vsag::Binary b_ids = bs.Get(vsag::SIMPLEFLAT_IDS);
-        std::ofstream file_ids("simpleflat_ids.index", std::ios::binary);
-        file_ids.write((const char*)b_ids.data.get(), b_ids.size);
-        file_ids.close();
+        if (auto bs = simpleflat->Serialize(); bs.has_value()) {
+            simpleflat = nullptr;
+            vsag::Binary b_ids = bs->Get(vsag::SIMPLEFLAT_IDS);
+            std::ofstream file_ids("simpleflat_ids.index", std::ios::binary);
+            file_ids.write((const char*)b_ids.data.get(), b_ids.size);
+            file_ids.close();
 
-        vsag::Binary b_vectors = bs.Get(vsag::SIMPLEFLAT_VECTORS);
-        std::ofstream file_vectors("simpleflat_vectors.index", std::ios::binary);
-        file_vectors.write((const char*)b_vectors.data.get(), b_vectors.size);
-        file_vectors.close();
+            vsag::Binary b_vectors = bs->Get(vsag::SIMPLEFLAT_VECTORS);
+            std::ofstream file_vectors("simpleflat_vectors.index", std::ios::binary);
+            file_vectors.write((const char*)b_vectors.data.get(), b_vectors.size);
+            file_vectors.close();
+        } else if (bs.error() == vsag::index_error::no_enough_memory) {
+            std::cerr << "no enough memory to serialize index" << std::endl;
+        }
     }
 
     // Deserialize
@@ -121,9 +128,12 @@ main() {
         query.SetDim(dim);
         query.SetFloat32Vectors(data + i * dim);
         query.SetOwner(false);
-        auto result = simpleflat->KnnSearch(query, 1, "");
-        if (result.GetIds()[0] == i) {
-            correct++;
+        if (auto result = simpleflat->KnnSearch(query, 1, ""); result.has_value()) {
+            if (result->GetIds()[0] == i) {
+                correct++;
+            }
+        } else if (result.error() == vsag::index_error::internal_error) {
+            std::cerr << "failed to perform knn search on index" << std::endl;
         }
     }
     recall = correct / max_elements;
@@ -152,9 +162,12 @@ main() {
         query.SetDim(dim);
         query.SetFloat32Vectors(data + i * dim);
         query.SetOwner(false);
-        auto result = simpleflat->KnnSearch(query, 1, "");
-        if (result.GetIds()[0] == i) {
-            correct++;
+        if (auto result = simpleflat->KnnSearch(query, 1, ""); result.has_value()) {
+            if (result->GetIds()[0] == i) {
+                correct++;
+            }
+        } else if (result.error() == vsag::index_error::internal_error) {
+            std::cerr << "failed to perform knn search on index" << std::endl;
         }
     }
     recall = correct / max_elements;

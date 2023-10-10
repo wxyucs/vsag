@@ -20,11 +20,11 @@ class Vamana : public Index {
 public:
     Vamana(diskann::Metric metric, size_t data_dim, size_t data_num, std::string data_type);
 
-    void
+    tl::expected<int64_t, index_error>
     Build(const Dataset& base) override;
 
-    Dataset
-    KnnSearch(const Dataset& query, int64_t k, const std::string& parameters) override;
+    tl::expected<Dataset, index_error>
+    KnnSearch(const Dataset& query, int64_t k, const std::string& parameters) const override;
 
 public:
     using rs = std::pair<float, size_t>;

@@ -14,8 +14,11 @@
 #include <string>
 
 #include "../utils.h"
+#include "spdlog/spdlog.h"
 #include "vsag/binaryset.h"
 #include "vsag/constants.h"
+#include "vsag/errors.h"
+#include "vsag/expected.hpp"
 #include "vsag/utils.h"
 
 const static int64_t EXPANSION_NUM = 1000000;
@@ -39,7 +42,7 @@ HNSW::HNSW(std::shared_ptr<hnswlib::SpaceInterface> spaceInterface,
         std::make_shared<hnswlib::HierarchicalNSW>(space.get(), max_elements, M, ef_construction);
 }
 
-void
+tl::expected<int64_t, index_error>
 HNSW::Build(const Dataset& base) {
     SlowTaskTimer t("hnsw build");
     int64_t num_elements = base.GetNumElements();
@@ -47,21 +50,39 @@ HNSW::Build(const Dataset& base) {
     int64_t max_elements_ = alg_hnsw->getMaxElements();
     if (max_elements_ < num_elements) {
         max_elements_ = num_elements;
-        alg_hnsw->resizeIndex(max_elements_);
+        try {
+            alg_hnsw->resizeIndex(max_elements_);
+        } catch (std::runtime_error e) {
+            spdlog::error(std::string("failed to resize index: ") + e.what());
+            return tl::unexpected(index_error::no_enough_memory);
+        }
     }
 
     auto ids = base.GetIds();
     auto vectors = base.GetFloat32Vectors();
     for (int64_t i = 0; i < num_elements; ++i) {
-        alg_hnsw->addPoint((const void*)(vectors + i * dim), ids[i]);
+        try {
+            alg_hnsw->addPoint((const void*)(vectors + i * dim), ids[i]);
+        } catch (std::runtime_error e) {
+            spdlog::error(std::string("failed to add points: ") + e.what());
+            return tl::unexpected(index_error::internal_error);
+        }
     }
+
+    return this->GetNumElements();
 }
 
-void
+tl::expected<int64_t, index_error>
 HNSW::Add(const Dataset& base) {
     SlowTaskTimer t("hnsw add", 10);
     int64_t num_elements = base.GetNumElements();
     int64_t dim = base.GetDim();
+    int64_t index_dim = *((size_t*)alg_hnsw->dist_func_param_);
+    if (dim != index_dim) {
+        spdlog::error("dimension not equal: add(" + std::to_string(dim) + ") index(" +
+                      std::to_string(index_dim) + ")");
+        return tl::unexpected(index_error::dimension_not_equal);
+    }
     auto ids = base.GetIds();
     auto vectors = base.GetFloat32Vectors();
     int64_t max_elements_ = alg_hnsw->getMaxElements();
@@ -71,16 +92,28 @@ HNSW::Add(const Dataset& base) {
         } else {
             max_elements_ *= 2;
         }
-        alg_hnsw->resizeIndex(max_elements_);
+        try {
+            alg_hnsw->resizeIndex(max_elements_);
+        } catch (std::runtime_error e) {
+            spdlog::error(std::string("failed to resize index: ") + e.what());
+            return tl::unexpected(index_error::no_enough_memory);
+        }
     }
 
     for (int64_t i = 0; i < num_elements; ++i) {
-        alg_hnsw->addPoint((const void*)(vectors + i * dim), ids[i]);
+        try {
+            alg_hnsw->addPoint((const void*)(vectors + i * dim), ids[i]);
+        } catch (std::runtime_error e) {
+            spdlog::error(std::string("failed to add points: ") + e.what());
+            return tl::unexpected(index_error::internal_error);
+        }
     }
+
+    return base.GetNumElements();
 }
 
-Dataset
-HNSW::KnnSearch(const Dataset& query, int64_t k, const std::string& parameters) {
+tl::expected<Dataset, index_error>
+HNSW::KnnSearch(const Dataset& query, int64_t k, const std::string& parameters) const {
     SlowTaskTimer t("hnsw search", 10);
     nlohmann::json params = nlohmann::json::parse(parameters);
     if (params.contains("hnsw") and params["hnsw"].contains("ef_runtime")) {
@@ -90,18 +123,28 @@ HNSW::KnnSearch(const Dataset& query, int64_t k, const std::string& parameters) 
 
     int64_t num_elements = query.GetNumElements();
     int64_t dim = query.GetDim();
+    int64_t index_dim = *((size_t*)alg_hnsw->dist_func_param_);
+    if (dim != index_dim) {
+        spdlog::error("dimension not equal: query(" + std::to_string(dim) + ") index(" +
+                      std::to_string(index_dim) + ")");
+        return tl::unexpected(index_error::dimension_not_equal);
+    }
     auto vectors = query.GetFloat32Vectors();
 
     Dataset result;
     int64_t* ids = new int64_t[num_elements * k];
     float* dists = new float[num_elements * k];
     for (int64_t i = 0; i < num_elements; ++i) {
-        std::priority_queue<std::pair<float, size_t>> results =
-            alg_hnsw->searchKnn((const void*)(vectors + i * dim), k);
-        for (int64_t j = k - 1; j >= 0; --j) {
-            dists[i * k + j] = results.top().first;
-            ids[i * k + j] = results.top().second;
-            results.pop();
+        try {
+            std::priority_queue<std::pair<float, size_t>> results =
+                alg_hnsw->searchKnn((const void*)(vectors + i * dim), k);
+            for (int64_t j = k - 1; j >= 0; --j) {
+                dists[i * k + j] = results.top().first;
+                ids[i * k + j] = results.top().second;
+                results.pop();
+            }
+        } catch (std::runtime_error e) {
+            return tl::unexpected(index_error::internal_error);
         }
     }
     result.SetDim(k);
@@ -112,29 +155,33 @@ HNSW::KnnSearch(const Dataset& query, int64_t k, const std::string& parameters) 
     return std::move(result);
 }
 
-BinarySet
-HNSW::Serialize() {
+tl::expected<BinarySet, index_error>
+HNSW::Serialize() const {
     SlowTaskTimer t("hnsw serialize");
     size_t num_bytes = alg_hnsw->calcSerializeSize();
     // std::cout << "num_bytes: " << std::to_string(num_bytes) << std::endl;
-    std::shared_ptr<int8_t[]> bin(new int8_t[num_bytes]);
-    alg_hnsw->saveIndex(bin.get());
+    try {
+        std::shared_ptr<int8_t[]> bin(new int8_t[num_bytes]);
+        alg_hnsw->saveIndex(bin.get());
+        Binary b{
+            .data = bin,
+            .size = num_bytes,
+        };
+        BinarySet bs;
+        bs.Set(HNSW_DATA, b);
 
-    Binary b{
-        .data = bin,
-        .size = num_bytes,
-    };
-    BinarySet bs;
-    bs.Set(HNSW_DATA, b);
-
-    return bs;
+        return bs;
+    } catch (const std::bad_alloc& e) {
+        return tl::unexpected(index_error::no_enough_memory);
+    }
 }
 
-void
+tl::expected<void, index_error>
 HNSW::Deserialize(const BinarySet& binary_set) {
     SlowTaskTimer t("hnsw deserialize");
     if (this->alg_hnsw->getCurrentElementCount() > 0) {
-        throw std::runtime_error("deserialize on existed index");
+        spdlog::error("failed to deserialize: index is not empty");
+        return tl::unexpected(index_error::index_not_empty);
     }
 
     Binary b = binary_set.Get(HNSW_DATA);
@@ -143,13 +190,16 @@ HNSW::Deserialize(const BinarySet& binary_set) {
     };
 
     alg_hnsw->loadIndex(func, this->space.get());
+
+    return {};
 }
 
-void
+tl::expected<void, index_error>
 HNSW::Deserialize(const ReaderSet& reader_set) {
     SlowTaskTimer t("hnsw deserialize");
     if (this->alg_hnsw->getCurrentElementCount() > 0) {
-        throw std::runtime_error("deserialize on existed index");
+        spdlog::error("failed to deserialize: index is not empty");
+        return tl::unexpected(index_error::index_not_empty);
     }
 
     auto func = [&](uint64_t offset, uint64_t len, void* dest) -> void {
@@ -157,6 +207,8 @@ HNSW::Deserialize(const ReaderSet& reader_set) {
     };
 
     alg_hnsw->loadIndex(func, this->space.get());
+
+    return {};
 }
 
 void
