@@ -11,6 +11,7 @@
 #include <nlohmann/json.hpp>
 #include <utility>
 
+#include "../utils.h"
 #include "vsag/index.h"
 #include "vsag/readerset.h"
 
@@ -78,6 +79,7 @@ DiskANN::DiskANN(
 
 void
 DiskANN::Build(const Dataset& base) {
+    SlowTaskTimer t("diskann build");
     auto vectors = base.GetFloat32Vectors();
     auto ids = base.GetIds();
     auto data_num = base.GetNumElements();
@@ -116,6 +118,7 @@ DiskANN::Build(const Dataset& base) {
 
 Dataset
 DiskANN::KnnSearch(const Dataset& query, int64_t k, const std::string& parameters) {
+    SlowTaskTimer t("diskann search", 100);
     nlohmann::json param = nlohmann::json::parse(parameters);
     Dataset result;
     if (!index)
@@ -155,6 +158,7 @@ DiskANN::KnnSearch(const Dataset& query, int64_t k, const std::string& parameter
 
 BinarySet
 DiskANN::Serialize() {
+    SlowTaskTimer t("diskann serialize");
     BinarySet bs;
     std::string pq_str = std::move(pq_pivots_stream_.str());
     std::shared_ptr<int8_t[]> pq_pivots(new int8_t[pq_str.size()]);
@@ -189,6 +193,7 @@ DiskANN::Serialize() {
 
 void
 DiskANN::Deserialize(const BinarySet& binary_set) {
+    SlowTaskTimer t("diskann deserialize");
     auto pq_pivots = binary_set.Get(DISKANN_PQ);
     pq_pivots_stream_.write((char*)pq_pivots.data.get(), pq_pivots.size);
 
@@ -209,6 +214,7 @@ DiskANN::Deserialize(const BinarySet& binary_set) {
 
 void
 DiskANN::Deserialize(const ReaderSet& reader_set) {
+    SlowTaskTimer t("diskann deserialize");
     {
         auto pq_reader = reader_set.Get(DISKANN_PQ);
         char pq_pivots_data[pq_reader->Size()];

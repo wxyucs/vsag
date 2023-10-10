@@ -13,6 +13,7 @@
 #include <stdexcept>
 #include <string>
 
+#include "../utils.h"
 #include "vsag/binaryset.h"
 #include "vsag/constants.h"
 #include "vsag/utils.h"
@@ -40,6 +41,7 @@ HNSW::HNSW(std::shared_ptr<hnswlib::SpaceInterface> spaceInterface,
 
 void
 HNSW::Build(const Dataset& base) {
+    SlowTaskTimer t("hnsw build");
     int64_t num_elements = base.GetNumElements();
     int64_t dim = base.GetDim();
     int64_t max_elements_ = alg_hnsw->getMaxElements();
@@ -57,6 +59,7 @@ HNSW::Build(const Dataset& base) {
 
 void
 HNSW::Add(const Dataset& base) {
+    SlowTaskTimer t("hnsw add", 10);
     int64_t num_elements = base.GetNumElements();
     int64_t dim = base.GetDim();
     auto ids = base.GetIds();
@@ -78,6 +81,7 @@ HNSW::Add(const Dataset& base) {
 
 Dataset
 HNSW::KnnSearch(const Dataset& query, int64_t k, const std::string& parameters) {
+    SlowTaskTimer t("hnsw search", 10);
     nlohmann::json params = nlohmann::json::parse(parameters);
     if (params.contains("hnsw") and params["hnsw"].contains("ef_runtime")) {
         alg_hnsw->setEf(params["hnsw"]["ef_runtime"]);
@@ -110,6 +114,7 @@ HNSW::KnnSearch(const Dataset& query, int64_t k, const std::string& parameters) 
 
 BinarySet
 HNSW::Serialize() {
+    SlowTaskTimer t("hnsw serialize");
     size_t num_bytes = alg_hnsw->calcSerializeSize();
     // std::cout << "num_bytes: " << std::to_string(num_bytes) << std::endl;
     std::shared_ptr<int8_t[]> bin(new int8_t[num_bytes]);
@@ -127,6 +132,7 @@ HNSW::Serialize() {
 
 void
 HNSW::Deserialize(const BinarySet& binary_set) {
+    SlowTaskTimer t("hnsw deserialize");
     if (this->alg_hnsw->getCurrentElementCount() > 0) {
         throw std::runtime_error("deserialize on existed index");
     }
@@ -141,6 +147,7 @@ HNSW::Deserialize(const BinarySet& binary_set) {
 
 void
 HNSW::Deserialize(const ReaderSet& reader_set) {
+    SlowTaskTimer t("hnsw deserialize");
     if (this->alg_hnsw->getCurrentElementCount() > 0) {
         throw std::runtime_error("deserialize on existed index");
     }
