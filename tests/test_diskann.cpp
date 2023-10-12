@@ -9,6 +9,9 @@
 #include "vsag/errors.h"
 #include "vsag/vsag.h"
 
+
+const std::string tmp_dir = "/tmp/";
+
 TEST_CASE("DiskAnn Float Recall", "[diskann]") {
     int dim = 256;             // Dimension of the elements
     int max_elements = 10000;  // Maximum number of elements, should be known beforehand
@@ -19,7 +22,7 @@ TEST_CASE("DiskAnn Float Recall", "[diskann]") {
     float p_val =
         0.5;  // p_val represents how much original data is selected during the training of pq compressed vectors.
     int chunks_num = 32;  // chunks_num represents the dimensionality of the compressed vector.
-    std::string disk_layout_file = "/tmp/index.out";
+    std::string disk_layout_file = "index.out";
     // Initing index
     nlohmann::json diskann_parameters{
         {"R", M},
@@ -86,17 +89,17 @@ TEST_CASE("DiskAnn Float Recall", "[diskann]") {
         diskann = nullptr;
 
         vsag::Binary pq_b = bs->Get(vsag::DISKANN_PQ);
-        std::ofstream pq("diskann_pq.index", std::ios::binary);
+        std::ofstream pq(tmp_dir + "diskann_pq.index", std::ios::binary);
         pq.write((const char*)pq_b.data.get(), pq_b.size);
         pq.close();
 
         vsag::Binary compressed_vector_b = bs->Get(vsag::DISKANN_COMPRESSED_VECTOR);
-        std::ofstream compressed("diskann_compressed_vector.index", std::ios::binary);
+        std::ofstream compressed(tmp_dir + "diskann_compressed_vector.index", std::ios::binary);
         compressed.write((const char*)compressed_vector_b.data.get(), compressed_vector_b.size);
         compressed.close();
 
         vsag::Binary layout_file_b = bs->Get(vsag::DISKANN_LAYOUT_FILE);
-        std::ofstream layout(disk_layout_file, std::ios::binary);
+        std::ofstream layout(tmp_dir + disk_layout_file, std::ios::binary);
         layout.write((const char*)layout_file_b.data.get(), layout_file_b.size);
         layout.close();
     }
@@ -104,10 +107,10 @@ TEST_CASE("DiskAnn Float Recall", "[diskann]") {
     //     Deserialize
     {
         vsag::ReaderSet rs;
-        auto pq_reader = vsag::Factory::CreateLocalFileReader("diskann_pq.index");
+        auto pq_reader = vsag::Factory::CreateLocalFileReader(tmp_dir + "diskann_pq.index");
         auto compressed_vector_reader =
-            vsag::Factory::CreateLocalFileReader("diskann_compressed_vector.index");
-        auto disk_layout_reader = vsag::Factory::CreateLocalFileReader(disk_layout_file);
+            vsag::Factory::CreateLocalFileReader(tmp_dir + "diskann_compressed_vector.index");
+        auto disk_layout_reader = vsag::Factory::CreateLocalFileReader(tmp_dir + disk_layout_file);
         rs.Set(vsag::DISKANN_PQ, pq_reader);
         rs.Set(vsag::DISKANN_COMPRESSED_VECTOR, compressed_vector_reader);
         rs.Set(vsag::DISKANN_LAYOUT_FILE, disk_layout_reader);
@@ -149,7 +152,7 @@ TEST_CASE("DiskAnn Float Recall", "[diskann]") {
     {
         vsag::BinarySet bs;
 
-        std::ifstream pq("diskann_pq.index", std::ios::binary);
+        std::ifstream pq(tmp_dir + "diskann_pq.index", std::ios::binary);
         pq.seekg(0, std::ios::end);
         size_t size = pq.tellg();
         pq.seekg(0, std::ios::beg);
@@ -161,7 +164,7 @@ TEST_CASE("DiskAnn Float Recall", "[diskann]") {
         };
         bs.Set(vsag::DISKANN_PQ, pq_b);
 
-        std::ifstream compressed("diskann_compressed_vector.index", std::ios::binary);
+        std::ifstream compressed(tmp_dir + "diskann_compressed_vector.index", std::ios::binary);
         compressed.seekg(0, std::ios::end);
         size = compressed.tellg();
         compressed.seekg(0, std::ios::beg);
@@ -173,7 +176,7 @@ TEST_CASE("DiskAnn Float Recall", "[diskann]") {
         };
         bs.Set(vsag::DISKANN_COMPRESSED_VECTOR, compressed_vector_b);
 
-        std::ifstream disk_layout(disk_layout_file, std::ios::binary);
+        std::ifstream disk_layout(tmp_dir + disk_layout_file, std::ios::binary);
         disk_layout.seekg(0, std::ios::end);
         size = disk_layout.tellg();
         disk_layout.seekg(0, std::ios::beg);

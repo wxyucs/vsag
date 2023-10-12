@@ -1,10 +1,12 @@
 //
 // Created by inabao on 2023/8/21.
 //
+#include <chrono>
 #include <fstream>
 #include <iostream>
 #include <nlohmann/json.hpp>
 #include <sstream>
+#include <thread>
 
 #include "vsag/errors.h"
 #include "vsag/vsag.h"
@@ -13,16 +15,16 @@ const std::string tmp_dir = "/tmp/";
 
 void
 float_diskann() {
-    int dim = 256;             // Dimension of the elements
-    int max_elements = 10000;  // Maximum number of elements, should be known beforehand
-    int M = 16;                // Tightly connected with internal dimensionality of the data
+    int dim = 64;             // Dimension of the elements
+    int max_elements = 1000;  // Maximum number of elements, should be known beforehand
+    int M = 16;               // Tightly connected with internal dimensionality of the data
     // strongly affects the memory consumption
     int ef_construction = 200;  // Controls index search speed/build speed tradeoff
     int ef_runtime = 200;
     float p_val =
         0.5;  // p_val represents how much original data is selected during the training of pq compressed vectors.
-    int chunks_num = 32;  // chunks_num represents the dimensionality of the compressed vector.
-    std::string disk_layout_file = "/tmp/index.out";
+    int chunks_num = 8;  // chunks_num represents the dimensionality of the compressed vector.
+    std::string disk_layout_file = "index.out";
     // Initing index
     // {
     // 	"dim": 256,
@@ -100,6 +102,8 @@ float_diskann() {
         }
     }
     float recall = correct / max_elements;
+    std::cout << std::fixed << std::setprecision(3)
+              << "Memory Usage:" << diskann->GetMemoryUsage() / 1024.0 << " KB" << std::endl;
     std::cout << "Stard Recall: " << recall << std::endl;
     // Serialize
     {
@@ -123,7 +127,6 @@ float_diskann() {
             std::cerr << "no enough memory to serialize index" << std::endl;
         }
     }
-
     //     Deserialize
     {
         vsag::ReaderSet rs;
@@ -143,6 +146,7 @@ float_diskann() {
     }
 
     // Query the elements for themselves and measure recall 1@2
+
     correct = 0;
     for (int i = 0; i < max_elements; i++) {
         vsag::Dataset query;
@@ -164,6 +168,8 @@ float_diskann() {
         }
     }
     recall = correct / max_elements;
+    std::cout << std::fixed << std::setprecision(3)
+              << "Memory Usage:" << diskann->GetMemoryUsage() / 1024.0 << " KB" << std::endl;
     std::cout << "RS Recall: " << recall << std::endl;
 
     // Deserialize
@@ -213,6 +219,7 @@ float_diskann() {
         diskann->Deserialize(bs);
     }
     // Query the elements for themselves and measure recall 1@2
+
     correct = 0;
     for (int i = 0; i < max_elements; i++) {
         vsag::Dataset query;
@@ -233,7 +240,11 @@ float_diskann() {
             std::cerr << "failed to perform knn search on index" << std::endl;
         }
     }
+
     recall = correct / max_elements;
+
+    std::cout << std::fixed << std::setprecision(3)
+              << "Memory Usage:" << diskann->GetMemoryUsage() / 1024.0 << " KB" << std::endl;
     std::cout << "BS Recall: " << recall << std::endl;
 }
 

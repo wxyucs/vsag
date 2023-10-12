@@ -83,6 +83,16 @@ public:
     GetNumElements() const {
         throw std::runtime_error("not implemented");
     }
+
+    /**
+      * Return the memory occupied by the index.
+      *
+      * @return number of bytes occupied by the index.
+      */
+    virtual int64_t
+    GetMemoryUsage() const {
+        throw std::runtime_error("not implemented");
+    }
 };
 
 }  // namespace vsag

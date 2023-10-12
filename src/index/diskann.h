@@ -60,6 +60,11 @@ public:
         return index->get_data_num();
     }
 
+    int64_t
+    GetMemoryUsage() const override {
+        return memory_usage_;
+    }
+
 private:
     std::shared_ptr<AlignedFileReader> reader;
     std::shared_ptr<diskann::PQFlashIndex<float>> index;
@@ -75,6 +80,7 @@ private:
     int R_ = 64;
     float p_val_ = 0.5;
     size_t disk_pq_dims_ = 8;
+    int64_t memory_usage_ = 0;
     IndexStatus status;
 };
 

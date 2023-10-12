@@ -43,6 +43,12 @@ public:
         return alg_hnsw->cur_element_count;
     }
 
+    int64_t
+    GetMemoryUsage() const override {
+        return alg_hnsw->calcSerializeSize();
+        ;
+    }
+
 public:
     void
     SetEfRuntime(int64_t ef_runtime);

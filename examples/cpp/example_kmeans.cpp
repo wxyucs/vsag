@@ -1,9 +1,8 @@
+#include <hnswlib/hnswlib.h>
+#include <vsag/vsag.h>
+
 #include <iostream>
 #include <random>
-
-#include <hnswlib/hnswlib.h>
-
-#include <vsag/vsag.h>
 
 float
 fvec_norm_L2sqr(const float* x, size_t d) {

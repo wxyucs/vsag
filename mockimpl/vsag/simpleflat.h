@@ -30,6 +30,13 @@ public:
     tl::expected<void, index_error>
     Deserialize(const ReaderSet& reader_set) override;
 
+    int64_t
+    GetMemoryUsage() const override {
+        size_t ids_size = num_elements_ * sizeof(int64_t);
+        size_t vector_size = num_elements_ * dim_ * sizeof(float);
+        return ids_size + vector_size;
+    }
+
 private:
     using rs = std::pair<float, int64_t>;
 

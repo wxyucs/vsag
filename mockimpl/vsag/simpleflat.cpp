@@ -144,7 +144,7 @@ SimpleFlat::Deserialize(const BinarySet& binary_set) {
 
     if (sizeof(int64_t) + sizeof(int64_t) + ids_size != ids_binary.size ||
         vector_size != data_binary.size) {
-	return tl::unexpected(index_error::invalid_binary);
+        return tl::unexpected(index_error::invalid_binary);
     }
 
     ids_.resize(this->num_elements_);
