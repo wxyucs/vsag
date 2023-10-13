@@ -4,7 +4,13 @@
 #pragma once
 
 #include <errno.h>
+
+#if defined(__i386__) || defined(__x86_64__)
 #include <xmmintrin.h>
+#elif defined(__ARM_FEATURE_SIMD32) || defined(__ARM_NEON)
+#include <arm_neon.h>
+#endif
+
 #include "common_includes.h"
 
 #ifdef __APPLE__
@@ -1050,17 +1056,23 @@ inline void copy_aligned_data_from_file(std::stringstream &reader, T *&data, siz
 // NOTE :: good efficiency when total_vec_size is integral multiple of 64
 inline void prefetch_vector(const char *vec, size_t vecsize)
 {
+    // FIXME: alternative instruction on aarch64
+#if defined(__i386__) || defined(__x86_64__)
     size_t max_prefetch_size = (vecsize / 64) * 64;
     for (size_t d = 0; d < max_prefetch_size; d += 64)
         _mm_prefetch((const char *)vec + d, _MM_HINT_T0);
+#endif
 }
 
 // NOTE :: good efficiency when total_vec_size is integral multiple of 64
 inline void prefetch_vector_l2(const char *vec, size_t vecsize)
 {
+    // FIXME: alternative instruction on aarch64
+#if defined(__i386__) || defined(__x86_64__)
     size_t max_prefetch_size = (vecsize / 64) * 64;
     for (size_t d = 0; d < max_prefetch_size; d += 64)
         _mm_prefetch((const char *)vec + d, _MM_HINT_T1);
+#endif
 }
 
 // NOTE: Implementation in utils.cpp.

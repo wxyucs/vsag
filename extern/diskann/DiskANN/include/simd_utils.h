@@ -1,16 +1,22 @@
 #pragma once
 
 #ifdef _WINDOWS
-#include <immintrin.h>
-#include <smmintrin.h>
-#include <tmmintrin.h>
-#include <intrin.h>
+    #include <immintrin.h>
+    #include <smmintrin.h>
+    #include <tmmintrin.h>
+    #include <intrin.h>
 #else
-#include <immintrin.h>
+    #if defined(__i386__) || defined(__x86_64__)
+	#include <immintrin.h>
+    #elif defined(__ARM_FEATURE_SIMD32) || defined(__ARM_NEON)
+	#include <arm_neon.h>
+    #endif
 #endif
 
 namespace diskann
 {
+
+#if defined(__i386__) || defined(__x86_64__)
 static inline __m256 _mm256_mul_epi8(__m256i X)
 {
     __m256i zero = _mm256_setzero_si256();
@@ -103,4 +109,5 @@ static inline float _mm256_reduce_add_ps(__m256 x)
     /* Conversion to float is a no-op on x86-64 */
     return _mm_cvtss_f32(x32);
 }
+#endif
 } // namespace diskann

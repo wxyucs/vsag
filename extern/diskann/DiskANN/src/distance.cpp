@@ -2,12 +2,20 @@
 // CHECK COSINE ON LINUX
 
 #ifdef _WINDOWS
+
 #include <immintrin.h>
 #include <smmintrin.h>
 #include <tmmintrin.h>
 #include <intrin.h>
+
 #else
+
+#if defined(__i386__) || defined(__x86_64__)
 #include <immintrin.h>
+#elif defined(__ARM_FEATURE_SIMD32) || defined(__ARM_NEON)
+#include <arm_neon.h>
+#endif
+
 #endif
 
 #include "simd_utils.h"
@@ -390,11 +398,11 @@ template <typename T> float DistanceInnerProduct<T>::inner_product(const T *a, c
 #else
 
     float dot0, dot1, dot2, dot3;
-    const float *last = a + size;
+    const float *last = (float *)(a + size);
     const float *unroll_group = last - 3;
 
     /* Process 4 items with each loop for efficiency. */
-    while (a < unroll_group)
+    while ((char *)a < (char *)unroll_group)
     {
         dot0 = a[0] * b[0];
         dot1 = a[1] * b[1];
@@ -405,7 +413,7 @@ template <typename T> float DistanceInnerProduct<T>::inner_product(const T *a, c
         b += 4;
     }
     /* Process last 0-3 pixels.  Not needed for standard vector lengths. */
-    while (a < last)
+    while ((char *)a < (char *)last)
     {
         result += *a++ * *b++;
     }
@@ -498,11 +506,11 @@ template <typename T> float DistanceFastL2<T>::norm(const T *a, uint32_t size) c
     result += unpack[0] + unpack[1] + unpack[2] + unpack[3];
 #else
     float dot0, dot1, dot2, dot3;
-    const float *last = a + size;
+    const float *last = (float *)(a + size);
     const float *unroll_group = last - 3;
 
     /* Process 4 items with each loop for efficiency. */
-    while (a < unroll_group)
+    while ((char *)a < (char *)unroll_group)
     {
         dot0 = a[0] * a[0];
         dot1 = a[1] * a[1];
@@ -512,7 +520,7 @@ template <typename T> float DistanceFastL2<T>::norm(const T *a, uint32_t size) c
         a += 4;
     }
     /* Process last 0-3 pixels.  Not needed for standard vector lengths. */
-    while (a < last)
+    while ((char *)a < (char *)last)
     {
         result += (*a) * (*a);
         a++;
@@ -523,6 +531,7 @@ template <typename T> float DistanceFastL2<T>::norm(const T *a, uint32_t size) c
     return result;
 }
 
+#if defined(__i386__) || defined(__x86_64__)
 float AVXDistanceInnerProductFloat::compare(const float *a, const float *b, uint32_t size) const
 {
     float result = 0.0f;
@@ -564,6 +573,14 @@ float AVXDistanceInnerProductFloat::compare(const float *a, const float *b, uint
 
     return -result;
 }
+#else
+float AVXDistanceInnerProductFloat::compare(const float *a, const float *b, uint32_t size) const
+{
+    // this function will NOT be called on aarch64
+    float result = 0.0f;
+    return -result;
+}
+#endif
 
 uint32_t AVXNormalizedCosineDistanceFloat::post_normalization_dimension(uint32_t orig_dimension) const
 {

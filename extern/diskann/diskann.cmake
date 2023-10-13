@@ -36,7 +36,11 @@ set(DISKANN_SOURCES
 #set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -mavx2 -mfma -msse2 -ftree-vectorize -fno-builtin-malloc -fno-builtin-calloc -fno-builtin-realloc -fno-builtin-free -fopenmp -fopenmp-simd -funroll-loops -Wfatal-errors -DUSE_AVX2")
 
 # work
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -mavx -msse2 -ftree-vectorize -fno-builtin-malloc -fno-builtin-calloc -fno-builtin-realloc -fno-builtin-free -fopenmp -fopenmp-simd -funroll-loops -Wfatal-errors")
+if (${CMAKE_SYSTEM_PROCESSOR} MATCHES "x86_64")
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -mavx -msse2 -ftree-vectorize -fno-builtin-malloc -fno-builtin-calloc -fno-builtin-realloc -fno-builtin-free -fopenmp -fopenmp-simd -funroll-loops -Wfatal-errors")
+else ()
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -ftree-vectorize -fno-builtin-malloc -fno-builtin-calloc -fno-builtin-realloc -fno-builtin-free -fopenmp -fopenmp-simd -funroll-loops -Wfatal-errors")
+endif ()
 
 add_library(diskann STATIC ${DISKANN_SOURCES})
 target_link_libraries(diskann libopenblas.a gfortran aio)

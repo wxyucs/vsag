@@ -1607,7 +1607,10 @@ void PQFlashIndex<T, LabelT>::cached_beam_search(const T *query1, const uint64_t
 
     // pointers to buffers for data
     T *data_buf = query_scratch->coord_scratch;
+    // FIXME: alternative instruction on aarch64
+#if defined(__i386__) || defined(__x86_64__)
     _mm_prefetch((char *)data_buf, _MM_HINT_T1);
+#endif
 
     // sector scratch
     char *sector_scratch = query_scratch->sector_scratch;

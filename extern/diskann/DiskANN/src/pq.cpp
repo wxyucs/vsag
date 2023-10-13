@@ -376,9 +376,12 @@ void pq_dist_lookup(const uint8_t *pq_ids, const size_t n_pts, const size_t pq_n
                     std::vector<float> &dists_out)
 {
     //_mm_prefetch((char*) dists_out, _MM_HINT_T0);
+    // FIXME: alternative instruction on aarch64
+#if defined(__i386__) || defined(__x86_64__)
     _mm_prefetch((char *)pq_ids, _MM_HINT_T0);
     _mm_prefetch((char *)(pq_ids + 64), _MM_HINT_T0);
     _mm_prefetch((char *)(pq_ids + 128), _MM_HINT_T0);
+#endif
     dists_out.clear();
     dists_out.resize(n_pts, 0);
     for (size_t chunk = 0; chunk < pq_nchunks; chunk++)
@@ -386,7 +389,10 @@ void pq_dist_lookup(const uint8_t *pq_ids, const size_t n_pts, const size_t pq_n
         const float *chunk_dists = pq_dists + 256 * chunk;
         if (chunk < pq_nchunks - 1)
         {
+	    // FIXME: alternative instruction on aarch64
+#if defined(__i386__) || defined(__x86_64__)
             _mm_prefetch((char *)(chunk_dists + 256), _MM_HINT_T0);
+#endif
         }
         for (size_t idx = 0; idx < n_pts; idx++)
         {
@@ -410,17 +416,23 @@ void aggregate_coords(const uint32_t *ids, const size_t n_ids, const uint8_t *al
 void pq_dist_lookup(const uint8_t *pq_ids, const size_t n_pts, const size_t pq_nchunks, const float *pq_dists,
                     float *dists_out)
 {
+    // FIXME: alternative instruction on aarch64
+#if defined(__i386__) || defined(__x86_64__)
     _mm_prefetch((char *)dists_out, _MM_HINT_T0);
     _mm_prefetch((char *)pq_ids, _MM_HINT_T0);
     _mm_prefetch((char *)(pq_ids + 64), _MM_HINT_T0);
     _mm_prefetch((char *)(pq_ids + 128), _MM_HINT_T0);
+#endif
     memset(dists_out, 0, n_pts * sizeof(float));
     for (size_t chunk = 0; chunk < pq_nchunks; chunk++)
     {
         const float *chunk_dists = pq_dists + 256 * chunk;
         if (chunk < pq_nchunks - 1)
         {
+	    // FIXME: alternative instruction on aarch64
+#if defined(__i386__) || defined(__x86_64__)
             _mm_prefetch((char *)(chunk_dists + 256), _MM_HINT_T0);
+#endif
         }
         for (size_t idx = 0; idx < n_pts; idx++)
         {
