@@ -251,6 +251,8 @@ DiskANN::Deserialize(const BinarySet& binary_set) {
         (pq_pivots_stream_.str().size() + disk_pq_compressed_vectors_.str().size()) * 2 +
         disk_layout_stream_.str().size();
     status = IndexStatus::MEMORY;
+
+    return {};
 }
 
 tl::expected<void, index_error>
