@@ -62,12 +62,11 @@ Factory::CreateIndex(const std::string& name, const std::string& parameters) {
 
 class LocalFileReader : public Reader {
 public:
-    LocalFileReader(const std::string& filename, int64_t base_offset = 0)
+    LocalFileReader(const std::string& filename, int64_t base_offset = 0, int64_t size = 0)
         : filename_(filename),
           file_(std::ifstream(filename, std::ios::binary)),
-          base_offset_(base_offset) {
-        file_.seekg(0, std::ios::end);
-        size_ = file_.tellg();
+          base_offset_(base_offset),
+          size_(size) {
     }
 
     ~LocalFileReader() {
@@ -95,8 +94,8 @@ private:
 };
 
 std::shared_ptr<Reader>
-Factory::CreateLocalFileReader(const std::string& filename, int64_t base_offset) {
-    return std::make_shared<LocalFileReader>(filename, base_offset);
+Factory::CreateLocalFileReader(const std::string& filename, int64_t base_offset, int64_t size) {
+    return std::make_shared<LocalFileReader>(filename, base_offset, size);
 }
 
 }  // namespace vsag

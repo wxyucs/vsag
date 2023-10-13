@@ -343,8 +343,15 @@ float_hnsw() {
 
         vsag::ReaderSet rs;
         for (uint64_t i = 0; i < num_keys; ++i) {
-            auto file_reader = vsag::Factory::CreateLocalFileReader(tmp_dir + "hnsw.index",
-                                                                    offsets[i] + sizeof(uint64_t));
+            int64_t size = 0;
+            if (i + 1 == num_keys) {
+                size = footer_offset;
+            } else {
+                size = offsets[i + 1];
+            }
+            size -= (offsets[i] + sizeof(uint64_t));
+            auto file_reader = vsag::Factory::CreateLocalFileReader(
+                tmp_dir + "hnsw.index", offsets[i] + sizeof(uint64_t), size);
             rs.Set(keys[i], file_reader);
         }
 

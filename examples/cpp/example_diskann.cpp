@@ -12,6 +12,18 @@
 
 const std::string tmp_dir = "/tmp/";
 
+template <typename T>
+static void
+writeBinaryPOD(std::ostream& out, const T& podRef) {
+    out.write((char*)&podRef, sizeof(T));
+}
+
+template <typename T>
+static void
+readBinaryPOD(std::istream& in, T& podRef) {
+    in.read((char*)&podRef, sizeof(T));
+}
+
 void
 float_diskann() {
     int dim = 64;             // Dimension of the elements
@@ -104,43 +116,228 @@ float_diskann() {
     std::cout << std::fixed << std::setprecision(3)
               << "Memory Usage:" << diskann->GetMemoryUsage() / 1024.0 << " KB" << std::endl;
     std::cout << "Stard Recall: " << recall << std::endl;
-    // Serialize
+
+    // Serialize(multi-file)
     {
         if (auto bs = diskann->Serialize(); bs.has_value()) {
             diskann = nullptr;
-            vsag::Binary pq_b = bs->Get(vsag::DISKANN_PQ);
-            std::ofstream pq(tmp_dir + "diskann_pq.index", std::ios::binary);
-            pq.write((const char*)pq_b.data.get(), pq_b.size);
-            pq.close();
-
-            vsag::Binary compressed_vector_b = bs->Get(vsag::DISKANN_COMPRESSED_VECTOR);
-            std::ofstream compressed(tmp_dir + "diskann_compressed_vector.index", std::ios::binary);
-            compressed.write((const char*)compressed_vector_b.data.get(), compressed_vector_b.size);
-            compressed.close();
-
-            vsag::Binary layout_file_b = bs->Get(vsag::DISKANN_LAYOUT_FILE);
-            std::ofstream layout(tmp_dir + disk_layout_file, std::ios::binary);
-            layout.write((const char*)layout_file_b.data.get(), layout_file_b.size);
-            layout.close();
+            auto keys = bs->GetKeys();
+            for (auto key : keys) {
+                vsag::Binary b = bs->Get(key);
+                std::ofstream file(tmp_dir + "diskann.index." + key, std::ios::binary);
+                file.write((const char*)b.data.get(), b.size);
+                file.close();
+            }
+            std::ofstream metafile(tmp_dir + "diskann.index._meta", std::ios::out);
+            for (auto key : keys) {
+                metafile << key << std::endl;
+            }
+            metafile.close();
         } else if (bs.error() == vsag::index_error::no_enough_memory) {
             std::cerr << "no enough memory to serialize index" << std::endl;
         }
     }
-    //     Deserialize
+    // Deserialize(binaryset)
     {
-        vsag::ReaderSet rs;
-        auto pq_reader = vsag::Factory::CreateLocalFileReader(tmp_dir + "diskann_pq.index");
-        auto compressed_vector_reader =
-            vsag::Factory::CreateLocalFileReader(tmp_dir + "diskann_compressed_vector.index");
-        auto disk_layout_reader = vsag::Factory::CreateLocalFileReader(tmp_dir + disk_layout_file);
-        rs.Set(vsag::DISKANN_PQ, pq_reader);
-        rs.Set(vsag::DISKANN_COMPRESSED_VECTOR, compressed_vector_reader);
-        rs.Set(vsag::DISKANN_LAYOUT_FILE, disk_layout_reader);
+        std::ifstream metafile(tmp_dir + "diskann.index._meta", std::ios::in);
+        std::vector<std::string> keys;
+        std::string line;
+        while (std::getline(metafile, line)) {
+            keys.push_back(line);
+        }
+        metafile.close();
 
-        diskann = nullptr;
+        vsag::BinarySet bs;
+        for (auto key : keys) {
+            std::ifstream file(tmp_dir + "diskann.index." + key, std::ios::in);
+            file.seekg(0, std::ios::end);
+            vsag::Binary b;
+            b.size = file.tellg();
+            b.data.reset(new int8_t[b.size]);
+            file.seekg(0, std::ios::beg);
+            file.read((char*)b.data.get(), b.size);
+            bs.Set(key, b);
+        }
         diskann = vsag::Factory::CreateIndex("diskann", index_parameters.dump());
+        diskann->Deserialize(bs);
+    }
 
-        std::cout << "#####" << std::endl;
+    // Query the elements for themselves and measure recall 1@10
+    correct = 0;
+    for (int i = 0; i < max_elements; i++) {
+        vsag::Dataset query;
+        query.SetNumElements(1);
+        query.SetDim(dim);
+        query.SetFloat32Vectors(data + i * dim);
+        query.SetOwner(false);
+        nlohmann::json parameters{
+            {"diskann", {{"ef_search", ef_runtime}, {"beam_search", 4}, {"io_limit", 200}}}};
+        int64_t k = 2;
+        if (auto result = diskann->KnnSearch(query, k, parameters.dump()); result.has_value()) {
+            if (result->GetNumElements() == 1) {
+                if (result->GetIds()[0] == i) {
+                    correct++;
+                }
+            }
+        } else if (result.error() == vsag::index_error::internal_error) {
+            std::cerr << "failed to perform knn search on index" << std::endl;
+        }
+    }
+    recall = correct / max_elements;
+
+    std::cout << std::fixed << std::setprecision(3)
+              << "Memory Usage:" << diskann->GetMemoryUsage() / 1024.0 << " KB" << std::endl;
+    std::cout << "BS Recall: " << recall << std::endl;
+
+    // Serialize(single-file)
+    {
+        if (auto bs = diskann->Serialize(); bs.has_value()) {
+            diskann = nullptr;
+            auto keys = bs->GetKeys();
+            std::vector<uint64_t> offsets;
+
+            std::ofstream file(tmp_dir + "diskann.index", std::ios::binary);
+            uint64_t offset = 0;
+            for (auto key : keys) {
+                // [len][data...][len][data...]...
+                vsag::Binary b = bs->Get(key);
+                writeBinaryPOD(file, b.size);
+                file.write((const char*)b.data.get(), b.size);
+                offsets.push_back(offset);
+                offset += sizeof(b.size) + b.size;
+            }
+            // footer
+            for (uint64_t i = 0; i < keys.size(); ++i) {
+                // [len][key...][offset][len][key...][offset]...
+                const auto& key = keys[i];
+                int64_t len = key.length();
+                writeBinaryPOD(file, len);
+                file.write(key.c_str(), key.length());
+                writeBinaryPOD(file, offsets[i]);
+            }
+            // [num_keys][footer_offset]$
+            writeBinaryPOD(file, keys.size());
+            writeBinaryPOD(file, offset);
+            file.close();
+        } else if (bs.error() == vsag::index_error::no_enough_memory) {
+            std::cerr << "no enough memory to serialize index" << std::endl;
+        }
+    }
+
+    // Deserialize(binaryset)
+    {
+        std::ifstream file(tmp_dir + "diskann.index", std::ios::in);
+        file.seekg(-sizeof(uint64_t) * 2, std::ios::end);
+        uint64_t num_keys, footer_offset;
+        readBinaryPOD(file, num_keys);
+        readBinaryPOD(file, footer_offset);
+        // std::cout << "num_keys: " << num_keys << std::endl;
+        // std::cout << "footer_offset: " << footer_offset << std::endl;
+        file.seekg(footer_offset, std::ios::beg);
+
+        std::vector<std::string> keys;
+        std::vector<uint64_t> offsets;
+        for (uint64_t i = 0; i < num_keys; ++i) {
+            int64_t key_len;
+            readBinaryPOD(file, key_len);
+            // std::cout << "key_len: " << key_len << std::endl;
+            char key_buf[key_len + 1];
+            memset(key_buf, 0, key_len + 1);
+            file.read(key_buf, key_len);
+            // std::cout << "key: " << key_buf << std::endl;
+            keys.push_back(key_buf);
+
+            uint64_t offset;
+            readBinaryPOD(file, offset);
+            // std::cout << "offset: " << offset << std::endl;
+            offsets.push_back(offset);
+        }
+
+        vsag::BinarySet bs;
+        for (uint64_t i = 0; i < num_keys; ++i) {
+            file.seekg(offsets[i], std::ios::beg);
+            vsag::Binary b;
+            readBinaryPOD(file, b.size);
+            // std::cout << "len: " << b.size << std::endl;
+            b.data.reset(new int8_t[b.size]);
+            file.read((char*)b.data.get(), b.size);
+            bs.Set(keys[i], b);
+        }
+
+        diskann = vsag::Factory::CreateIndex("diskann", index_parameters.dump());
+        diskann->Deserialize(bs);
+    }
+
+    correct = 0;
+    for (int i = 0; i < max_elements; i++) {
+        vsag::Dataset query;
+        query.SetNumElements(1);
+        query.SetDim(dim);
+        query.SetFloat32Vectors(data + i * dim);
+        query.SetOwner(false);
+        nlohmann::json parameters{
+            {"diskann", {{"ef_search", ef_runtime}, {"beam_search", 4}, {"io_limit", 200}}}};
+        int64_t k = 2;
+        if (auto result = diskann->KnnSearch(query, k, parameters.dump()); result.has_value()) {
+            if (result->GetNumElements() == 1) {
+                if (result->GetIds()[0] == i) {
+                    correct++;
+                }
+            }
+        } else if (result.error() == vsag::index_error::internal_error) {
+            std::cerr << "failed to perform knn search on index" << std::endl;
+        }
+    }
+    recall = correct / max_elements;
+
+    std::cout << std::fixed << std::setprecision(3)
+              << "Memory Usage:" << diskann->GetMemoryUsage() / 1024.0 << " KB" << std::endl;
+    std::cout << "Single File BS Recall: " << recall << std::endl;
+
+    // Deserialize(readerset)
+    {
+        std::ifstream file(tmp_dir + "diskann.index", std::ios::in);
+        file.seekg(-sizeof(uint64_t) * 2, std::ios::end);
+        uint64_t num_keys, footer_offset;
+        readBinaryPOD(file, num_keys);
+        readBinaryPOD(file, footer_offset);
+        // std::cout << "num_keys: " << num_keys << std::endl;
+        // std::cout << "footer_offset: " << footer_offset << std::endl;
+        file.seekg(footer_offset, std::ios::beg);
+
+        std::vector<std::string> keys;
+        std::vector<uint64_t> offsets;
+        for (uint64_t i = 0; i < num_keys; ++i) {
+            int64_t key_len;
+            readBinaryPOD(file, key_len);
+            // std::cout << "key_len: " << key_len << std::endl;
+            char key_buf[key_len + 1];
+            memset(key_buf, 0, key_len + 1);
+            file.read(key_buf, key_len);
+            // std::cout << "key: " << key_buf << std::endl;
+            keys.push_back(key_buf);
+
+            uint64_t offset;
+            readBinaryPOD(file, offset);
+            // std::cout << "offset: " << offset << std::endl;
+            offsets.push_back(offset);
+        }
+
+        vsag::ReaderSet rs;
+        for (uint64_t i = 0; i < num_keys; ++i) {
+            int64_t size = 0;
+            if (i + 1 == num_keys) {
+                size = footer_offset;
+            } else {
+                size = offsets[i + 1];
+            }
+            size -= (offsets[i] + sizeof(uint64_t));
+            auto file_reader = vsag::Factory::CreateLocalFileReader(
+                tmp_dir + "diskann.index", offsets[i] + sizeof(uint64_t), size);
+            rs.Set(keys[i], file_reader);
+        }
+
+        diskann = vsag::Factory::CreateIndex("diskann", index_parameters.dump());
         diskann->Deserialize(rs);
     }
 
@@ -170,81 +367,6 @@ float_diskann() {
     std::cout << std::fixed << std::setprecision(3)
               << "Memory Usage:" << diskann->GetMemoryUsage() / 1024.0 << " KB" << std::endl;
     std::cout << "RS Recall: " << recall << std::endl;
-
-    // Deserialize
-    {
-        vsag::BinarySet bs;
-
-        std::ifstream pq(tmp_dir + "diskann_pq.index", std::ios::binary);
-        pq.seekg(0, std::ios::end);
-        size_t size = pq.tellg();
-        pq.seekg(0, std::ios::beg);
-        std::shared_ptr<int8_t[]> buff(new int8_t[size]);
-        pq.read(reinterpret_cast<char*>(buff.get()), size);
-        vsag::Binary pq_b{
-            .data = buff,
-            .size = size,
-        };
-        bs.Set(vsag::DISKANN_PQ, pq_b);
-
-        std::ifstream compressed(tmp_dir + "diskann_compressed_vector.index", std::ios::binary);
-        compressed.seekg(0, std::ios::end);
-        size = compressed.tellg();
-        compressed.seekg(0, std::ios::beg);
-        buff.reset(new int8_t[size]);
-        compressed.read(reinterpret_cast<char*>(buff.get()), size);
-        vsag::Binary compressed_vector_b{
-            .data = buff,
-            .size = size,
-        };
-        bs.Set(vsag::DISKANN_COMPRESSED_VECTOR, compressed_vector_b);
-
-        std::ifstream disk_layout(tmp_dir + disk_layout_file, std::ios::binary);
-        disk_layout.seekg(0, std::ios::end);
-        size = disk_layout.tellg();
-        disk_layout.seekg(0, std::ios::beg);
-        buff.reset(new int8_t[size]);
-        disk_layout.read(reinterpret_cast<char*>(buff.get()), size);
-        vsag::Binary disk_layout_b{
-            .data = buff,
-            .size = size,
-        };
-        bs.Set(vsag::DISKANN_LAYOUT_FILE, disk_layout_b);
-
-        diskann = nullptr;
-        diskann = vsag::Factory::CreateIndex("diskann", index_parameters.dump());
-
-        std::cout << "#####" << std::endl;
-        diskann->Deserialize(bs);
-    }
-    // Query the elements for themselves and measure recall 1@2
-
-    correct = 0;
-    for (int i = 0; i < max_elements; i++) {
-        vsag::Dataset query;
-        query.SetNumElements(1);
-        query.SetDim(dim);
-        query.SetFloat32Vectors(data + i * dim);
-        query.SetOwner(false);
-        nlohmann::json parameters{
-            {"diskann", {{"ef_search", ef_runtime}, {"beam_search", 4}, {"io_limit", 200}}}};
-        int64_t k = 2;
-        if (auto result = diskann->KnnSearch(query, k, parameters.dump()); result.has_value()) {
-            if (result->GetNumElements() == 1) {
-                if (result->GetIds()[0] == i) {
-                    correct++;
-                }
-            }
-        } else if (result.error() == vsag::index_error::internal_error) {
-            std::cerr << "failed to perform knn search on index" << std::endl;
-        }
-    }
-
-    recall = correct / max_elements;
-
-    std::cout << std::fixed << std::setprecision(3)
-              << "Memory Usage:" << diskann->GetMemoryUsage() / 1024.0 << " KB" << std::endl;
-    std::cout << "BS Recall: " << recall << std::endl;
 }
 
 int

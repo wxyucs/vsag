@@ -78,12 +78,13 @@ SimpleFlat::KnnSearch(const Dataset& query, int64_t k, const std::string& parame
     for (int64_t i = 0; i < query.GetNumElements(); ++i) {
         auto result = knn_search(query.GetFloat32Vectors() + i * dim, k);
         for (int64_t kk = 0; kk < k; ++kk) {
-            ids[i * k + kk] = result[kk].second;
-            dists[i * k + kk] = result[kk].first;
+            ids[i * k + kk] = result[k - 1 - kk].second;
+            dists[i * k + kk] = result[k - 1 - kk].first;
         }
     }
 
     Dataset results;
+    results.SetNumElements(nq);
     results.SetIds(ids);
     results.SetDistances(dists);
     return std::move(results);

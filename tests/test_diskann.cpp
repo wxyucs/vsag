@@ -103,50 +103,10 @@ TEST_CASE("DiskAnn Float Recall", "[diskann]") {
         layout.close();
     }
 
-    //     Deserialize
-    {
-        vsag::ReaderSet rs;
-        auto pq_reader = vsag::Factory::CreateLocalFileReader(tmp_dir + "diskann_pq.index");
-        auto compressed_vector_reader =
-            vsag::Factory::CreateLocalFileReader(tmp_dir + "diskann_compressed_vector.index");
-        auto disk_layout_reader = vsag::Factory::CreateLocalFileReader(tmp_dir + disk_layout_file);
-        rs.Set(vsag::DISKANN_PQ, pq_reader);
-        rs.Set(vsag::DISKANN_COMPRESSED_VECTOR, compressed_vector_reader);
-        rs.Set(vsag::DISKANN_LAYOUT_FILE, disk_layout_reader);
+    size_t pq_len = 0;
+    size_t compressed_len = 0;
+    size_t disk_layout_len = 0;
 
-        diskann = nullptr;
-        diskann = vsag::Factory::CreateIndex("diskann", index_parameters.dump());
-
-        std::cout << "#####" << std::endl;
-        diskann->Deserialize(rs);
-    }
-
-    // Query the elements for themselves and measure recall 1@2
-    correct = 0;
-    for (int i = 0; i < max_elements; i++) {
-        vsag::Dataset query;
-        query.SetNumElements(1);
-        query.SetDim(dim);
-        query.SetFloat32Vectors(data + i * dim);
-        query.SetOwner(false);
-        nlohmann::json parameters{
-            {"diskann", {{"ef_search", ef_runtime}, {"beam_search", 4}, {"io_limit", 200}}}};
-        int64_t k = 2;
-        if (auto result = diskann->KnnSearch(query, k, parameters.dump()); result.has_value()) {
-            if (result->GetNumElements() == 1) {
-                REQUIRE(!std::isinf(result->GetDistances()[0]));
-                if (result->GetIds()[0] == i) {
-                    correct++;
-                }
-            }
-        } else if (result.error() == vsag::index_error::internal_error) {
-            std::cerr << "failed to search on index: internal error" << std::endl;
-            exit(-1);
-        }
-    }
-    recall = correct / max_elements;
-    std::cout << "RS Recall: " << recall << std::endl;
-    REQUIRE(recall > 0.85);
     // Deserialize
     {
         vsag::BinarySet bs;
@@ -157,6 +117,7 @@ TEST_CASE("DiskAnn Float Recall", "[diskann]") {
         pq.seekg(0, std::ios::beg);
         std::shared_ptr<int8_t[]> buff(new int8_t[size]);
         pq.read(reinterpret_cast<char*>(buff.get()), size);
+        pq_len = size;
         vsag::Binary pq_b{
             .data = buff,
             .size = size,
@@ -169,6 +130,7 @@ TEST_CASE("DiskAnn Float Recall", "[diskann]") {
         compressed.seekg(0, std::ios::beg);
         buff.reset(new int8_t[size]);
         compressed.read(reinterpret_cast<char*>(buff.get()), size);
+        compressed_len = size;
         vsag::Binary compressed_vector_b{
             .data = buff,
             .size = size,
@@ -181,6 +143,7 @@ TEST_CASE("DiskAnn Float Recall", "[diskann]") {
         disk_layout.seekg(0, std::ios::beg);
         buff.reset(new int8_t[size]);
         disk_layout.read(reinterpret_cast<char*>(buff.get()), size);
+        disk_layout_len = size;
         vsag::Binary disk_layout_b{
             .data = buff,
             .size = size,
@@ -218,5 +181,50 @@ TEST_CASE("DiskAnn Float Recall", "[diskann]") {
     }
     recall = correct / max_elements;
     std::cout << "BS Recall: " << recall << std::endl;
+    REQUIRE(recall > 0.85);
+
+    //     Deserialize
+    {
+        vsag::ReaderSet rs;
+        auto pq_reader = vsag::Factory::CreateLocalFileReader(tmp_dir + "diskann_pq.index", 0, pq_len);
+        auto compressed_vector_reader =
+            vsag::Factory::CreateLocalFileReader(tmp_dir + "diskann_compressed_vector.index", 0, compressed_len);
+        auto disk_layout_reader = vsag::Factory::CreateLocalFileReader(tmp_dir + disk_layout_file, 0, disk_layout_len);
+        rs.Set(vsag::DISKANN_PQ, pq_reader);
+        rs.Set(vsag::DISKANN_COMPRESSED_VECTOR, compressed_vector_reader);
+        rs.Set(vsag::DISKANN_LAYOUT_FILE, disk_layout_reader);
+
+        diskann = nullptr;
+        diskann = vsag::Factory::CreateIndex("diskann", index_parameters.dump());
+
+        std::cout << "#####" << std::endl;
+        diskann->Deserialize(rs);
+    }
+
+    // Query the elements for themselves and measure recall 1@2
+    correct = 0;
+    for (int i = 0; i < max_elements; i++) {
+        vsag::Dataset query;
+        query.SetNumElements(1);
+        query.SetDim(dim);
+        query.SetFloat32Vectors(data + i * dim);
+        query.SetOwner(false);
+        nlohmann::json parameters{
+            {"diskann", {{"ef_search", ef_runtime}, {"beam_search", 4}, {"io_limit", 200}}}};
+        int64_t k = 2;
+        if (auto result = diskann->KnnSearch(query, k, parameters.dump()); result.has_value()) {
+            if (result->GetNumElements() == 1) {
+                REQUIRE(!std::isinf(result->GetDistances()[0]));
+                if (result->GetIds()[0] == i) {
+                    correct++;
+                }
+            }
+        } else if (result.error() == vsag::index_error::internal_error) {
+            std::cerr << "failed to search on index: internal error" << std::endl;
+            exit(-1);
+        }
+    }
+    recall = correct / max_elements;
+    std::cout << "RS Recall: " << recall << std::endl;
     REQUIRE(recall > 0.85);
 }

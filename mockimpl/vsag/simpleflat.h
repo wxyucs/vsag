@@ -37,6 +37,11 @@ public:
         return ids_size + vector_size;
     }
 
+    int64_t
+    GetNumElements() const override {
+        return num_elements_;
+    }
+
 private:
     using rs = std::pair<float, int64_t>;
 
