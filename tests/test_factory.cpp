@@ -4,7 +4,6 @@
 #include <catch2/catch_test_macros.hpp>
 #include <nlohmann/json.hpp>
 
-#include "vsag/errors.h"
 #include "vsag/vsag.h"
 
 TEST_CASE("index params", "[factory]") {

@@ -6,10 +6,6 @@
 #include <random>
 
 #include "local_file_reader.h"
-#include "vsag/binaryset.h"
-#include "vsag/errors.h"
-#include "vsag/factory.h"
-#include "vsag/readerset.h"
 #include "vsag/vsag.h"
 
 const std::string tmp_dir = "/tmp/";

@@ -5,7 +5,6 @@
 #include <nlohmann/json.hpp>
 #include <random>
 
-#include "vsag/errors.h"
 #include "vsag/vsag.h"
 
 using namespace std;

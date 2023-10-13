@@ -8,7 +8,6 @@
 #include <sstream>
 #include <thread>
 
-#include "vsag/errors.h"
 #include "vsag/vsag.h"
 
 const std::string tmp_dir = "/tmp/";

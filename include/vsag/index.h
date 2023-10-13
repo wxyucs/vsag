@@ -54,9 +54,7 @@ public:
       * @return binaryset contains all parts of the index
       */
     virtual tl::expected<BinarySet, index_error>
-    Serialize() const {
-        throw std::runtime_error("Index not support serialize");
-    };
+    Serialize() const = 0;
 
     /**
       * Deserialize index from a set of byte array. Causing exception if this index is not empty
@@ -64,9 +62,7 @@ public:
       * @param binaryset contains all parts of the index
       */
     virtual tl::expected<void, index_error>
-    Deserialize(const BinarySet& binary_set) {
-        throw std::runtime_error("Index not support deserialize");
-    }
+    Deserialize(const BinarySet& binary_set) = 0;
 
     /**
       * Deserialize index from a set of reader array. Causing exception if this index is not empty
@@ -74,9 +70,7 @@ public:
       * @param reader contains all parts of the index
       */
     virtual tl::expected<void, index_error>
-    Deserialize(const ReaderSet& reader_set) {
-        throw std::runtime_error("Index not support deserialize from reader");
-    }
+    Deserialize(const ReaderSet& reader_set) = 0;
 
 public:
     virtual int64_t

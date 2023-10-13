@@ -6,7 +6,6 @@
 #include <iostream>
 #include <nlohmann/json.hpp>
 
-#include "vsag/errors.h"
 #include "vsag/vsag.h"
 
 

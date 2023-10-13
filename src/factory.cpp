@@ -13,7 +13,6 @@
 
 #include "index/diskann.h"
 #include "index/hnsw.h"
-#include "index/vamana.h"
 
 namespace vsag {
 
@@ -42,12 +41,6 @@ Factory::CreateIndex(const std::string& name, const std::string& parameters) {
             index->SetEfRuntime(params["hnsw"]["ef_runtime"]);
         }
         return index;
-    } else if (name == "vamana") {
-        if (not params.contains("vamana")) {
-            throw std::runtime_error("vamana not found in parameters");
-        }
-        std::string dtype = "float32";
-        return std::make_shared<Vamana>(diskann::Metric::FAST_L2, 1, 1, dtype);
     } else if (name == "diskann") {
         if (not params.contains("diskann")) {
             throw std::runtime_error("diskann not found in parameters");
