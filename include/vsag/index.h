@@ -73,10 +73,13 @@ public:
     Deserialize(const ReaderSet& reader_set) = 0;
 
 public:
+    /**
+      * Return the number of elements in the index.
+      *
+      * @return number of elements in the index.
+      */
     virtual int64_t
-    GetNumElements() const {
-        throw std::runtime_error("not implemented");
-    }
+    GetNumElements() const = 0;
 
     /**
       * Return the memory occupied by the index.
@@ -84,9 +87,7 @@ public:
       * @return number of bytes occupied by the index.
       */
     virtual int64_t
-    GetMemoryUsage() const {
-        throw std::runtime_error("not implemented");
-    }
+    GetMemoryUsage() const = 0;
 };
 
 }  // namespace vsag

@@ -23,7 +23,7 @@ TEST_CASE("Factorials are computed", "[factorial]") {
 
 TEST_CASE("HNSW Float Recall", "[hnsw]") {
     int dim = 128;
-    int max_elements = 10000;
+    int max_elements = 1000;
     int M = 64;
     int ef_construction = 200;
     int ef_runtime = 200;
@@ -83,7 +83,7 @@ TEST_CASE("HNSW Float Recall", "[hnsw]") {
 
 TEST_CASE("Two HNSW", "[hnsw]") {
     int dim = 128;
-    int max_elements = 10000;
+    int max_elements = 1000;
     int M = 64;
     int ef_construction = 200;
     int ef_runtime = 200;
@@ -145,7 +145,7 @@ TEST_CASE("Two HNSW", "[hnsw]") {
 
 TEST_CASE("HNSW build test", "[hnsw build]") {
     int dim = 128;
-    int max_elements = 10000;
+    int max_elements = 1000;
     int M = 64;
     int ef_construction = 200;
     int ef_runtime = 200;

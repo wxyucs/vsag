@@ -40,7 +40,7 @@ vsag_build_ut:
           export CC=/usr/bin/gcc
           export CXX=/usr/bin/g++
           export PATH=/usr/lib/ccache:$PATH
-          make debug
+          make test
           # upload ccache
           cd $HOME/ && tar -czf ccache.tar.gz .ccache
           osscmd put ./ccache.tar.gz oss://tbase/vsag/ccache.tar.gz
