@@ -2047,6 +2047,21 @@ template <typename T, typename LabelT> diskann::Metric PQFlashIndex<T, LabelT>::
     return this->metric;
 }
 
+template <typename T, typename LabelT>  int64_t PQFlashIndex<T, LabelT>::get_memory_usage()
+{
+    int64_t memory_size = 0;
+    memory_size += node_visit_counter.capacity() * (sizeof(uint32_t) + sizeof(uint32_t));
+    memory_size += pq_table.get_memory_usage();
+    memory_size += disk_pq_table.get_memory_usage();
+    memory_size += nhood_cache.size() * (max_degree + 1) * sizeof(uint32_t);
+    memory_size += coord_cache.size() * nhood_cache.size() * aligned_dim * sizeof(T);
+    memory_size += _labels.size() * sizeof(LabelT);
+    memory_size += _filter_list.size() * sizeof(LabelT);
+    memory_size += num_points * n_chunks * sizeof(uint8_t);
+    return memory_size;
+}
+
+
 #ifdef EXEC_ENV_OLS
 template <typename T, typename LabelT> char *PQFlashIndex<T, LabelT>::getHeaderBytes()
 {

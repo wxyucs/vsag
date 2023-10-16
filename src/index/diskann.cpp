@@ -111,11 +111,7 @@ DiskANN::Build(const Dataset& base) {
                                                      p_val_,
                                                      disk_pq_dims_);
 
-        memory_usage_ += pq_pivots_stream_.str().size() + disk_pq_compressed_vectors_.str().size();
-
         diskann::create_disk_layout<float>(data_stream, graph_stream, disk_layout_stream_, "");
-
-        memory_usage_ += disk_layout_stream_.str().size();
 
         disk_layout_reader = std::make_shared<LocalMemoryReader>(disk_layout_stream_);
 
@@ -124,7 +120,6 @@ DiskANN::Build(const Dataset& base) {
         index->load_from_separate_paths(
             omp_get_num_procs(), pq_pivots_stream_, disk_pq_compressed_vectors_);
         status = IndexStatus::MEMORY;
-        memory_usage_ += pq_pivots_stream_.str().size() + disk_pq_compressed_vectors_.str().size();
     } catch (std::runtime_error e) {
         return tl::unexpected(index_error::internal_error);
     }
@@ -246,10 +241,6 @@ DiskANN::Deserialize(const BinarySet& binary_set) {
     index.reset(new diskann::PQFlashIndex<float>(reader, metric_));
     index->load_from_separate_paths(
         omp_get_num_procs(), pq_pivots_stream_, disk_pq_compressed_vectors_);
-
-    memory_usage_ +=
-        (pq_pivots_stream_.str().size() + disk_pq_compressed_vectors_.str().size()) * 2 +
-        disk_layout_stream_.str().size();
     status = IndexStatus::MEMORY;
 
     return {};
@@ -260,14 +251,12 @@ DiskANN::Deserialize(const ReaderSet& reader_set) {
     SlowTaskTimer t("diskann deserialize");
 
     std::stringstream pq_pivots_stream, disk_pq_compressed_vectors;
-    memory_usage_ = 0;
     {
         auto pq_reader = reader_set.Get(DISKANN_PQ);
         char pq_pivots_data[pq_reader->Size()];
         pq_reader->Read(0, pq_reader->Size(), pq_pivots_data);
         pq_pivots_stream.write(pq_pivots_data, pq_reader->Size());
         pq_pivots_stream.seekg(0);
-        memory_usage_ += pq_reader->Size();
     }
 
     {
@@ -276,7 +265,6 @@ DiskANN::Deserialize(const ReaderSet& reader_set) {
         compressed_vector_reader->Read(0, compressed_vector_reader->Size(), compressed_vector_data);
         disk_pq_compressed_vectors.write(compressed_vector_data, compressed_vector_reader->Size());
         disk_pq_compressed_vectors.seekg(0);
-        memory_usage_ += compressed_vector_reader->Size();
     }
     disk_layout_reader = reader_set.Get(DISKANN_LAYOUT_FILE);
     reader.reset(new LocalFileReader(batch_read));

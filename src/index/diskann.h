@@ -62,7 +62,13 @@ public:
 
     int64_t
     GetMemoryUsage() const override {
-        return memory_usage_;
+        if (status == MEMORY) {
+            return index->get_memory_usage() + disk_layout_stream_.str().size() +
+                   pq_pivots_stream_.str().size() + disk_layout_stream_.str().size();
+        } else if (status == HYBRID) {
+            return index->get_memory_usage();
+        }
+        return 0;
     }
 
 private:
@@ -80,7 +86,6 @@ private:
     int R_ = 64;
     float p_val_ = 0.5;
     size_t disk_pq_dims_ = 8;
-    int64_t memory_usage_ = 0;
     IndexStatus status;
 };
 

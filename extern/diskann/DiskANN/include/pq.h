@@ -53,6 +53,9 @@ class FixedChunkPQTable
     void populate_chunk_inner_products(const float *query_vec, float *dist_vec);
 
     void load_pq_centroid_bin(std::stringstream &pq_table, size_t num_chunks);
+
+    int64_t get_memory_usage();
+
 };
 
 template <typename T> struct PQScratch
