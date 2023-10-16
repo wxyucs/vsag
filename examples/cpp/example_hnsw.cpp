@@ -199,7 +199,12 @@ float_hnsw() {
 
         vsag::ReaderSet rs;
         for (auto key : keys) {
-            auto file_reader = vsag::Factory::CreateLocalFileReader(tmp_dir + "hnsw.index." + key);
+            std::ifstream file_(tmp_dir + "hnsw.index." + key);
+            file_.seekg(0, std::ios::end);
+            int64_t size = file_.tellg();
+            file_.close();
+            auto file_reader =
+                vsag::Factory::CreateLocalFileReader(tmp_dir + "hnsw.index." + key, 0, size);
             rs.Set(key, file_reader);
         }
         hnsw = vsag::Factory::CreateIndex("hnsw", index_parameters.dump());
