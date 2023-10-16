@@ -23,7 +23,7 @@ public:
     CreateIndex(const std::string& name, const std::string& parameters);
 
     static std::shared_ptr<Reader>
-    CreateLocalFileReader(const std::string& filename, int64_t base_offset = 0, int64_t size = 0);
+    CreateLocalFileReader(const std::string& filename, int64_t base_offset, int64_t size);
 
 private:
     Factory() = default;

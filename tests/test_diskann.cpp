@@ -12,7 +12,7 @@
 const std::string tmp_dir = "/tmp/";
 
 TEST_CASE("DiskAnn Float Recall", "[diskann]") {
-    int dim = 256;             // Dimension of the elements
+    int dim = 128;             // Dimension of the elements
     int max_elements = 1000;  // Maximum number of elements, should be known beforehand
     int M = 16;                // Tightly connected with internal dimensionality of the data
     // strongly affects the memory consumption
