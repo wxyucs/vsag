@@ -9,6 +9,7 @@
 #include <random>
 #include <stdlib.h>
 #include <assert.h>
+#include <stdexcept>
 #include <unordered_set>
 #include <list>
 #include <functional>
@@ -370,6 +371,92 @@ class HierarchicalNSW : public AlgorithmInterface<float> {
 
                         if (top_candidates.size() > ef)
                             top_candidates.pop();
+
+                        if (!top_candidates.empty())
+                            lowerBound = top_candidates.top().first;
+                    }
+                }
+            }
+        }
+
+        visited_list_pool_->releaseVisitedList(vl);
+        return top_candidates;
+    }
+
+
+    template <bool has_deletions, bool collect_metrics = false>
+    std::priority_queue<std::pair<float, tableint>, std::vector<std::pair<float, tableint>>, CompareByFirst>
+    searchBaseLayerST(tableint ep_id, const void *data_point, float radius, BaseFilterFunctor* isIdAllowed = nullptr) const {
+        VisitedList *vl = visited_list_pool_->getFreeVisitedList();
+        vl_type *visited_array = vl->mass;
+        vl_type visited_array_tag = vl->curV;
+
+        std::priority_queue<std::pair<float, tableint>, std::vector<std::pair<float, tableint>>, CompareByFirst> top_candidates;
+        std::priority_queue<std::pair<float, tableint>, std::vector<std::pair<float, tableint>>, CompareByFirst> candidate_set;
+
+        float lowerBound;
+        if ((!has_deletions || !isMarkedDeleted(ep_id)) && ((!isIdAllowed) || (*isIdAllowed)(getExternalLabel(ep_id)))) {
+            float dist = fstdistfunc_(data_point, getDataByInternalId(ep_id), dist_func_param_);
+            lowerBound = dist;
+	    if (dist < radius)
+		top_candidates.emplace(dist, ep_id);
+            candidate_set.emplace(-dist, ep_id);
+        } else {
+            lowerBound = std::numeric_limits<float>::max();
+            candidate_set.emplace(-lowerBound, ep_id);
+        }
+
+        visited_array[ep_id] = visited_array_tag;
+
+        while (!candidate_set.empty()) {
+            std::pair<float, tableint> current_node_pair = candidate_set.top();
+
+            if ((-current_node_pair.first) > lowerBound && (!isIdAllowed && !has_deletions)) {
+                break;
+            }
+            candidate_set.pop();
+
+            tableint current_node_id = current_node_pair.second;
+            int *data = (int *) get_linklist0(current_node_id);
+            size_t size = getListCount((linklistsizeint*)data);
+//                bool cur_node_deleted = isMarkedDeleted(current_node_id);
+            if (collect_metrics) {
+                metric_hops++;
+                metric_distance_computations+=size;
+            }
+
+#ifdef USE_SSE
+            _mm_prefetch((char *) (visited_array + *(data + 1)), _MM_HINT_T0);
+            _mm_prefetch((char *) (visited_array + *(data + 1) + 64), _MM_HINT_T0);
+            _mm_prefetch(data_level0_memory_ + (*(data + 1)) * size_data_per_element_ + offsetData_, _MM_HINT_T0);
+            _mm_prefetch((char *) (data + 2), _MM_HINT_T0);
+#endif
+
+            for (size_t j = 1; j <= size; j++) {
+                int candidate_id = *(data + j);
+//                    if (candidate_id == 0) continue;
+#ifdef USE_SSE
+                _mm_prefetch((char *) (visited_array + *(data + j + 1)), _MM_HINT_T0);
+                _mm_prefetch(data_level0_memory_ + (*(data + j + 1)) * size_data_per_element_ + offsetData_,
+                                _MM_HINT_T0);  ////////////
+#endif
+                if (!(visited_array[candidate_id] == visited_array_tag)) {
+                    visited_array[candidate_id] = visited_array_tag;
+
+                    char *currObj1 = (getDataByInternalId(candidate_id));
+                    float dist = fstdistfunc_(data_point, currObj1, dist_func_param_);
+
+                    if (dist < radius || lowerBound > dist) {
+                        candidate_set.emplace(-dist, candidate_id);
+#ifdef USE_SSE
+                        _mm_prefetch(data_level0_memory_ + candidate_set.top().second * size_data_per_element_ +
+                                        offsetLevel0_,  ///////////
+                                        _MM_HINT_T0);  ////////////////////////
+#endif
+
+                        if ((!has_deletions || !isMarkedDeleted(candidate_id)) && ((!isIdAllowed) || (*isIdAllowed)(getExternalLabel(candidate_id))))
+			    if (dist < radius)
+				top_candidates.emplace(dist, candidate_id);
 
                         if (!top_candidates.empty())
                             lowerBound = top_candidates.top().first;
@@ -1488,6 +1575,64 @@ class HierarchicalNSW : public AlgorithmInterface<float> {
             result.push(std::pair<float, labeltype>(rez.first, getExternalLabel(rez.second)));
             top_candidates.pop();
         }
+        return result;
+    }
+
+
+    std::priority_queue<std::pair<float, labeltype >>
+    searchRange(const void *query_data, float radius, BaseFilterFunctor* isIdAllowed = nullptr) const override {
+        std::priority_queue<std::pair<float, labeltype >> result;
+        if (cur_element_count == 0) return result;
+
+        tableint currObj = enterpoint_node_;
+        float curdist = fstdistfunc_(query_data, getDataByInternalId(enterpoint_node_), dist_func_param_);
+
+        for (int level = maxlevel_; level > 0; level--) {
+            bool changed = true;
+            while (changed) {
+                changed = false;
+                unsigned int *data;
+
+                data = (unsigned int *) get_linklist(currObj, level);
+                int size = getListCount(data);
+                metric_hops++;
+                metric_distance_computations+=size;
+
+                tableint *datal = (tableint *) (data + 1);
+                for (int i = 0; i < size; i++) {
+                    tableint cand = datal[i];
+                    if (cand < 0 || cand > max_elements_)
+                        throw std::runtime_error("cand error");
+                    float d = fstdistfunc_(query_data, getDataByInternalId(cand), dist_func_param_);
+
+                    if (d < curdist) {
+                        curdist = d;
+                        currObj = cand;
+                        changed = true;
+                    }
+                }
+            }
+        }
+
+        std::priority_queue<std::pair<float, tableint>, std::vector<std::pair<float, tableint>>, CompareByFirst> top_candidates;
+        if (num_deleted_) {
+	    throw std::runtime_error("not support perform range search on a index that deleted some vectors");
+        } else {
+            top_candidates = searchBaseLayerST<false, true>(
+                    currObj, query_data, radius, isIdAllowed);
+	    // std::cout << "top_candidates.size(): " << top_candidates.size() << std::endl;
+        }
+
+        // while (top_candidates.size() > k) {
+        //     top_candidates.pop();
+        // }
+        while (top_candidates.size() > 0) {
+            std::pair<float, tableint> rez = top_candidates.top();
+            result.push(std::pair<float, labeltype>(rez.first, getExternalLabel(rez.second)));
+            top_candidates.pop();
+        }
+
+	// std::cout << "hnswalg::result.size(): " << result.size() << std::endl;
         return result;
     }
 

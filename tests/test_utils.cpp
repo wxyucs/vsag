@@ -17,7 +17,8 @@ TEST_CASE("l2_and_filtering", "[utils]") {
     }
 
     float* query = new float[dim]{5, 5, 5, 5};
-    std::vector<unsigned char> res = vsag::l2_and_filtering(dim, nb, base, query, 20.0f);
+    auto res = vsag::l2_and_filtering(dim, nb, base, query, 20.0f);
     std::vector<unsigned char> expected{0xf8, 0x00}; // 1111_1000, 0000_0000
-    REQUIRE(res == expected);
+    REQUIRE(res.first == 5);
+    REQUIRE(res.second == expected);
 }

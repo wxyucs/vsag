@@ -1,8 +1,10 @@
 #include <hnswlib/hnswlib.h>
-
 #include <spdlog/spdlog.h>
+
 #include <catch2/catch_test_macros.hpp>
+#include <limits>
 #include <nlohmann/json.hpp>
+#include <numeric>
 #include <random>
 
 #include "vsag/vsag.h"
@@ -73,7 +75,7 @@ TEST_CASE("HNSW Float Recall", "[hnsw]") {
                 correct++;
             }
         } else if (result.error() == vsag::index_error::internal_error) {
-	    std::cerr << "failed to perform knn search on index" << std::endl;
+            std::cerr << "failed to perform knn search on index" << std::endl;
         }
     }
     float recall = correct / max_elements;
@@ -132,7 +134,7 @@ TEST_CASE("Two HNSW", "[hnsw]") {
         int64_t k = 10;
 
         auto result = hnsw->KnnSearch(query, k, parameters.dump());
-	REQUIRE(result.has_value());
+        REQUIRE(result.has_value());
         if (result->GetIds()[0] == i) {
             REQUIRE(!std::isinf(result->GetDistances()[0]));
             correct++;
@@ -197,4 +199,78 @@ TEST_CASE("HNSW build test", "[hnsw build]") {
     }
 
     REQUIRE(hnsw->GetNumElements() == max_elements * 2);
+}
+
+TEST_CASE("HNSW range search", "[hnsw]") {
+    int dim = 71;
+    int max_elements = 10000;
+    int M = 16;
+    int ef_construction = 100;
+    int ef_runtime = 100;
+    // Initing index
+    nlohmann::json hnsw_parameters{
+        {"max_elements", max_elements},
+        {"M", M},
+        {"ef_construction", ef_construction},
+        {"ef_runtime", ef_runtime},
+    };
+    nlohmann::json index_parameters{
+        {"dtype", "float32"}, {"metric_type", "l2"}, {"dim", dim}, {"hnsw", hnsw_parameters}};
+    auto hnsw = vsag::Factory::CreateIndex("hnsw", index_parameters.dump());
+
+    // Generate random data
+    std::random_device rd;
+    std::mt19937 rng(rd());
+    std::uniform_real_distribution<> distrib_real;
+    int64_t* ids = new int64_t[max_elements];
+    float* data = new float[dim * max_elements];
+    for (int64_t i = 0; i < max_elements; i++) {
+        ids[i] = i;
+    }
+    for (int64_t i = 0; i < dim * max_elements; ++i) {
+        data[i] = distrib_real(rng);
+    }
+
+    vsag::Dataset dataset;
+    dataset.SetDim(dim);
+    dataset.SetNumElements(max_elements);
+    dataset.SetIds(ids);
+    dataset.SetFloat32Vectors(data);
+    hnsw->Build(dataset);
+
+    REQUIRE(hnsw->GetNumElements() == max_elements);
+
+    float radius = 12.0f;
+    float* query_data = new float[dim];
+    for (int64_t i = 0; i < dim; ++i) {
+        query_data[i] = distrib_real(rng);
+    }
+    vsag::Dataset query;
+    query.SetDim(dim);
+    query.SetNumElements(1);
+    query.SetFloat32Vectors(query_data);
+    auto result = hnsw->RangeSearch(query, radius, "{}");
+    REQUIRE(result.has_value());
+    REQUIRE(result->GetNumElements() == 1);
+
+    auto expected = vsag::l2_and_filtering(dim, max_elements, data, query_data, radius);
+    if (expected.first != result->GetDim()) {
+        std::cout << "not 100% recall: expect " << expected.first << " return " << result->GetDim() << std::endl;
+    }
+
+    // recall > 99%
+    REQUIRE(expected.first - result->GetDim() < max_elements / 100);
+
+    // check no false recall
+    for (int64_t i = 0; i < result->GetDim(); ++i) {
+        auto offset = result->GetIds()[i];
+        REQUIRE(expected.second[offset / 8] & (1 << offset % 8));
+        expected.second[offset / 8] &= ~(1 << offset % 8);
+    }
+
+    if (expected.first == result->GetDim()) {
+        std::vector<unsigned char> zeros;
+        zeros.resize(expected.second.size());
+        REQUIRE(expected.second == zeros);
+    }
 }

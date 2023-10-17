@@ -9,6 +9,7 @@
 #include <functional>
 #include <memory>
 #include <nlohmann/json.hpp>
+#include <queue>
 #include <sstream>
 #include <stdexcept>
 #include <string>
@@ -114,7 +115,7 @@ HNSW::Add(const Dataset& base) {
 
 tl::expected<Dataset, index_error>
 HNSW::KnnSearch(const Dataset& query, int64_t k, const std::string& parameters) const {
-    SlowTaskTimer t("hnsw search", 10);
+    SlowTaskTimer t("hnsw knnsearch", 10);
     nlohmann::json params = nlohmann::json::parse(parameters);
     if (params.contains("hnsw") and params["hnsw"].contains("ef_runtime")) {
         alg_hnsw->setEf(params["hnsw"]["ef_runtime"]);
@@ -151,6 +152,51 @@ HNSW::KnnSearch(const Dataset& query, int64_t k, const std::string& parameters) 
     result.SetNumElements(num_elements);
     result.SetIds(ids);
     result.SetDistances(dists);
+
+    return std::move(result);
+}
+
+tl::expected<Dataset, index_error>
+HNSW::RangeSearch(const Dataset& query, float radius, const std::string& parameters) const {
+    SlowTaskTimer t("hnsw rangesearch", 10);
+    nlohmann::json params = nlohmann::json::parse(parameters);
+    if (params.contains("hnsw") and params["hnsw"].contains("ef_runtime")) {
+        alg_hnsw->setEf(params["hnsw"]["ef_runtime"]);
+    }
+
+    int64_t num_elements = query.GetNumElements();
+    if (num_elements != 1) {
+        spdlog::error("number of elements is NOT 1 in query database");
+        return tl::unexpected(index_error::internal_error);
+    }
+    int64_t dim = query.GetDim();
+    int64_t index_dim = *((size_t*)alg_hnsw->dist_func_param_);
+    if (dim != index_dim) {
+        spdlog::error("dimension not equal: query(" + std::to_string(dim) + ") index(" +
+                      std::to_string(index_dim) + ")");
+        return tl::unexpected(index_error::dimension_not_equal);
+    }
+    auto vector = query.GetFloat32Vectors();
+
+    std::priority_queue<std::pair<float, size_t>> results;
+    try {
+        results = alg_hnsw->searchRange((const void*)(vector), radius);
+    } catch (std::runtime_error e) {
+        return tl::unexpected(index_error::internal_error);
+    }
+
+    Dataset result;
+    int64_t* ids = new int64_t[results.size()];
+    float* dists = new float[results.size()];
+    result.SetDim(results.size());
+    result.SetNumElements(1);
+    result.SetIds(ids);
+    result.SetDistances(dists);
+    for (int64_t j = results.size() - 1; j >= 0; --j) {
+        dists[+j] = results.top().first;
+        ids[j] = results.top().second;
+        results.pop();
+    }
 
     return std::move(result);
 }

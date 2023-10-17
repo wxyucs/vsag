@@ -27,6 +27,9 @@ public:
     tl::expected<Dataset, index_error>
     KnnSearch(const Dataset& query, int64_t k, const std::string& parameters) const override;
 
+    tl::expected<Dataset, index_error>
+    RangeSearch(const Dataset& query, float radius, const std::string& parameters) const override;
+
 public:
     tl::expected<BinarySet, index_error>
     Serialize() const override;
