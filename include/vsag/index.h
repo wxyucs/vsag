@@ -47,6 +47,20 @@ public:
     virtual tl::expected<Dataset, index_error>
     KnnSearch(const Dataset& query, int64_t k, const std::string& parameters) const = 0;
 
+    /**
+      * Performing batch range search on index
+      *
+      * @param query should contains dim, num_elements, ids and vectors
+      * @param radius of search, determines which results will be returned
+      * @return result contains
+      *                - num_elements: equals to num_elements in query
+      *                - ids, distances: length is (num_elements * k)
+      */
+    virtual tl::expected<Dataset, index_error>
+    RangeSearch(const Dataset& query, float radius, const std::string& parameters) const {
+        throw std::runtime_error("Index not support range search");
+    }
+
 public:
     /**
       * Serialize index to a set of byte array
