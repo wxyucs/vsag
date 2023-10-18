@@ -117,6 +117,38 @@ float_diskann() {
               << "Memory Usage:" << diskann->GetMemoryUsage() / 1024.0 << " KB" << std::endl;
     std::cout << "Stard Recall: " << recall << std::endl;
 
+    correct = 0;
+    for (int i = 0; i < max_elements; i++) {
+        vsag::Dataset query;
+        query.SetNumElements(1);
+        query.SetDim(dim);
+        query.SetFloat32Vectors(data + i * dim);
+        query.SetOwner(false);
+        // {
+        //  "diskann": {
+        //    "ef_search": 200,
+        //    "beam_search": 4,
+        //    "io_limit": 200
+        //  }
+        // }
+        nlohmann::json parameters{
+            {"diskann", {{"ef_search", ef_runtime}, {"beam_search", 4}, {"io_limit", 200}}}};
+        int64_t k = 2;
+        if (auto result = diskann->RangeSearch(query, 1, parameters.dump()); result.has_value()) {
+            if (result->GetNumElements() == 1) {
+                if (result->GetIds()[0] == i) {
+                    correct++;
+                }
+            }
+        } else if (result.error() == vsag::index_error::internal_error) {
+            std::cerr << "failed to perform knn search on index" << std::endl;
+        }
+    }
+    recall = correct / max_elements;
+    std::cout << std::fixed << std::setprecision(3)
+              << "Memory Usage:" << diskann->GetMemoryUsage() / 1024.0 << " KB" << std::endl;
+    std::cout << "Range Query Recall: " << recall << std::endl;
+
     // Serialize(multi-file)
     {
         if (auto bs = diskann->Serialize(); bs.has_value()) {

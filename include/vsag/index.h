@@ -54,6 +54,7 @@ public:
       * @param radius of search, determines which results will be returned
       * @return result contains
       *                - num_elements: equals to num_elements in query
+      *                - dim: the size of results
       *                - ids, distances: length is (num_elements * k)
       */
     virtual tl::expected<Dataset, index_error>

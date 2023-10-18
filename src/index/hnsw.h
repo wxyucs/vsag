@@ -49,7 +49,6 @@ public:
     int64_t
     GetMemoryUsage() const override {
         return alg_hnsw->calcSerializeSize();
-        ;
     }
 
 public:

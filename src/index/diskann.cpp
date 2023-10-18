@@ -143,7 +143,7 @@ DiskANN::KnnSearch(const Dataset& query, int64_t k, const std::string& parameter
     uint64_t labels[query_num * k];
     auto distances = new float[query_num * k];
     auto ids = new int64_t[query_num * k];
-    auto stats = new diskann::QueryStats[query_num];
+
     for (int i = 0; i < query_num; i++) {
         try {
             index->cached_beam_search(query.GetFloat32Vectors() + i * query_dim,
@@ -153,8 +153,7 @@ DiskANN::KnnSearch(const Dataset& query, int64_t k, const std::string& parameter
                                       distances + i * k,
                                       beam_search,
                                       io_limit,
-                                      false,
-                                      stats + i);
+                                      false);
         } catch (std::runtime_error e) {
             spdlog::error(std::string("failed to perform knn search on diskann: ") + e.what());
         }
@@ -167,6 +166,49 @@ DiskANN::KnnSearch(const Dataset& query, int64_t k, const std::string& parameter
     result.SetNumElements(query_num);
     result.SetDim(k);
     result.SetDistances(distances);
+    result.SetIds(ids);
+    return std::move(result);
+}
+
+tl::expected<Dataset, index_error>
+DiskANN::RangeSearch(const Dataset& query, float radius, const std::string& parameters) const {
+    Dataset result;
+    nlohmann::json param = nlohmann::json::parse(parameters);
+    if (!index)
+        return std::move(result);
+    auto query_num = query.GetNumElements();
+    auto query_dim = query.GetDim();
+
+    assert(query_num == 1);
+
+    size_t beam_search = param["diskann"]["beam_search"];
+    size_t io_limit = param["diskann"]["io_limit"];
+    size_t ef_search = param["diskann"]["ef_search"];
+
+    std::vector<uint64_t> labels;
+    std::vector<float> range_distances;
+    try {
+        index->range_search(query.GetFloat32Vectors(),
+                            radius,
+                            ef_search,
+                            ef_search * 2,
+                            labels,
+                            range_distances,
+                            beam_search);
+    } catch (std::runtime_error e) {
+        spdlog::error(std::string("failed to perform knn search on diskann: ") + e.what());
+    }
+    int64_t k = labels.size();
+    auto dis = new float[k];
+    auto ids = new int64_t[k];
+    for (int i = 0; i < k; ++i) {
+        ids[i] = static_cast<int64_t>(labels[i]);
+        dis[i] = range_distances[i];
+    }
+
+    result.SetNumElements(query_num);
+    result.SetDim(k);
+    result.SetDistances(dis);
     result.SetIds(ids);
     return std::move(result);
 }
