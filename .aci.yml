@@ -11,10 +11,26 @@ only:
       - ^master$
 
 parameters:
-  image: reg.docker.alibaba-inc.com/tbase/tbase:dev-20230605
+  image: reg.docker.alibaba-inc.com/tbase/tbase:dev-20230605-clang13
       
 stages:
+  - FORMAT-PRE-CHECK
   - BUILD_UT
+
+format-pre-check:
+  stage: FORMAT-PRE-CHECK
+  aciTags: DOCKER
+  steps:
+    - plugin: clone
+    - plugin: shell
+      inputs:
+        image: ${image}
+        command:
+        - |
+          make format
+          if [[ -n $(git status --porcelain) ]]; then
+              exit 1
+          fi
   
 vsag_build_ut:
   stage: BUILD_UT
