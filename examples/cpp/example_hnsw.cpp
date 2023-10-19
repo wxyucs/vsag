@@ -30,6 +30,7 @@ float_hnsw() {
                                 // strongly affects the memory consumption
     int ef_construction = 200;  // Controls index search speed/build speed tradeoff
     int ef_runtime = 200;
+    float threshold = 8.0;
 
     // Initing index
     // {
@@ -115,6 +116,44 @@ float_hnsw() {
     std::cout << std::fixed << std::setprecision(3)
               << "Memory Uasage:" << hnsw->GetMemoryUsage() / 1024.0 << " KB" << std::endl;
     std::cout << "Recall: " << recall << std::endl;
+
+    correct = 0;
+    float true_result = 0;
+    float return_result = 0;
+    for (int i = 0; i < max_elements; i++) {
+        vsag::Dataset query;
+        query.SetNumElements(1);
+        query.SetDim(dim);
+        query.SetFloat32Vectors(data + i * dim);
+        query.SetOwner(false);
+
+        auto range_result =
+            vsag::l2_and_filtering(dim, max_elements, data, data + i * dim, threshold);
+
+        nlohmann::json parameters{
+            {"hnsw", {"ef_runtime", ef_runtime}},
+        };
+        if (auto result = hnsw->RangeSearch(query, threshold, parameters.dump());
+            result.has_value()) {
+            if (result->GetNumElements() == 1) {
+                if (result->GetIds()[0] == i) {
+                    correct++;
+                }
+                for (int j = 0; j < result->GetDim(); ++j) {
+                    assert(range_result->Get(result->GetIds()[j]));
+                }
+                true_result += range_result->CountOnes();
+                return_result += result->GetDim();
+            }
+        } else if (result.error() == vsag::index_error::internal_error) {
+            std::cerr << "failed to perform knn search on index" << std::endl;
+        }
+    }
+    recall = correct / max_elements;
+    std::cout << std::fixed << std::setprecision(3)
+              << "Memory Usage:" << hnsw->GetMemoryUsage() / 1024.0 << " KB" << std::endl;
+    std::cout << "Range Query Top 1 Recall: " << recall
+              << "    Diff Rate:" << (true_result - return_result) / true_result << std::endl;
 
     // Serialize(multi-file)
     {

@@ -36,7 +36,6 @@ float_diskann() {
     float p_val =
         0.5;  // p_val represents how much original data is selected during the training of pq compressed vectors.
     int chunks_num = 32;  // chunks_num represents the dimensionality of the compressed vector.
-    std::string disk_layout_file = "index.out";
     // Initing index
     // {
     // 	"dim": 256,
