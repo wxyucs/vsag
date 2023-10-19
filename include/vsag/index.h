@@ -6,6 +6,7 @@
 #include <stdexcept>
 
 #include "vsag/binaryset.h"
+#include "vsag/bitmap.h"
 #include "vsag/dataset.h"
 #include "vsag/errors.h"
 #include "vsag/expected.hpp"

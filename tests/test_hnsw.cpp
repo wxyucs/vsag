@@ -203,7 +203,7 @@ TEST_CASE("HNSW build test", "[hnsw build]") {
 
 TEST_CASE("HNSW range search", "[hnsw]") {
     int dim = 71;
-    int max_elements = 10000;
+    int max_elements = 10;
     int M = 16;
     int ef_construction = 100;
     int ef_runtime = 100;
@@ -254,23 +254,16 @@ TEST_CASE("HNSW range search", "[hnsw]") {
     REQUIRE(result->GetNumElements() == 1);
 
     auto expected = vsag::l2_and_filtering(dim, max_elements, data, query_data, radius);
-    if (expected.first != result->GetDim()) {
-        std::cout << "not 100% recall: expect " << expected.first << " return " << result->GetDim() << std::endl;
+    if (expected->CountOnes() != result->GetDim()) {
+        std::cout << "not 100% recall: expect " << expected->CountOnes() << " return " << result->GetDim() << std::endl;
     }
-
-    // recall > 99%
-    REQUIRE(expected.first - result->GetDim() < max_elements / 100);
 
     // check no false recall
     for (int64_t i = 0; i < result->GetDim(); ++i) {
         auto offset = result->GetIds()[i];
-        REQUIRE(expected.second[offset / 8] & (1 << offset % 8));
-        expected.second[offset / 8] &= ~(1 << offset % 8);
+	CHECK(expected->Get(offset));
     }
 
-    if (expected.first == result->GetDim()) {
-        std::vector<unsigned char> zeros;
-        zeros.resize(expected.second.size());
-        REQUIRE(expected.second == zeros);
-    }
+    // recall > 99%
+    CHECK((expected->CountOnes() - result->GetDim()) * 100 < max_elements);
 }

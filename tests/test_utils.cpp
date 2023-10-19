@@ -6,6 +6,8 @@
 
 #include "vsag/vsag.h"
 
+using namespace vsag;
+
 TEST_CASE("l2_and_filtering", "[utils]") {
     int64_t dim = 4;
     int64_t nb = 10;
@@ -17,8 +19,17 @@ TEST_CASE("l2_and_filtering", "[utils]") {
     }
 
     float* query = new float[dim]{5, 5, 5, 5};
-    auto res = vsag::l2_and_filtering(dim, nb, base, query, 20.0f);
-    std::vector<unsigned char> expected{0xf8, 0x00}; // 1111_1000, 0000_0000
-    REQUIRE(res.first == 5);
-    REQUIRE(res.second == expected);
+    auto res = l2_and_filtering(dim, nb, base, query, 20.0f);
+    CHECK(res->Capcity() == 16);
+    CHECK(res->CountOnes() == 5);
+    CHECK_FALSE(res->Get(0));
+    CHECK_FALSE(res->Get(1));
+    CHECK_FALSE(res->Get(2));
+    CHECK(res->Get(3));
+    CHECK(res->Get(4));
+    CHECK(res->Get(5));
+    CHECK(res->Get(6));
+    CHECK(res->Get(7));
+    CHECK_FALSE(res->Get(8));
+    CHECK_FALSE(res->Get(9));
 }
