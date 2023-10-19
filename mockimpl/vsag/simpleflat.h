@@ -20,6 +20,9 @@ public:
     tl::expected<Dataset, index_error>
     KnnSearch(const Dataset& query, int64_t k, const std::string& parameters) const override;
 
+    tl::expected<Dataset, index_error>
+    RangeSearch(const Dataset& query, float radius, const std::string& parameters) const override;
+
 public:
     tl::expected<BinarySet, index_error>
     Serialize() const override;
@@ -47,6 +50,9 @@ private:
 
     std::vector<rs>
     knn_search(const float* query, int64_t k) const;
+
+    std::vector<rs>
+    range_search(const float* query, float radius) const;
 
     static float
     l2(const float* v1, const float* v2, int64_t dim);

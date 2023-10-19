@@ -90,6 +90,34 @@ SimpleFlat::KnnSearch(const Dataset& query, int64_t k, const std::string& parame
     return std::move(results);
 }
 
+tl::expected<Dataset, index_error>
+SimpleFlat::RangeSearch(const Dataset& query, float radius, const std::string& parameters) const {
+    int64_t nq = query.GetNumElements();
+    int64_t dim = query.GetDim();
+    if (this->dim_ != dim) {
+        return tl::unexpected(index_error::dimension_not_equal);
+    }
+
+    if (this->GetNumElements() != 1) {
+        return tl::unexpected(index_error::internal_error);
+    }
+    auto result = knn_search(query.GetFloat32Vectors(), radius);
+
+    int64_t* ids = new int64_t[result.size()];
+    float* dists = new float[result.size()];
+    for (int64_t kk = 0; kk < result.size(); ++kk) {
+        ids[kk] = result[result.size() - 1 - kk].second;
+        dists[kk] = result[result.size() - 1 - kk].first;
+    }
+
+    Dataset results;
+    results.SetNumElements(1);
+    results.SetDim(result.size());
+    results.SetIds(ids);
+    results.SetDistances(dists);
+    return std::move(results);
+}
+
 tl::expected<BinarySet, index_error>
 SimpleFlat::Serialize() const {
     try {
@@ -186,7 +214,6 @@ SimpleFlat::Deserialize(const ReaderSet& reader_set) {
 
     return {};
 }
-
 std::vector<SimpleFlat::rs>
 SimpleFlat::knn_search(const float* query, int64_t k) const {
     std::priority_queue<SimpleFlat::rs> q;
@@ -206,6 +233,35 @@ SimpleFlat::knn_search(const float* query, int64_t k) const {
         q.push(std::make_pair(distance, this->ids_[i]));
         if (q.size() > k) {
             q.pop();
+        }
+    }
+
+    std::vector<SimpleFlat::rs> results;
+    while (not q.empty()) {
+        results.push_back(q.top());
+        q.pop();
+    }
+    return results;
+}
+
+std::vector<SimpleFlat::rs>
+SimpleFlat::range_search(const float* query, float radius) const {
+    std::priority_queue<SimpleFlat::rs> q;
+    for (int64_t i = 0; i < this->num_elements_; ++i) {
+        const float* base = data_.data() + i * this->dim_;
+        float distance = 0.0f;
+        if (this->metric_type_ == "l2") {
+            distance = l2(base, query, this->dim_);
+        } else if (this->metric_type_ == "ip") {
+            distance = ip(base, query, this->dim_);
+        } else if (this->metric_type_ == "cosine") {
+            distance = cosine(base, query, this->dim_);
+        } else {
+            distance = 0;
+        }
+
+        if (distance < radius) {
+            q.push(std::make_pair(distance, this->ids_[i]));
         }
     }
 
