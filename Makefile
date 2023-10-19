@@ -1,10 +1,11 @@
 
 CMAKE_GENERATOR ?= "Unix Makefiles"
 VSAG_CMAKE_ARGS = -DCMAKE_EXPORT_COMPILE_COMMANDS=1 -DENABLE_TESTS=1 -DENABLE_PYBINDS=1 -G ${CMAKE_GENERATOR} -S. -Bbuild
+COMPILE_JOBS ?= 4
 
 debug:
 	cmake ${VSAG_CMAKE_ARGS} -DCMAKE_BUILD_TYPE=Debug
-	cmake --build build --parallel 4
+	cmake --build build --parallel ${COMPILE_JOBS}
 
 release:
 	cmake ${VSAG_CMAKE_ARGS} -DCMAKE_BUILD_TYPE=Release
