@@ -98,10 +98,10 @@ SimpleFlat::RangeSearch(const Dataset& query, float radius, const std::string& p
         return tl::unexpected(index_error::dimension_not_equal);
     }
 
-    if (this->GetNumElements() != 1) {
+    if (nq != 1) {
         return tl::unexpected(index_error::internal_error);
     }
-    auto result = knn_search(query.GetFloat32Vectors(), radius);
+    auto result = range_search(query.GetFloat32Vectors(), radius);
 
     int64_t* ids = new int64_t[result.size()];
     float* dists = new float[result.size()];
@@ -279,7 +279,6 @@ SimpleFlat::l2(const float* v1, const float* v2, int64_t dim) {
     for (int64_t i = 0; i < dim; ++i) {
         dist += std::pow(v1[i] - v2[i], 2);
     }
-    dist = std::sqrt(dist);
     return dist;
 }
 

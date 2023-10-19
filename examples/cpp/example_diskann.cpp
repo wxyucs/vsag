@@ -32,9 +32,10 @@ float_diskann() {
     // strongly affects the memory consumption
     int ef_construction = 200;  // Controls index search speed/build speed tradeoff
     int ef_runtime = 200;
+    float threshold = 8.0;
     float p_val =
         0.5;  // p_val represents how much original data is selected during the training of pq compressed vectors.
-    int chunks_num = 8;  // chunks_num represents the dimensionality of the compressed vector.
+    int chunks_num = 32;  // chunks_num represents the dimensionality of the compressed vector.
     std::string disk_layout_file = "index.out";
     // Initing index
     // {
@@ -118,6 +119,8 @@ float_diskann() {
     std::cout << "Stard Recall: " << recall << std::endl;
 
     correct = 0;
+    float true_result = 0;
+    float return_result = 0;
     for (int i = 0; i < max_elements; i++) {
         vsag::Dataset query;
         query.SetNumElements(1);
@@ -131,14 +134,21 @@ float_diskann() {
         //    "io_limit": 200
         //  }
         // }
+        auto range_result =
+            vsag::l2_and_filtering(dim, max_elements, data, data + i * dim, threshold);
         nlohmann::json parameters{
             {"diskann", {{"ef_search", ef_runtime}, {"beam_search", 4}, {"io_limit", 200}}}};
-        int64_t k = 2;
-        if (auto result = diskann->RangeSearch(query, 1, parameters.dump()); result.has_value()) {
+        if (auto result = diskann->RangeSearch(query, threshold, parameters.dump());
+            result.has_value()) {
             if (result->GetNumElements() == 1) {
                 if (result->GetIds()[0] == i) {
                     correct++;
                 }
+                for (int j = 0; j < result->GetDim(); ++j) {
+                    assert(range_result->Get(result->GetIds()[j]));
+                }
+                true_result += range_result->CountOnes();
+                return_result += result->GetDim();
             }
         } else if (result.error() == vsag::index_error::internal_error) {
             std::cerr << "failed to perform knn search on index" << std::endl;
@@ -147,8 +157,8 @@ float_diskann() {
     recall = correct / max_elements;
     std::cout << std::fixed << std::setprecision(3)
               << "Memory Usage:" << diskann->GetMemoryUsage() / 1024.0 << " KB" << std::endl;
-    std::cout << "Range Query Recall: " << recall << std::endl;
-
+    std::cout << "Range Query Top 1 Recall: " << recall
+              << "    Diff Rate:" << (true_result - return_result) / true_result << std::endl;
     // Serialize(multi-file)
     {
         if (auto bs = diskann->Serialize(); bs.has_value()) {

@@ -228,3 +228,82 @@ TEST_CASE("DiskAnn Float Recall", "[diskann]") {
     std::cout << "RS Recall: " << recall << std::endl;
     REQUIRE(recall > 0.85);
 }
+
+TEST_CASE("DiskAnn Range Query", "[diskann]") {
+    int dim = 256;             // Dimension of the elements
+    int max_elements = 1000;  // Maximum number of elements, should be known beforehand
+    int M = 16;                // Tightly connected with internal dimensionality of the data
+    // strongly affects the memory consumption
+    int ef_construction = 200;  // Controls index search speed/build speed tradeoff
+    int ef_runtime = 200;
+    float p_val =
+        0.5;  // p_val represents how much original data is selected during the training of pq compressed vectors.
+    int chunks_num = 32;  // chunks_num represents the dimensionality of the compressed vector.
+    float threshold = 8.0;
+    std::string disk_layout_file = "index.out";
+    // Initing index
+    nlohmann::json diskann_parameters{
+        {"R", M},
+        {"L", ef_construction},
+        {"p_val", p_val},
+        {"disk_pq_dims", chunks_num},
+    };
+    nlohmann::json index_parameters{
+        {"dtype", "float32"},
+        {"metric_type", "l2"},
+        {"dim", dim},
+        {"diskann", diskann_parameters},
+    };
+    auto diskann = vsag::Factory::CreateIndex("diskann", index_parameters.dump());
+
+    int64_t* ids = new int64_t[max_elements];
+    float* data = new float[dim * max_elements];
+
+    // Generate random data
+    std::mt19937 rng;
+    rng.seed(47);
+    std::uniform_real_distribution<> distrib_real;
+    for (int i = 0; i < max_elements; i++) ids[i] = i;
+    for (int i = 0; i < dim * max_elements; i++) data[i] = distrib_real(rng);
+
+    // Build index
+    vsag::Dataset dataset;
+    dataset.SetDim(dim);
+    dataset.SetNumElements(max_elements);
+    dataset.SetIds(ids);
+    dataset.SetFloat32Vectors(data);
+    diskann->Build(dataset);
+
+    float correct = 0;
+    float true_result = 0;
+    float return_result = 0;
+    for (int i = 0; i < max_elements; i++) {
+        vsag::Dataset query;
+        query.SetNumElements(1);
+        query.SetDim(dim);
+        query.SetFloat32Vectors(data + i * dim);
+        query.SetOwner(false);
+        nlohmann::json parameters{
+            {"diskann", {{"ef_search", ef_runtime}, {"beam_search", 4}, {"io_limit", 200}}}};
+        auto range_result = vsag::l2_and_filtering(dim, max_elements, data, data + i * dim, threshold);
+        if (auto result = diskann->RangeSearch(query, threshold, parameters.dump()); result.has_value()) {
+            if (result->GetIds()[0] == i) {
+                correct++;
+            }
+            for (int j = 0; j < result->GetDim(); ++j) {
+                REQUIRE(range_result->Get(result->GetIds()[j]));
+            }
+            true_result += range_result->CountOnes();
+            return_result += result->GetDim();
+        } else if (result.error() == vsag::index_error::internal_error) {
+            std::cerr << "failed to search on index: internal error" << std::endl;
+            exit(-1);
+        }
+    }
+    float recall = correct / max_elements;
+    std::cout << "Stard Recall: " << recall << std::endl;
+
+    REQUIRE(recall >= 0.99);
+
+    REQUIRE((true_result - return_result) / true_result < 0.01);
+}

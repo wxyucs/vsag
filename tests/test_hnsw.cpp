@@ -203,7 +203,7 @@ TEST_CASE("HNSW build test", "[hnsw build]") {
 
 TEST_CASE("HNSW range search", "[hnsw]") {
     int dim = 71;
-    int max_elements = 10;
+    int max_elements = 10000;
     int M = 16;
     int ef_construction = 100;
     int ef_runtime = 100;
