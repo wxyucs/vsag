@@ -21,4 +21,14 @@ SlowTaskTimer::~SlowTaskTimer() {
     }
 }
 
+Timer::Timer(double& ref) : ref_(ref) {
+    start = std::chrono::steady_clock::now();
+}
+
+Timer::~Timer() {
+    auto finish = std::chrono::steady_clock::now();
+    std::chrono::duration<double, std::milli> duration = finish - start;
+    ref_ = duration.count();
+}
+
 }  // namespace vsag

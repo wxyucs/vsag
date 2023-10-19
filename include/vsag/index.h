@@ -90,7 +90,7 @@ public:
 
 public:
     /**
-      * Return the number of elements in the index.
+      * Return the number of elements in the index
       *
       * @return number of elements in the index.
       */
@@ -98,12 +98,22 @@ public:
     GetNumElements() const = 0;
 
     /**
-      * Return the memory occupied by the index.
+      * Return the memory occupied by the index
       *
       * @return number of bytes occupied by the index.
       */
     virtual int64_t
     GetMemoryUsage() const = 0;
+
+    /**
+      * Get the statstics from index
+      *
+      * @return a json string contains runtime statstics of the index.
+      */
+    virtual std::string
+    GetStats() const {
+        throw std::runtime_error("Index not support range search");
+    }
 };
 
 }  // namespace vsag

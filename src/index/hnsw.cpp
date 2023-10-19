@@ -8,6 +8,7 @@
 #include <fstream>
 #include <functional>
 #include <memory>
+#include <mutex>
 #include <nlohmann/json.hpp>
 #include <queue>
 #include <sstream>
@@ -137,12 +138,23 @@ HNSW::KnnSearch(const Dataset& query, int64_t k, const std::string& parameters) 
     float* dists = new float[num_elements * k];
     for (int64_t i = 0; i < num_elements; ++i) {
         try {
-            std::priority_queue<std::pair<float, size_t>> results =
-                alg_hnsw->searchKnn((const void*)(vectors + i * dim), k);
+            std::priority_queue<std::pair<float, size_t>> results;
+            double time_cost;
+            {
+                Timer t(time_cost);
+                results = alg_hnsw->searchKnn((const void*)(vectors + i * dim), k);
+            }
             for (int64_t j = k - 1; j >= 0; --j) {
                 dists[i * k + j] = results.top().first;
                 ids[i * k + j] = results.top().second;
                 results.pop();
+            }
+
+            // stats
+            {
+                std::lock_guard<std::mutex> lock(stats_mutex_);
+                ++knn_search_num_queries_;
+                knn_search_total_cost_ms_ += time_cost;
             }
         } catch (std::runtime_error e) {
             return tl::unexpected(index_error::internal_error);
@@ -260,6 +272,17 @@ HNSW::Deserialize(const ReaderSet& reader_set) {
 void
 HNSW::SetEfRuntime(int64_t ef_runtime) {
     alg_hnsw->setEf(ef_runtime);
+}
+
+std::string
+HNSW::GetStats() const {
+    nlohmann::json j;
+    {
+        std::lock_guard<std::mutex> lock(stats_mutex_);
+        j["knn_search_avg_cost_ms"] = knn_search_total_cost_ms_ / knn_search_num_queries_;
+    }
+
+    return j.dump();
 }
 
 }  // namespace vsag

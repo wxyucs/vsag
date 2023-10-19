@@ -17,4 +17,12 @@ struct SlowTaskTimer {
     std::chrono::steady_clock::time_point start;
 };
 
+struct Timer {
+    Timer(double& ref);
+    ~Timer();
+
+    double& ref_;
+    std::chrono::steady_clock::time_point start;
+};
+
 }  // namespace vsag

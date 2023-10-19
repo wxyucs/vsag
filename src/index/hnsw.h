@@ -4,6 +4,7 @@
 
 #include <cstdint>
 #include <memory>
+#include <mutex>
 #include <queue>
 #include <vector>
 
@@ -51,6 +52,9 @@ public:
         return alg_hnsw->calcSerializeSize();
     }
 
+    std::string
+    GetStats() const override;
+
 public:
     void
     SetEfRuntime(int64_t ef_runtime);
@@ -58,6 +62,10 @@ public:
 private:
     std::shared_ptr<hnswlib::HierarchicalNSW> alg_hnsw;
     std::shared_ptr<hnswlib::SpaceInterface> space;
+
+    mutable std::mutex stats_mutex_;
+    mutable int64_t knn_search_num_queries_ = 0;
+    mutable double knn_search_total_cost_ms_ = 0.0f;
 };
 
 }  // namespace vsag

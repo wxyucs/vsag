@@ -429,6 +429,7 @@ float_hnsw() {
     std::cout << std::fixed << std::setprecision(3)
               << "Memory Uasage:" << hnsw->GetMemoryUsage() / 1024.0 << " KB" << std::endl;
     std::cout << "Recall: " << recall << std::endl;
+    std::cout << "statstics: " << hnsw->GetStats() << std::endl;
 }
 
 int
