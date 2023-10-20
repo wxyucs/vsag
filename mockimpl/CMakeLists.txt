@@ -9,3 +9,12 @@ target_link_libraries (example_hnsw_mockimpl vsag_mockimpl)
 
 install(TARGETS vsag_mockimpl
 	LIBRARY DESTINATION "${CMAKE_INSTALL_LIBDIR}")
+
+find_package (Git)
+add_custom_target (version_mockimpl
+  ${CMAKE_COMMAND} -D SRC=${CMAKE_SOURCE_DIR}/mockimpl/vsag/version.h.in
+                   -D DST=${CMAKE_SOURCE_DIR}/mockimpl/vsag/version.h
+                   -D GIT_EXECUTABLE=${GIT_EXECUTABLE}
+                   -P ${CMAKE_SOURCE_DIR}/cmake/GenerateVersionHeader.cmake
+  )
+add_dependencies (vsag_mockimpl version_mockimpl)

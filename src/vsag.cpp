@@ -1,3 +1,12 @@
 #include "vsag/vsag.h"
 
-namespace vsag {}  // namespace vsag
+#include "version.h"
+
+namespace vsag {
+
+std::string
+version() {
+    return VSAG_VERSION;
+}
+
+}  // namespace vsag

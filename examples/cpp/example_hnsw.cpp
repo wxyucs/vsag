@@ -434,6 +434,8 @@ float_hnsw() {
 
 int
 main() {
+    std::cout << "version: " << vsag::version() << std::endl;
     float_hnsw();
+    std::cout << "version: " << vsag::version() << std::endl;
     return 0;
 }

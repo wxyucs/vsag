@@ -1,13 +1,14 @@
 //
 // Created by root on 10/9/23.
 //
-#include "vsag/factory.h"
-
 #include <fstream>
 #include <mutex>
 #include <nlohmann/json.hpp>
 
 #include "simpleflat.h"
+#include "version.h"
+#include "vsag/vsag.h"
+
 namespace vsag {
 
 std::shared_ptr<Index>
@@ -87,6 +88,11 @@ l2_and_filtering(int64_t dim, int64_t nb, const float* base, const float* query,
     }
 
     return bp;
+}
+
+std::string
+version() {
+    return VSAG_VERSION;
 }
 
 }  // namespace vsag

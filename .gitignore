@@ -54,3 +54,5 @@ third-party/build/
 third-party/downloads/
 third-party/install/
 dist/
+/src/version.h
+/mockimpl/vsag/version.h

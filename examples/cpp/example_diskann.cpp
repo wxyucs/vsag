@@ -417,7 +417,9 @@ float_diskann() {
 
 int
 main() {
+    std::cout << "version: " << vsag::version() << std::endl;
     float_diskann();
+    std::cout << "version: " << vsag::version() << std::endl;
     //
     //    uint32_t a, b;
     //    uint64_t c, d;

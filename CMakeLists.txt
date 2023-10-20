@@ -87,3 +87,12 @@ install(DIRECTORY include/
 	DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}")
 install(TARGETS vsag
 	LIBRARY DESTINATION "${CMAKE_INSTALL_LIBDIR}")
+
+find_package (Git)
+add_custom_target (version
+  ${CMAKE_COMMAND} -D SRC=${CMAKE_SOURCE_DIR}/src/version.h.in
+                   -D DST=${CMAKE_SOURCE_DIR}/src/version.h
+                   -D GIT_EXECUTABLE=${GIT_EXECUTABLE}
+                   -P ${CMAKE_SOURCE_DIR}/cmake/GenerateVersionHeader.cmake
+  )
+add_dependencies (vsag version)
