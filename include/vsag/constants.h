@@ -14,5 +14,7 @@ constexpr const char* DISKANN_COMPRESSED_VECTOR = "diskann_compressed_vector";
 constexpr const char* DISKANN_LAYOUT_FILE = "diskann_layout_file";
 constexpr const char* SIMPLEFLAT_VECTORS = "simpleflat_vectors";
 constexpr const char* SIMPLEFLAT_IDS = "simpleflat_ids";
+constexpr const char* METRIC_L2 = "l2";
+constexpr const char* METRIC_IP = "ip";
 
 }  // namespace vsag

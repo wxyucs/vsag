@@ -28,10 +28,12 @@ Factory::CreateIndex(const std::string& name, const std::string& parameters) {
             throw std::runtime_error("hnsw not found in parameters");
         }
         std::shared_ptr<hnswlib::SpaceInterface> space = nullptr;
-        if (params["metric_type"] == "l2") {
+        if (params["metric_type"] == METRIC_L2) {
             space = std::make_shared<hnswlib::L2Space>(params["dim"]);
-        } else {
+        } else if (params["metric_type"] == METRIC_IP) {
             space = std::make_shared<hnswlib::InnerProductSpace>(params["dim"]);
+        } else {
+            throw std::runtime_error("hnsw not support this metric");
         }
         auto index = std::make_shared<HNSW>(space,
                                             params["hnsw"]["max_elements"],
@@ -45,10 +47,17 @@ Factory::CreateIndex(const std::string& name, const std::string& parameters) {
         if (not params.contains("diskann")) {
             throw std::runtime_error("diskann not found in parameters");
         }
-        std::string dtype = "float32";
-        std::cout << params.dump() << std::endl;
-        auto index = std::make_shared<DiskANN>(diskann::Metric::L2,
-                                               dtype,
+        diskann::Metric metric;
+        if (params["metric_type"] == METRIC_L2) {
+            metric = diskann::Metric::L2;
+        } else if (params["metric_type"] == METRIC_IP) {
+            metric = diskann::Metric::INNER_PRODUCT;
+        } else {
+            throw std::runtime_error("diskann not support this metric");
+        }
+
+        auto index = std::make_shared<DiskANN>(metric,
+                                               params["dtype"],
                                                params["diskann"]["L"],
                                                params["diskann"]["R"],
                                                params["diskann"]["p_val"],
