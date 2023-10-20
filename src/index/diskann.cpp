@@ -83,23 +83,6 @@ DiskANN::DiskANN(
         //                std::get<0>(requests[i]), std::get<1>(requests[i]), std::get<2>(requests[i]));
         //        }
     };
-
-    // initialize statistical information.
-    knn_search_io_count_ = new int[watch_window_size_];
-    range_search_io_count_ = new int[watch_window_size_];
-    knn_search_total_cost_ms_ = new float[watch_window_size_];
-    range_search_total_cost_ms_ = new float[watch_window_size_];
-    knn_search_hop_count_ = new int[watch_window_size_];
-    range_search_hop_count_ = new int[watch_window_size_];
-}
-
-DiskANN::~DiskANN() {
-    delete[] knn_search_io_count_;
-    delete[] range_search_io_count_;
-    delete[] knn_search_total_cost_ms_;
-    delete[] range_search_total_cost_ms_;
-    delete[] knn_search_hop_count_;
-    delete[] range_search_hop_count_;
 }
 
 tl::expected<int64_t, index_error>
@@ -181,10 +164,21 @@ DiskANN::KnnSearch(const Dataset& query, int64_t k, const std::string& parameter
             }
             {
                 std::lock_guard<std::mutex> lock(stats_mutex_);
-                knn_search_io_count_[knn_search_num_ % watch_window_size_] = query_stats[i].n_ios;
-                knn_search_hop_count_[knn_search_num_ % watch_window_size_] = query_stats[i].n_hops;
-                knn_search_total_cost_ms_[knn_search_num_ % watch_window_size_] = time_cost;
-                knn_search_num_++;
+
+                knn_search_io_count_.push(query_stats[i].n_ios);
+                if (knn_search_io_count_.size() > watch_window_size_) {
+                    knn_search_io_count_.pop();
+                }
+
+                knn_search_hop_count_.push(query_stats[i].n_hops);
+                if (knn_search_hop_count_.size() > watch_window_size_) {
+                    knn_search_hop_count_.pop();
+                }
+
+                knn_search_total_cost_ms_.push(time_cost);
+                if (knn_search_total_cost_ms_.size() > watch_window_size_) {
+                    knn_search_total_cost_ms_.pop();
+                }
             }
 
         } catch (std::runtime_error e) {
@@ -234,10 +228,21 @@ DiskANN::RangeSearch(const Dataset& query, float radius, const std::string& para
         }
         {
             std::lock_guard<std::mutex> lock(stats_mutex_);
-            range_search_io_count_[range_search_num_ % watch_window_size_] = query_stats.n_ios;
-            range_search_hop_count_[range_search_num_ % watch_window_size_] = query_stats.n_hops;
-            range_search_total_cost_ms_[range_search_num_ % watch_window_size_] = time_cost;
-            range_search_num_++;
+
+            range_search_io_count_.push(query_stats.n_ios);
+            if (range_search_io_count_.size() > watch_window_size_) {
+                range_search_io_count_.pop();
+            }
+
+            range_search_hop_count_.push(query_stats.n_hops);
+            if (range_search_hop_count_.size() > watch_window_size_) {
+                range_search_hop_count_.pop();
+            }
+
+            range_search_total_cost_ms_.push(time_cost);
+            if (range_search_total_cost_ms_.size() > watch_window_size_) {
+                range_search_total_cost_ms_.pop();
+            }
         }
     } catch (std::runtime_error e) {
         spdlog::error(std::string("failed to perform knn search on diskann: ") + e.what());
@@ -368,14 +373,30 @@ DiskANN::GetStats() const {
 
     {
         std::lock_guard<std::mutex> lock(stats_mutex_);
+
         double knn_search_time = 0;
         double knn_search_io = 0;
         double knn_search_hop = 0;
-        int64_t knn_count_size = std::min(watch_window_size_, knn_search_num_);
-        for (int i = 0; i < std::min(watch_window_size_, knn_search_num_); ++i) {
-            knn_search_time += knn_search_total_cost_ms_[i];
-            knn_search_io += knn_search_io_count_[i];
-            knn_search_hop += knn_search_hop_count_[i];
+
+        auto tmp_knn_time = knn_search_total_cost_ms_;
+        auto tmp_knn_io = knn_search_io_count_;
+        auto tmp_knn_hop = knn_search_hop_count_;
+
+        int64_t knn_count_size = 0;
+        while (!tmp_knn_time.empty()) {
+            knn_count_size++;
+            knn_search_time += tmp_knn_time.front();
+            tmp_knn_time.pop();
+        }
+
+        while (!tmp_knn_io.empty()) {
+            knn_search_io += tmp_knn_io.front();
+            tmp_knn_io.pop();
+        }
+
+        while (!tmp_knn_hop.empty()) {
+            knn_search_hop += tmp_knn_hop.front();
+            tmp_knn_hop.pop();
         }
 
         j["knn_time"] = knn_search_time / knn_count_size;
@@ -385,15 +406,32 @@ DiskANN::GetStats() const {
         double range_search_time = 0;
         double range_search_io = 0;
         double range_search_hop = 0;
-        int64_t range_count_size = std::min(watch_window_size_, range_search_num_);
-        for (int i = 0; i < std::min(watch_window_size_, range_search_num_); ++i) {
-            range_search_time += range_search_total_cost_ms_[i];
-            range_search_io += range_search_io_count_[i];
-            range_search_hop += range_search_hop_count_[i];
+
+        auto tmp_range_time = range_search_total_cost_ms_;
+        auto tmp_range_io = range_search_io_count_;
+        auto tmp_range_hop = range_search_hop_count_;
+
+        int64_t range_count_size = 0;
+        while (!tmp_range_time.empty()) {
+            range_count_size++;
+            range_search_time += tmp_range_time.front();
+            tmp_range_time.pop();
         }
+
+        while (!tmp_range_io.empty()) {
+            range_search_io += tmp_range_io.front();
+            tmp_range_io.pop();
+        }
+
+        while (!tmp_range_hop.empty()) {
+            range_search_hop += tmp_range_hop.front();
+            tmp_range_hop.pop();
+        }
+
         j["range_time"] = range_search_time / range_count_size;
         j["range_io"] = range_search_io / range_count_size;
         j["range_hop"] = range_search_hop / range_count_size;
+        j["data_num"] = GetNumElements();
     }
 
     return j.dump();

@@ -280,6 +280,8 @@ HNSW::GetStats() const {
     {
         std::lock_guard<std::mutex> lock(stats_mutex_);
         j["knn_search_avg_cost_ms"] = knn_search_total_cost_ms_ / knn_search_num_queries_;
+
+        j["data_num"] = GetNumElements();
     }
 
     return j.dump();
