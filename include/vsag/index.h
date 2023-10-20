@@ -39,7 +39,7 @@ public:
     /**
       * Performing batch KNN search on index
       * 
-      * @param query should contains dim, num_elements, ids and vectors
+      * @param query should contains dim, num_elements and vectors
       * @param k the result size of every query
       * @return result contains 
       *                - num_elements: equals to num_elements in query
@@ -49,14 +49,14 @@ public:
     KnnSearch(const Dataset& query, int64_t k, const std::string& parameters) const = 0;
 
     /**
-      * Performing batch range search on index
+      * Performing single range search on index
       *
-      * @param query should contains dim, num_elements, ids and vectors
+      * @param query should contains dim, num_elements and vectors
       * @param radius of search, determines which results will be returned
       * @return result contains
-      *                - num_elements: equals to num_elements in query
+      *                - num_elements: 1
       *                - dim: the size of results
-      *                - ids, distances: length is (num_elements * k)
+      *                - ids, distances: length is dim
       */
     virtual tl::expected<Dataset, index_error>
     RangeSearch(const Dataset& query, float radius, const std::string& parameters) const {
