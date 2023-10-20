@@ -36,7 +36,7 @@ public:
             float p_val,
             size_t disk_pq_dims);
 
-    ~DiskANN() = default;
+    ~DiskANN();
 
     tl::expected<int64_t, index_error>
     Build(const Dataset& base) override;
@@ -74,6 +74,9 @@ public:
         return 0;
     }
 
+    std::string
+    GetStats() const override;
+
 private:
     std::shared_ptr<AlignedFileReader> reader;
     std::shared_ptr<diskann::PQFlashIndex<float>> index;
@@ -90,6 +93,20 @@ private:
     float p_val_ = 0.5;
     size_t disk_pq_dims_ = 8;
     IndexStatus status;
+
+private:  // Request Statistics
+    int64_t watch_window_size_ = 20;
+    mutable std::mutex stats_mutex_;
+
+    mutable int64_t knn_search_num_ = 0;
+    float* knn_search_total_cost_ms_;
+    int* knn_search_io_count_;
+    int* knn_search_hop_count_;
+
+    mutable int64_t range_search_num_ = 0;
+    float* range_search_total_cost_ms_;
+    int* range_search_io_count_;
+    int* range_search_hop_count_;
 };
 
 }  // namespace vsag

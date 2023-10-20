@@ -158,6 +158,11 @@ float_diskann() {
               << "Memory Usage:" << diskann->GetMemoryUsage() / 1024.0 << " KB" << std::endl;
     std::cout << "Range Query Top 1 Recall: " << recall
               << "    Diff Rate:" << (true_result - return_result) / true_result << std::endl;
+
+    std::cout << "============================================" << std::endl;
+    std::cout << "Query Statistical Information:" << diskann->GetStats() << std::endl;
+    std::cout << "============================================" << std::endl;
+
     // Serialize(multi-file)
     {
         if (auto bs = diskann->Serialize(); bs.has_value()) {

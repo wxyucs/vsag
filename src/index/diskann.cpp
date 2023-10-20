@@ -22,6 +22,8 @@
 
 namespace vsag {
 
+const static int64_t WATCH_WINDOW_SIZE = 20;
+
 class LocalMemoryReader : public Reader {
 public:
     LocalMemoryReader(std::stringstream& file) {
@@ -59,6 +61,7 @@ DiskANN::DiskANN(
       data_type_(data_type),
       disk_pq_dims_(disk_pq_dims) {
     status = IndexStatus::EMPTY;
+    watch_window_size_ = WATCH_WINDOW_SIZE;
     batch_read = [&](const std::vector<read_request>& requests) -> void {
         std::vector<std::future<void>> futures;
         for (int i = 0; i < requests.size(); ++i) {
@@ -80,6 +83,23 @@ DiskANN::DiskANN(
         //                std::get<0>(requests[i]), std::get<1>(requests[i]), std::get<2>(requests[i]));
         //        }
     };
+
+    // initialize statistical information.
+    knn_search_io_count_ = new int[watch_window_size_];
+    range_search_io_count_ = new int[watch_window_size_];
+    knn_search_total_cost_ms_ = new float[watch_window_size_];
+    range_search_total_cost_ms_ = new float[watch_window_size_];
+    knn_search_hop_count_ = new int[watch_window_size_];
+    range_search_hop_count_ = new int[watch_window_size_];
+}
+
+DiskANN::~DiskANN() {
+    delete[] knn_search_io_count_;
+    delete[] range_search_io_count_;
+    delete[] knn_search_total_cost_ms_;
+    delete[] range_search_total_cost_ms_;
+    delete[] knn_search_hop_count_;
+    delete[] range_search_hop_count_;
 }
 
 tl::expected<int64_t, index_error>
@@ -143,17 +163,30 @@ DiskANN::KnnSearch(const Dataset& query, int64_t k, const std::string& parameter
     uint64_t labels[query_num * k];
     auto distances = new float[query_num * k];
     auto ids = new int64_t[query_num * k];
-
+    diskann::QueryStats query_stats[query_num];
     for (int i = 0; i < query_num; i++) {
         try {
-            index->cached_beam_search(query.GetFloat32Vectors() + i * query_dim,
-                                      k,
-                                      ef_search,
-                                      labels + i * k,
-                                      distances + i * k,
-                                      beam_search,
-                                      io_limit,
-                                      false);
+            double time_cost = 0;
+            {
+                Timer timer(time_cost);
+                index->cached_beam_search(query.GetFloat32Vectors() + i * query_dim,
+                                          k,
+                                          ef_search,
+                                          labels + i * k,
+                                          distances + i * k,
+                                          beam_search,
+                                          io_limit,
+                                          false,
+                                          query_stats + i);
+            }
+            {
+                std::lock_guard<std::mutex> lock(stats_mutex_);
+                knn_search_io_count_[knn_search_num_ % watch_window_size_] = query_stats[i].n_ios;
+                knn_search_hop_count_[knn_search_num_ % watch_window_size_] = query_stats[i].n_hops;
+                knn_search_total_cost_ms_[knn_search_num_ % watch_window_size_] = time_cost;
+                knn_search_num_++;
+            }
+
         } catch (std::runtime_error e) {
             spdlog::error(std::string("failed to perform knn search on diskann: ") + e.what());
         }
@@ -177,24 +210,35 @@ DiskANN::RangeSearch(const Dataset& query, float radius, const std::string& para
     if (!index)
         return std::move(result);
     auto query_num = query.GetNumElements();
-    auto query_dim = query.GetDim();
 
     assert(query_num == 1);
 
     size_t beam_search = param["diskann"]["beam_search"];
-    size_t io_limit = param["diskann"]["io_limit"];
     size_t ef_search = param["diskann"]["ef_search"];
 
     std::vector<uint64_t> labels;
     std::vector<float> range_distances;
+    diskann::QueryStats query_stats;
     try {
-        index->range_search(query.GetFloat32Vectors(),
-                            radius,
-                            ef_search,
-                            ef_search * 2,
-                            labels,
-                            range_distances,
-                            beam_search);
+        double time_cost = 0;
+        {
+            Timer timer(time_cost);
+            index->range_search(query.GetFloat32Vectors(),
+                                radius,
+                                ef_search,
+                                ef_search * 2,
+                                labels,
+                                range_distances,
+                                beam_search,
+                                &query_stats);
+        }
+        {
+            std::lock_guard<std::mutex> lock(stats_mutex_);
+            range_search_io_count_[range_search_num_ % watch_window_size_] = query_stats.n_ios;
+            range_search_hop_count_[range_search_num_ % watch_window_size_] = query_stats.n_hops;
+            range_search_total_cost_ms_[range_search_num_ % watch_window_size_] = time_cost;
+            range_search_num_++;
+        }
     } catch (std::runtime_error e) {
         spdlog::error(std::string("failed to perform knn search on diskann: ") + e.what());
     }
@@ -316,6 +360,43 @@ DiskANN::Deserialize(const ReaderSet& reader_set) {
     status = IndexStatus::HYBRID;
 
     return {};
+}
+
+std::string
+DiskANN::GetStats() const {
+    nlohmann::json j;
+
+    {
+        std::lock_guard<std::mutex> lock(stats_mutex_);
+        double knn_search_time = 0;
+        double knn_search_io = 0;
+        double knn_search_hop = 0;
+        int64_t knn_count_size = std::min(watch_window_size_, knn_search_num_);
+        for (int i = 0; i < std::min(watch_window_size_, knn_search_num_); ++i) {
+            knn_search_time += knn_search_total_cost_ms_[i];
+            knn_search_io += knn_search_io_count_[i];
+            knn_search_hop += knn_search_hop_count_[i];
+        }
+
+        j["knn_time"] = knn_search_time / knn_count_size;
+        j["knn_io"] = knn_search_io / knn_count_size;
+        j["knn_hop"] = knn_search_hop / knn_count_size;
+
+        double range_search_time = 0;
+        double range_search_io = 0;
+        double range_search_hop = 0;
+        int64_t range_count_size = std::min(watch_window_size_, range_search_num_);
+        for (int i = 0; i < std::min(watch_window_size_, range_search_num_); ++i) {
+            range_search_time += range_search_total_cost_ms_[i];
+            range_search_io += range_search_io_count_[i];
+            range_search_hop += range_search_hop_count_[i];
+        }
+        j["range_time"] = range_search_time / range_count_size;
+        j["range_io"] = range_search_io / range_count_size;
+        j["range_hop"] = range_search_hop / range_count_size;
+    }
+
+    return j.dump();
 }
 
 }  // namespace vsag

@@ -292,4 +292,12 @@ SimpleFlat::cosine(const float* v1, const float* v2, int64_t dim) {
     return 0;
 }
 
+std::string
+SimpleFlat::GetStats() const {
+    nlohmann::json j;
+    j["num_elements"] = num_elements_;
+    j["dim"] = dim_;
+    return j.dump();
+}
+
 }  // namespace vsag

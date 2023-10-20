@@ -45,6 +45,9 @@ public:
         return num_elements_;
     }
 
+    std::string
+    GetStats() const override;
+
 private:
     using rs = std::pair<float, int64_t>;
 
