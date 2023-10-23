@@ -44,7 +44,7 @@ public:
     }
 
     py::object
-    searchTopK(py::array_t<float> point, size_t k, std::string& search_parameters) {
+    KnnSearch(py::array_t<float> point, size_t k, std::string& search_parameters) {
         vsag::Dataset query;
         size_t data_num = 1;
         query.SetNumElements(data_num);
@@ -68,6 +68,35 @@ public:
         return py::make_tuple(labels, dists);
     }
 
+    py::object
+    RangeSearch(py::array_t<float> point, float threshold, std::string& search_parameters) {
+        vsag::Dataset query;
+        size_t data_num = 1;
+        query.SetNumElements(data_num);
+        query.SetDim(point.size());
+        query.SetFloat32Vectors(point.mutable_data());
+        query.SetOwner(false);
+
+        py::array_t<int64_t> labels;
+        py::array_t<float> dists;
+        if (auto result = index->RangeSearch(query, threshold, search_parameters);
+            result.has_value()) {
+            auto ids = result->GetIds();
+            auto distances = result->GetDistances();
+            auto k = result->GetDim();
+            labels.resize({k});
+            dists.resize({k});
+            auto labels_data = labels.mutable_data();
+            auto dists_data = dists.mutable_data();
+            for (int i = 0; i < data_num * k; ++i) {
+                labels_data[i] = ids[i];
+                dists_data[i] = distances[i];
+            }
+        }
+
+        return py::make_tuple(labels, dists);
+    }
+
 private:
     std::shared_ptr<vsag::Index> index;
 };
@@ -79,10 +108,15 @@ PYBIND11_MODULE(pyvsag, m) {
         .def(py::init<std::string, std::string&>(),
              py::arg("index_name"),
              py::arg("index_parameters"))
-        .def("searchTopK",
-             &Index::searchTopK,
+        .def("KnnSearch",
+             &Index::KnnSearch,
              py::arg("point"),
              py::arg("k"),
+             py::arg("search_parameters"))
+        .def("RangeSearch",
+             &Index::RangeSearch,
+             py::arg("point"),
+             py::arg("threshold"),
              py::arg("search_parameters"))
         .def("build",
              &Index::build,

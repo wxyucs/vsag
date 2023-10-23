@@ -17,13 +17,17 @@ def measure_all(dataset, X_train, vector_count, ef_construction, M, ef_values, n
     hnsw = pyvsag.Index("hnsw", json.dumps({
         "dtype": "float32",
         "metric_type": "l2",
-        "max_elements": vector_count, 
         "dim": X_train.shape[1],
-        "M": M,
-        "ef_construction": ef_construction
+        "hnsw": {
+            "M": M,
+            "ef_construction": ef_construction,
+            "ef_runtime": ef_values[0],
+            "max_elements": vector_count
+        }
     }))
     print(X_train.shape)
-    hnsw.build(X_train.flatten(), vector_count, X_train.shape[1])
+
+    hnsw.build(X_train.flatten(), np.arrange(vector_count), vector_count, X_train.shape[1])
 
 
     for ef_runtime in ef_values:

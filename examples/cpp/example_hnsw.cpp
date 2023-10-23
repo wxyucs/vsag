@@ -24,10 +24,10 @@ readBinaryPOD(std::istream& in, T& podRef) {
 
 void
 float_hnsw() {
-    int dim = 16;               // Dimension of the elements
-    int max_elements = 1000;    // Maximum number of elements, should be known beforehand
-    int M = 16;                 // Tightly connected with internal dimensionality of the data
-                                // strongly affects the memory consumption
+    int dim = 16;             // Dimension of the elements
+    int max_elements = 1000;  // Maximum number of elements, should be known beforehand
+    int M = 16;               // Tightly connected with internal dimensionality of the data
+    // strongly affects the memory consumption
     int ef_construction = 200;  // Controls index search speed/build speed tradeoff
     int ef_runtime = 200;
     float threshold = 8.0;
