@@ -14,10 +14,10 @@ namespace vsag {
 std::shared_ptr<Index>
 Factory::CreateIndex(const std::string& name, const std::string& parameters) {
     nlohmann::json params = nlohmann::json::parse(parameters);
-    if (not params.contains("metric_type")) {
+    if (not params.contains("metric_type") and not params.contains("dim")) {
         return nullptr;
     }
-    return std::make_shared<SimpleFlat>(params["metric_type"]);
+    return std::make_shared<SimpleFlat>(params["metric_type"], params["dim"]);
 }
 
 class LocalFileReader : public Reader {

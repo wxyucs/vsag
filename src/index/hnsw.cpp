@@ -2,26 +2,15 @@
 #include "hnsw.h"
 
 #include <hnswlib/hnswlib.h>
+#include <spdlog/spdlog.h>
 
-#include <cstddef>
-#include <cstdint>
-#include <fstream>
-#include <functional>
-#include <memory>
-#include <mutex>
 #include <nlohmann/json.hpp>
-#include <queue>
-#include <sstream>
-#include <stdexcept>
-#include <string>
 
 #include "../utils.h"
-#include "spdlog/spdlog.h"
 #include "vsag/binaryset.h"
 #include "vsag/constants.h"
 #include "vsag/errors.h"
 #include "vsag/expected.hpp"
-#include "vsag/utils.h"
 
 const static int64_t EXPANSION_NUM = 1000000;
 
@@ -40,6 +29,7 @@ HNSW::HNSW(std::shared_ptr<hnswlib::SpaceInterface> spaceInterface,
            int M,
            int ef_construction)
     : space(std::move(spaceInterface)) {
+    dim_ = *((size_t*)space->get_dist_func_param());
     alg_hnsw =
         std::make_shared<hnswlib::HierarchicalNSW>(space.get(), max_elements, M, ef_construction);
 }
@@ -47,8 +37,10 @@ HNSW::HNSW(std::shared_ptr<hnswlib::SpaceInterface> spaceInterface,
 tl::expected<int64_t, index_error>
 HNSW::Build(const Dataset& base) {
     SlowTaskTimer t("hnsw build");
+    if (base.GetDim() != dim_) {
+        return tl::unexpected(index_error::dimension_not_equal);
+    }
     int64_t num_elements = base.GetNumElements();
-    int64_t dim = base.GetDim();
     int64_t max_elements_ = alg_hnsw->getMaxElements();
     if (max_elements_ < num_elements) {
         max_elements_ = num_elements;
@@ -64,7 +56,7 @@ HNSW::Build(const Dataset& base) {
     auto vectors = base.GetFloat32Vectors();
     for (int64_t i = 0; i < num_elements; ++i) {
         try {
-            alg_hnsw->addPoint((const void*)(vectors + i * dim), ids[i]);
+            alg_hnsw->addPoint((const void*)(vectors + i * dim_), ids[i]);
         } catch (std::runtime_error e) {
             spdlog::error(std::string("failed to add points: ") + e.what());
             return tl::unexpected(index_error::internal_error);
@@ -78,13 +70,13 @@ tl::expected<int64_t, index_error>
 HNSW::Add(const Dataset& base) {
     SlowTaskTimer t("hnsw add", 10);
     int64_t num_elements = base.GetNumElements();
-    int64_t dim = base.GetDim();
-    int64_t index_dim = *((size_t*)alg_hnsw->dist_func_param_);
-    if (dim != index_dim) {
-        spdlog::error("dimension not equal: add(" + std::to_string(dim) + ") index(" +
-                      std::to_string(index_dim) + ")");
+
+    if (base.GetDim() != dim_) {
+        spdlog::error("dimension not equal: add(" + std::to_string(base.GetDim()) + ") index(" +
+                      std::to_string(dim_) + ")");
         return tl::unexpected(index_error::dimension_not_equal);
     }
+
     auto ids = base.GetIds();
     auto vectors = base.GetFloat32Vectors();
     int64_t max_elements_ = alg_hnsw->getMaxElements();
@@ -104,7 +96,7 @@ HNSW::Add(const Dataset& base) {
 
     for (int64_t i = 0; i < num_elements; ++i) {
         try {
-            alg_hnsw->addPoint((const void*)(vectors + i * dim), ids[i]);
+            alg_hnsw->addPoint((const void*)(vectors + i * dim_), ids[i]);
         } catch (std::runtime_error e) {
             spdlog::error(std::string("failed to add points: ") + e.what());
             return tl::unexpected(index_error::internal_error);
@@ -125,10 +117,9 @@ HNSW::KnnSearch(const Dataset& query, int64_t k, const std::string& parameters) 
 
     int64_t num_elements = query.GetNumElements();
     int64_t dim = query.GetDim();
-    int64_t index_dim = *((size_t*)alg_hnsw->dist_func_param_);
-    if (dim != index_dim) {
+    if (dim != dim_) {
         spdlog::error("dimension not equal: query(" + std::to_string(dim) + ") index(" +
-                      std::to_string(index_dim) + ")");
+                      std::to_string(dim_) + ")");
         return tl::unexpected(index_error::dimension_not_equal);
     }
     auto vectors = query.GetFloat32Vectors();
@@ -142,7 +133,7 @@ HNSW::KnnSearch(const Dataset& query, int64_t k, const std::string& parameters) 
             double time_cost;
             {
                 Timer t(time_cost);
-                results = alg_hnsw->searchKnn((const void*)(vectors + i * dim), k);
+                results = alg_hnsw->searchKnn((const void*)(vectors + i * dim_), k);
             }
             for (int64_t j = k - 1; j >= 0; --j) {
                 dists[i * k + j] = results.top().first;
@@ -182,10 +173,9 @@ HNSW::RangeSearch(const Dataset& query, float radius, const std::string& paramet
         return tl::unexpected(index_error::internal_error);
     }
     int64_t dim = query.GetDim();
-    int64_t index_dim = *((size_t*)alg_hnsw->dist_func_param_);
-    if (dim != index_dim) {
+    if (dim != dim_) {
         spdlog::error("dimension not equal: query(" + std::to_string(dim) + ") index(" +
-                      std::to_string(index_dim) + ")");
+                      std::to_string(dim_) + ")");
         return tl::unexpected(index_error::dimension_not_equal);
     }
     auto vector = query.GetFloat32Vectors();

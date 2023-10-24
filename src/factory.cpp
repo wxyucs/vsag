@@ -20,7 +20,7 @@ std::shared_ptr<Index>
 Factory::CreateIndex(const std::string& name, const std::string& parameters) {
     nlohmann::json params = nlohmann::json::parse(parameters);
 
-    if (params["dtype"] != "float32") {
+    if (params["dtype"] != "float32" || !params.contains("dim")) {
         return nullptr;
     }
     if (name == "hnsw") {
@@ -61,7 +61,8 @@ Factory::CreateIndex(const std::string& name, const std::string& parameters) {
                                                params["diskann"]["L"],
                                                params["diskann"]["R"],
                                                params["diskann"]["p_val"],
-                                               params["diskann"]["disk_pq_dims"]);
+                                               params["diskann"]["disk_pq_dims"],
+                                               params["dim"]);
         return index;
     } else {
         // not support

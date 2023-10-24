@@ -63,6 +63,8 @@ private:
     std::shared_ptr<hnswlib::HierarchicalNSW> alg_hnsw;
     std::shared_ptr<hnswlib::SpaceInterface> space;
 
+    int64_t dim_;
+
     mutable std::mutex stats_mutex_;
     mutable int64_t knn_search_num_queries_ = 0;
     mutable double knn_search_total_cost_ms_ = 0.0f;

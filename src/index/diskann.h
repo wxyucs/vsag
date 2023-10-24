@@ -34,7 +34,8 @@ public:
             int L,
             int R,
             float p_val,
-            size_t disk_pq_dims);
+            size_t disk_pq_dims,
+            int64_t dim);
 
     ~DiskANN() = default;
 
@@ -92,6 +93,7 @@ private:
     int R_ = 64;
     float p_val_ = 0.5;
     size_t disk_pq_dims_ = 8;
+    int64_t dim_;
     IndexStatus status;
 
 private:  // Request Statistics
@@ -101,10 +103,12 @@ private:  // Request Statistics
     mutable std::queue<float> knn_search_total_cost_ms_;
     mutable std::queue<int> knn_search_io_count_;
     mutable std::queue<int> knn_search_hop_count_;
+    mutable std::queue<int> knn_search_cache_hits_count_;
 
     mutable std::queue<float> range_search_total_cost_ms_;
     mutable std::queue<int> range_search_io_count_;
     mutable std::queue<int> range_search_hop_count_;
+    mutable std::queue<int> range_search_cache_hits_count_;
 };
 
 }  // namespace vsag

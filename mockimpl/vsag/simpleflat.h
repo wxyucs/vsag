@@ -9,7 +9,7 @@ namespace vsag {
 
 class SimpleFlat : public Index {
 public:
-    explicit SimpleFlat(const std::string& metric_type);
+    explicit SimpleFlat(const std::string& metric_type, int64_t dim);
 
     tl::expected<int64_t, index_error>
     Build(const Dataset& base) override;

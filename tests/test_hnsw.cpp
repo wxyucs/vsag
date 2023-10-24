@@ -58,7 +58,7 @@ TEST_CASE("HNSW Float Recall", "[hnsw]") {
     dataset.SetNumElements(max_elements);
     dataset.SetIds(ids);
     dataset.SetFloat32Vectors(data);
-    hnsw->Build(dataset);
+    hnsw->Add(dataset);
 
     // Query the elements for themselves and measure recall 1@1
     float correct = 0;

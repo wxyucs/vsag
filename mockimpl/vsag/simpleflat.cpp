@@ -1,16 +1,8 @@
 #include "simpleflat.h"
 
-#include <atomic>
 #include <cmath>
-#include <cstdint>
 #include <cstring>
-#include <functional>
-#include <iostream>
 #include <nlohmann/json.hpp>
-#include <queue>
-#include <stdexcept>
-#include <string>
-#include <utility>
 
 #include "vsag/errors.h"
 #include "vsag/expected.hpp"
@@ -18,7 +10,8 @@
 
 namespace vsag {
 
-SimpleFlat::SimpleFlat(const std::string& metric_type) : metric_type_(metric_type) {
+SimpleFlat::SimpleFlat(const std::string& metric_type, int64_t dim)
+    : metric_type_(metric_type), dim_(dim) {
 }
 
 tl::expected<int64_t, index_error>
@@ -27,8 +20,11 @@ SimpleFlat::Build(const Dataset& base) {
         return tl::unexpected(index_error::build_twice);
     }
 
+    if (this->dim_ != base.GetDim()) {
+        return tl::unexpected(index_error::dimension_not_equal);
+    }
+
     this->num_elements_ = base.GetNumElements();
-    this->dim_ = base.GetDim();
 
     this->ids_.resize(this->num_elements_);
     std::memcpy(this->ids_.data(), base.GetIds(), base.GetNumElements() * sizeof(int64_t));
@@ -165,7 +161,13 @@ SimpleFlat::Deserialize(const BinarySet& binary_set) {
     std::memcpy(&num_elements_, tmp_ptr, sizeof(int64_t));
     tmp_ptr += sizeof(int64_t);
 
-    std::memcpy(&dim_, tmp_ptr, sizeof(int64_t));
+    int64_t tmp_dim;
+    std::memcpy(&tmp_dim, tmp_ptr, sizeof(int64_t));
+
+    if (tmp_dim != dim_) {
+        return tl::unexpected(index_error::dimension_not_equal);
+    }
+
     tmp_ptr += sizeof(int64_t);
 
     size_t ids_size = num_elements_ * sizeof(int64_t);

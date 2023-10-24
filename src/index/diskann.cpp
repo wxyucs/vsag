@@ -52,14 +52,20 @@ private:
     std::mutex mutex_;
 };
 
-DiskANN::DiskANN(
-    diskann::Metric metric, std::string data_type, int L, int R, float p_val, size_t disk_pq_dims)
+DiskANN::DiskANN(diskann::Metric metric,
+                 std::string data_type,
+                 int L,
+                 int R,
+                 float p_val,
+                 size_t disk_pq_dims,
+                 int64_t dim)
     : metric_(metric),
       L_(L),
       R_(R),
       p_val_(p_val),
       data_type_(data_type),
-      disk_pq_dims_(disk_pq_dims) {
+      disk_pq_dims_(disk_pq_dims),
+      dim_(dim) {
     status = IndexStatus::EMPTY;
     watch_window_size_ = WATCH_WINDOW_SIZE;
     batch_read = [&](const std::vector<read_request>& requests) -> void {
@@ -88,10 +94,21 @@ DiskANN::DiskANN(
 tl::expected<int64_t, index_error>
 DiskANN::Build(const Dataset& base) {
     SlowTaskTimer t("diskann build");
+
+    if (this->index) {
+        return tl::unexpected(index_error::build_twice);
+    }
+
     auto vectors = base.GetFloat32Vectors();
     auto ids = base.GetIds();
     auto data_num = base.GetNumElements();
     auto data_dim = base.GetDim();
+
+    if (data_dim != dim_) {
+        spdlog::error("dimension not equal: base(" + std::to_string(data_dim) + ") index(" +
+                      std::to_string(dim_) + ")");
+        return tl::unexpected(index_error::dimension_not_equal);
+    }
 
     std::stringstream graph_stream;
     std::stringstream tag_stream;
@@ -126,7 +143,9 @@ DiskANN::Build(const Dataset& base) {
     } catch (std::runtime_error e) {
         return tl::unexpected(index_error::internal_error);
     }
-
+    //    std::vector<uint32_t> nodes;
+    //    index->cache_bfs_levels(100, nodes);
+    //    index->load_cache_list(nodes);
     return this->GetNumElements();
 }
 
@@ -140,6 +159,13 @@ DiskANN::KnnSearch(const Dataset& query, int64_t k, const std::string& parameter
     k = std::min(k, GetNumElements());
     auto query_num = query.GetNumElements();
     auto query_dim = query.GetDim();
+
+    if (query_dim != dim_) {
+        spdlog::error("dimension not equal: query(" + std::to_string(query_dim) + ") index(" +
+                      std::to_string(dim_) + ")");
+        return tl::unexpected(index_error::dimension_not_equal);
+    }
+
     size_t beam_search = param["diskann"]["beam_search"];
     size_t io_limit = param["diskann"]["io_limit"];
     size_t ef_search = param["diskann"]["ef_search"];
@@ -152,7 +178,7 @@ DiskANN::KnnSearch(const Dataset& query, int64_t k, const std::string& parameter
             double time_cost = 0;
             {
                 Timer timer(time_cost);
-                index->cached_beam_search(query.GetFloat32Vectors() + i * query_dim,
+                index->cached_beam_search(query.GetFloat32Vectors() + i * dim_,
                                           k,
                                           ef_search,
                                           labels + i * k,
@@ -179,6 +205,11 @@ DiskANN::KnnSearch(const Dataset& query, int64_t k, const std::string& parameter
                 if (knn_search_total_cost_ms_.size() > watch_window_size_) {
                     knn_search_total_cost_ms_.pop();
                 }
+
+                knn_search_cache_hits_count_.push(query_stats[i].n_cache_hits);
+                if (knn_search_cache_hits_count_.size() > watch_window_size_) {
+                    knn_search_cache_hits_count_.pop();
+                }
             }
 
         } catch (std::runtime_error e) {
@@ -204,6 +235,13 @@ DiskANN::RangeSearch(const Dataset& query, float radius, const std::string& para
     if (!index)
         return std::move(result);
     auto query_num = query.GetNumElements();
+    auto query_dim = query.GetDim();
+
+    if (query_dim != dim_) {
+        spdlog::error("dimension not equal: query(" + std::to_string(query_dim) + ") index(" +
+                      std::to_string(dim_) + ")");
+        return tl::unexpected(index_error::dimension_not_equal);
+    }
 
     assert(query_num == 1);
 
@@ -242,6 +280,11 @@ DiskANN::RangeSearch(const Dataset& query, float radius, const std::string& para
             range_search_total_cost_ms_.push(time_cost);
             if (range_search_total_cost_ms_.size() > watch_window_size_) {
                 range_search_total_cost_ms_.pop();
+            }
+
+            range_search_cache_hits_count_.push(query_stats.n_cache_hits);
+            if (range_search_cache_hits_count_.size() > watch_window_size_) {
+                range_search_cache_hits_count_.pop();
             }
         }
     } catch (std::runtime_error e) {
@@ -304,6 +347,12 @@ DiskANN::Serialize() const {
 tl::expected<void, index_error>
 DiskANN::Deserialize(const BinarySet& binary_set) {
     SlowTaskTimer t("diskann deserialize");
+
+    if (this->index) {
+        spdlog::error("failed to deserialize: index is not empty");
+        return tl::unexpected(index_error::index_not_empty);
+    }
+
     try {
         auto pq_pivots = binary_set.Get(DISKANN_PQ);
         pq_pivots_stream_.write((char*)pq_pivots.data.get(), pq_pivots.size);
@@ -341,6 +390,11 @@ tl::expected<void, index_error>
 DiskANN::Deserialize(const ReaderSet& reader_set) {
     SlowTaskTimer t("diskann deserialize");
 
+    if (this->index) {
+        spdlog::error("failed to deserialize: index is not empty");
+        return tl::unexpected(index_error::index_not_empty);
+    }
+
     std::stringstream pq_pivots_stream, disk_pq_compressed_vectors;
     {
         auto pq_reader = reader_set.Get(DISKANN_PQ);
@@ -377,10 +431,12 @@ DiskANN::GetStats() const {
         double knn_search_time = 0;
         double knn_search_io = 0;
         double knn_search_hop = 0;
+        double knn_search_cache = 0;
 
         auto tmp_knn_time = knn_search_total_cost_ms_;
         auto tmp_knn_io = knn_search_io_count_;
         auto tmp_knn_hop = knn_search_hop_count_;
+        auto tmp_knn_cache = knn_search_cache_hits_count_;
 
         int64_t knn_count_size = 0;
         while (!tmp_knn_time.empty()) {
@@ -399,17 +455,25 @@ DiskANN::GetStats() const {
             tmp_knn_hop.pop();
         }
 
+        while (!tmp_knn_cache.empty()) {
+            knn_search_cache += tmp_knn_cache.front();
+            tmp_knn_cache.pop();
+        }
+
         j["knn_time"] = knn_search_time / knn_count_size;
         j["knn_io"] = knn_search_io / knn_count_size;
         j["knn_hop"] = knn_search_hop / knn_count_size;
+        j["knn_cache_hit"] = knn_search_cache / knn_count_size;
 
         double range_search_time = 0;
         double range_search_io = 0;
         double range_search_hop = 0;
+        double range_search_cache = 0;
 
         auto tmp_range_time = range_search_total_cost_ms_;
         auto tmp_range_io = range_search_io_count_;
         auto tmp_range_hop = range_search_hop_count_;
+        auto tmp_range_cache = range_search_cache_hits_count_;
 
         int64_t range_count_size = 0;
         while (!tmp_range_time.empty()) {
@@ -428,9 +492,15 @@ DiskANN::GetStats() const {
             tmp_range_hop.pop();
         }
 
+        while (!tmp_range_cache.empty()) {
+            range_search_cache += tmp_range_cache.front();
+            tmp_range_cache.pop();
+        }
+
         j["range_time"] = range_search_time / range_count_size;
         j["range_io"] = range_search_io / range_count_size;
         j["range_hop"] = range_search_hop / range_count_size;
+        j["range_cache_hit"] = range_search_cache / range_count_size;
         j["data_num"] = GetNumElements();
     }
 
