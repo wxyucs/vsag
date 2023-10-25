@@ -74,6 +74,7 @@ TEST_CASE("HNSW Float Recall", "[hnsw]") {
             if (result->GetIds()[0] == i) {
                 correct++;
             }
+            REQUIRE(result->GetDim() == k);
         } else if (result.error() == vsag::index_error::internal_error) {
             std::cerr << "failed to perform knn search on index" << std::endl;
         }

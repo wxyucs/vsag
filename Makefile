@@ -20,6 +20,7 @@ format:
 
 test: debug
 	./build/tests -d yes
+	./build/mockimpl/tests_mockimpl -d yes
 
 benchmark:
 	cmake -DCMAKE_EXPORT_COMPILE_COMMANDS=1 -S. -Bbuild -DCMAKE_BUILD_TYPE=Release

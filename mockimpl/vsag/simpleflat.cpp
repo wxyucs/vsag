@@ -65,6 +65,7 @@ tl::expected<Dataset, index_error>
 SimpleFlat::KnnSearch(const Dataset& query, int64_t k, const std::string& parameters) const {
     int64_t nq = query.GetNumElements();
     int64_t dim = query.GetDim();
+    k = std::min(k, GetNumElements());
     if (this->dim_ != dim) {
         return tl::unexpected(index_error::dimension_not_equal);
     }
@@ -80,6 +81,7 @@ SimpleFlat::KnnSearch(const Dataset& query, int64_t k, const std::string& parame
     }
 
     Dataset results;
+    results.SetDim(k);
     results.SetNumElements(nq);
     results.SetIds(ids);
     results.SetDistances(dists);
@@ -286,7 +288,16 @@ SimpleFlat::l2(const float* v1, const float* v2, int64_t dim) {
 
 float
 SimpleFlat::ip(const float* v1, const float* v2, int64_t dim) {
-    return 0;
+    float dist = 0;
+    float mold_v1 = 0;
+    float mold_v2 = 0;
+    for (int64_t i = 0; i < dim; ++i) {
+        mold_v1 += std::pow(v1[i], 2);
+        mold_v2 += std::pow(v2[i], 2);
+        dist += v1[i] * v2[i];
+    }
+    dist = (1 - dist / std::sqrt(mold_v1 * mold_v2)) / 2 + 0.5;
+    return dist;
 }
 
 float

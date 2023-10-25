@@ -18,3 +18,13 @@ add_custom_target (version_mockimpl
                    -P ${CMAKE_SOURCE_DIR}/cmake/GenerateVersionHeader.cmake
   )
 add_dependencies (vsag_mockimpl version_mockimpl)
+
+if (ENABLE_TESTS)
+    add_executable (tests_mockimpl
+            ../tests/test_hnsw.cpp
+            ../tests/test_factory.cpp
+    )
+    target_include_directories(tests_mockimpl PRIVATE ${CMAKE_CURRENT_BINARY_DIR}/spdlog/install/include)
+    target_link_libraries (tests_mockimpl PRIVATE Catch2::Catch2WithMain vsag_mockimpl)
+    add_dependencies(tests_mockimpl spdlog Catch2)
+endif ()
