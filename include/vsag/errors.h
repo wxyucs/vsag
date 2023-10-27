@@ -9,6 +9,7 @@ enum class index_error {
     no_enough_memory,
     index_not_empty,
     invalid_binary,
+    read_error,
 };
 
 }  //namespace vsag

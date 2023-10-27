@@ -5,6 +5,7 @@
 #include <spdlog/spdlog.h>
 
 #include <nlohmann/json.hpp>
+#include <stdexcept>
 
 #include "../utils.h"
 #include "vsag/binaryset.h"
@@ -237,7 +238,12 @@ HNSW::Deserialize(const BinarySet& binary_set) {
         std::memcpy(dest, b.data.get() + offset, len);
     };
 
-    alg_hnsw->loadIndex(func, this->space.get());
+    try {
+        alg_hnsw->loadIndex(func, this->space.get());
+    } catch (std::runtime_error e) {
+        spdlog::error(std::string("failed to deserialize: ") + e.what());
+        return tl::unexpected(index_error::read_error);
+    }
 
     return {};
 }
@@ -254,7 +260,12 @@ HNSW::Deserialize(const ReaderSet& reader_set) {
         reader_set.Get(HNSW_DATA)->Read(offset, len, dest);
     };
 
-    alg_hnsw->loadIndex(func, this->space.get());
+    try {
+        alg_hnsw->loadIndex(func, this->space.get());
+    } catch (std::runtime_error e) {
+        spdlog::error(std::string("failed to deserialize: ") + e.what());
+        return tl::unexpected(index_error::read_error);
+    }
 
     return {};
 }
