@@ -22,7 +22,7 @@
 
 namespace vsag {
 
-const static int64_t WATCH_WINDOW_SIZE = 20;
+const static float MACRO_TO_MILLI = 1000;
 
 class LocalMemoryReader : public Reader {
 public:
@@ -67,7 +67,6 @@ DiskANN::DiskANN(diskann::Metric metric,
       disk_pq_dims_(disk_pq_dims),
       dim_(dim) {
     status = IndexStatus::EMPTY;
-    watch_window_size_ = WATCH_WINDOW_SIZE;
     batch_read = [&](const std::vector<read_request>& requests) -> void {
         std::vector<std::future<void>> futures;
         for (int i = 0; i < requests.size(); ++i) {
@@ -190,26 +189,12 @@ DiskANN::KnnSearch(const Dataset& query, int64_t k, const std::string& parameter
             }
             {
                 std::lock_guard<std::mutex> lock(stats_mutex_);
-
-                knn_search_io_count_.push(query_stats[i].n_ios);
-                if (knn_search_io_count_.size() > watch_window_size_) {
-                    knn_search_io_count_.pop();
-                }
-
-                knn_search_hop_count_.push(query_stats[i].n_hops);
-                if (knn_search_hop_count_.size() > watch_window_size_) {
-                    knn_search_hop_count_.pop();
-                }
-
-                knn_search_total_cost_ms_.push(time_cost);
-                if (knn_search_total_cost_ms_.size() > watch_window_size_) {
-                    knn_search_total_cost_ms_.pop();
-                }
-
-                knn_search_cache_hits_count_.push(query_stats[i].n_cache_hits);
-                if (knn_search_cache_hits_count_.size() > watch_window_size_) {
-                    knn_search_cache_hits_count_.pop();
-                }
+                result_queues_[STATSTIC_KNN_IO].push(query_stats[i].n_ios);
+                result_queues_[STATSTIC_KNN_HOP].push(query_stats[i].n_hops);
+                result_queues_[STATSTIC_KNN_TIME].push(time_cost);
+                result_queues_[STATSTIC_KNN_CACHE_HIT].push(query_stats[i].n_cache_hits);
+                result_queues_[STATSTIC_KNN_IO_TIME].push(
+                    (query_stats[i].io_us / query_stats[i].n_ios) / MACRO_TO_MILLI);
             }
 
         } catch (std::runtime_error e) {
@@ -267,25 +252,12 @@ DiskANN::RangeSearch(const Dataset& query, float radius, const std::string& para
         {
             std::lock_guard<std::mutex> lock(stats_mutex_);
 
-            range_search_io_count_.push(query_stats.n_ios);
-            if (range_search_io_count_.size() > watch_window_size_) {
-                range_search_io_count_.pop();
-            }
-
-            range_search_hop_count_.push(query_stats.n_hops);
-            if (range_search_hop_count_.size() > watch_window_size_) {
-                range_search_hop_count_.pop();
-            }
-
-            range_search_total_cost_ms_.push(time_cost);
-            if (range_search_total_cost_ms_.size() > watch_window_size_) {
-                range_search_total_cost_ms_.pop();
-            }
-
-            range_search_cache_hits_count_.push(query_stats.n_cache_hits);
-            if (range_search_cache_hits_count_.size() > watch_window_size_) {
-                range_search_cache_hits_count_.pop();
-            }
+            result_queues_[STATSTIC_RANGE_IO].push(query_stats.n_ios);
+            result_queues_[STATSTIC_RANGE_HOP].push(query_stats.n_hops);
+            result_queues_[STATSTIC_RANGE_TIME].push(time_cost);
+            result_queues_[STATSTIC_RANGE_CACHE_HIT].push(query_stats.n_cache_hits);
+            result_queues_[STATSTIC_RANGE_IO_TIME].push((query_stats.io_us / query_stats.n_ios) /
+                                                        MACRO_TO_MILLI);
         }
     } catch (std::runtime_error e) {
         spdlog::error(std::string("failed to perform knn search on diskann: ") + e.what());
@@ -424,84 +396,15 @@ DiskANN::Deserialize(const ReaderSet& reader_set) {
 std::string
 DiskANN::GetStats() const {
     nlohmann::json j;
+    j[STATSTIC_DATA_NUM] = GetNumElements();
+    j[STATSTIC_INDEX_NAME] = INDEX_DISKANN;
+    j[STATSTIC_MEMORY] = GetMemoryUsage();
 
     {
         std::lock_guard<std::mutex> lock(stats_mutex_);
-
-        double knn_search_time = 0;
-        double knn_search_io = 0;
-        double knn_search_hop = 0;
-        double knn_search_cache = 0;
-
-        auto tmp_knn_time = knn_search_total_cost_ms_;
-        auto tmp_knn_io = knn_search_io_count_;
-        auto tmp_knn_hop = knn_search_hop_count_;
-        auto tmp_knn_cache = knn_search_cache_hits_count_;
-
-        int64_t knn_count_size = 0;
-        while (!tmp_knn_time.empty()) {
-            knn_count_size++;
-            knn_search_time += tmp_knn_time.front();
-            tmp_knn_time.pop();
+        for (auto& item : result_queues_) {
+            j[item.first] = item.second.getAvgResult();
         }
-
-        while (!tmp_knn_io.empty()) {
-            knn_search_io += tmp_knn_io.front();
-            tmp_knn_io.pop();
-        }
-
-        while (!tmp_knn_hop.empty()) {
-            knn_search_hop += tmp_knn_hop.front();
-            tmp_knn_hop.pop();
-        }
-
-        while (!tmp_knn_cache.empty()) {
-            knn_search_cache += tmp_knn_cache.front();
-            tmp_knn_cache.pop();
-        }
-
-        j["knn_time"] = knn_search_time / knn_count_size;
-        j["knn_io"] = knn_search_io / knn_count_size;
-        j["knn_hop"] = knn_search_hop / knn_count_size;
-        j["knn_cache_hit"] = knn_search_cache / knn_count_size;
-
-        double range_search_time = 0;
-        double range_search_io = 0;
-        double range_search_hop = 0;
-        double range_search_cache = 0;
-
-        auto tmp_range_time = range_search_total_cost_ms_;
-        auto tmp_range_io = range_search_io_count_;
-        auto tmp_range_hop = range_search_hop_count_;
-        auto tmp_range_cache = range_search_cache_hits_count_;
-
-        int64_t range_count_size = 0;
-        while (!tmp_range_time.empty()) {
-            range_count_size++;
-            range_search_time += tmp_range_time.front();
-            tmp_range_time.pop();
-        }
-
-        while (!tmp_range_io.empty()) {
-            range_search_io += tmp_range_io.front();
-            tmp_range_io.pop();
-        }
-
-        while (!tmp_range_hop.empty()) {
-            range_search_hop += tmp_range_hop.front();
-            tmp_range_hop.pop();
-        }
-
-        while (!tmp_range_cache.empty()) {
-            range_search_cache += tmp_range_cache.front();
-            tmp_range_cache.pop();
-        }
-
-        j["range_time"] = range_search_time / range_count_size;
-        j["range_io"] = range_search_io / range_count_size;
-        j["range_hop"] = range_search_hop / range_count_size;
-        j["range_cache_hit"] = range_search_cache / range_count_size;
-        j["data_num"] = GetNumElements();
     }
 
     return j.dump();

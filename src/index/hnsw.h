@@ -3,11 +3,13 @@
 #include <hnswlib/hnswlib.h>
 
 #include <cstdint>
+#include <map>
 #include <memory>
 #include <mutex>
 #include <queue>
 #include <vector>
 
+#include "../utils.h"
 #include "vsag/index.h"
 
 namespace vsag {
@@ -66,8 +68,7 @@ private:
     int64_t dim_;
 
     mutable std::mutex stats_mutex_;
-    mutable int64_t knn_search_num_queries_ = 0;
-    mutable double knn_search_total_cost_ms_ = 0.0f;
+    mutable std::map<std::string, WindowResultQueue> result_queues_;
 };
 
 }  // namespace vsag

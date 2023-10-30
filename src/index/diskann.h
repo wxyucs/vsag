@@ -14,8 +14,10 @@
 
 #include <cstring>
 #include <functional>
+#include <map>
 #include <queue>
 
+#include "../utils.h"
 #include "vsag/index.h"
 
 namespace vsag {
@@ -97,18 +99,9 @@ private:
     IndexStatus status;
 
 private:  // Request Statistics
-    int64_t watch_window_size_ = 20;
     mutable std::mutex stats_mutex_;
 
-    mutable std::queue<float> knn_search_total_cost_ms_;
-    mutable std::queue<int> knn_search_io_count_;
-    mutable std::queue<int> knn_search_hop_count_;
-    mutable std::queue<int> knn_search_cache_hits_count_;
-
-    mutable std::queue<float> range_search_total_cost_ms_;
-    mutable std::queue<int> range_search_io_count_;
-    mutable std::queue<int> range_search_hop_count_;
-    mutable std::queue<int> range_search_cache_hits_count_;
+    mutable std::map<std::string, WindowResultQueue> result_queues_;
 };
 
 }  // namespace vsag

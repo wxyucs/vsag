@@ -145,8 +145,8 @@ HNSW::KnnSearch(const Dataset& query, int64_t k, const std::string& parameters) 
             // stats
             {
                 std::lock_guard<std::mutex> lock(stats_mutex_);
-                ++knn_search_num_queries_;
-                knn_search_total_cost_ms_ += time_cost;
+
+                result_queues_[STATSTIC_KNN_TIME].push(time_cost);
             }
         } catch (std::runtime_error e) {
             return tl::unexpected(index_error::internal_error);
@@ -183,7 +183,15 @@ HNSW::RangeSearch(const Dataset& query, float radius, const std::string& paramet
 
     std::priority_queue<std::pair<float, size_t>> results;
     try {
-        results = alg_hnsw->searchRange((const void*)(vector), radius);
+        double time_cost;
+        {
+            Timer timer(time_cost);
+            results = alg_hnsw->searchRange((const void*)(vector), radius);
+        }
+        {
+            std::lock_guard<std::mutex> lock(stats_mutex_);
+            result_queues_[STATSTIC_RANGE_TIME].push(time_cost);
+        }
     } catch (std::runtime_error e) {
         return tl::unexpected(index_error::internal_error);
     }
@@ -278,13 +286,16 @@ HNSW::SetEfRuntime(int64_t ef_runtime) {
 std::string
 HNSW::GetStats() const {
     nlohmann::json j;
+    j[STATSTIC_DATA_NUM] = GetNumElements();
+    j[STATSTIC_INDEX_NAME] = INDEX_HNSW;
+    j[STATSTIC_MEMORY] = GetMemoryUsage();
+
     {
         std::lock_guard<std::mutex> lock(stats_mutex_);
-        j["knn_search_avg_cost_ms"] = knn_search_total_cost_ms_ / knn_search_num_queries_;
-
-        j["data_num"] = GetNumElements();
+        for (auto& item : result_queues_) {
+            j[item.first] = item.second.getAvgResult();
+        }
     }
-
     return j.dump();
 }
 
