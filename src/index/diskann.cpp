@@ -362,23 +362,27 @@ DiskANN::Deserialize(const ReaderSet& reader_set) {
 
     try {
         std::stringstream pq_pivots_stream, disk_pq_compressed_vectors;
+
         {
             auto pq_reader = reader_set.Get(DISKANN_PQ);
-            char pq_pivots_data[pq_reader->Size()];
+            auto pq_pivots_data = new char[pq_reader->Size()];
             pq_reader->Read(0, pq_reader->Size(), pq_pivots_data);
             pq_pivots_stream.write(pq_pivots_data, pq_reader->Size());
             pq_pivots_stream.seekg(0);
+            delete[] pq_pivots_data;
         }
 
         {
             auto compressed_vector_reader = reader_set.Get(DISKANN_COMPRESSED_VECTOR);
-            char compressed_vector_data[compressed_vector_reader->Size()];
+            auto compressed_vector_data = new char[compressed_vector_reader->Size()];
             compressed_vector_reader->Read(
                 0, compressed_vector_reader->Size(), compressed_vector_data);
             disk_pq_compressed_vectors.write(compressed_vector_data,
                                              compressed_vector_reader->Size());
             disk_pq_compressed_vectors.seekg(0);
+            delete[] compressed_vector_data;
         }
+
         disk_layout_reader = reader_set.Get(DISKANN_LAYOUT_FILE);
         reader.reset(new LocalFileReader(batch_read));
         index.reset(new diskann::PQFlashIndex<float>(reader, metric_));
