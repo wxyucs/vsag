@@ -722,7 +722,7 @@ int generate_pq_pivots(const float *const passed_train_data, size_t num_train, u
                         cur_chunk_size * sizeof(float));
         }
 
-        kmeans::kmeanspp_selecting_pivots(cur_data.get(), num_train, cur_chunk_size, cur_pivot_data.get(), num_centers);
+        kmeans::selecting_pivots(cur_data.get(), num_train, cur_chunk_size, cur_pivot_data.get(), num_centers);
 
         kmeans::run_lloyds(cur_data.get(), num_train, cur_chunk_size, cur_pivot_data.get(), num_centers,
                            max_k_means_reps, NULL, closest_center.get());
