@@ -33,3 +33,8 @@ TEST_CASE("l2_and_filtering", "[utils]") {
     CHECK_FALSE(res->Get(8));
     CHECK_FALSE(res->Get(9));
 }
+
+
+TEST_CASE("version", "[version]") {
+    std::cout << "version: " << vsag::version() << std::endl;
+}

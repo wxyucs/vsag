@@ -294,6 +294,7 @@ DiskANN::Serialize() const {
 
         pq_str = std::move(disk_pq_compressed_vectors_.str());
         std::shared_ptr<int8_t[]> compressed_vectors(new int8_t[pq_str.size()]);
+        spdlog::info("##### compressed_binary size: {}", pq_str.size());
         std::copy(pq_str.begin(), pq_str.end(), compressed_vectors.get());
         Binary compressed_binary{
             .data = compressed_vectors,
@@ -375,6 +376,11 @@ DiskANN::Deserialize(const ReaderSet& reader_set) {
         {
             auto compressed_vector_reader = reader_set.Get(DISKANN_COMPRESSED_VECTOR);
             auto compressed_vector_data = new char[compressed_vector_reader->Size()];
+            spdlog::info(std::string("##### begin memset:"));
+            std::memset(compressed_vector_data, 0, compressed_vector_reader->Size());
+            spdlog::info("##### pointer: {}, length: {}",
+                         static_cast<const void*>(compressed_vector_data),
+                         compressed_vector_reader->Size());
             compressed_vector_reader->Read(
                 0, compressed_vector_reader->Size(), compressed_vector_data);
             disk_pq_compressed_vectors.write(compressed_vector_data,
