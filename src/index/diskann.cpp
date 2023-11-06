@@ -287,7 +287,7 @@ DiskANN::Serialize() const {
     SlowTaskTimer t("diskann serialize");
     try {
         BinarySet bs;
-        std::string pq_str = std::move(pq_pivots_stream_.str());
+        std::string pq_str = pq_pivots_stream_.str();
         std::shared_ptr<int8_t[]> pq_pivots(new int8_t[pq_str.size()]);
         std::copy(pq_str.begin(), pq_str.end(), pq_pivots.get());
         Binary pq_binary{
@@ -297,7 +297,7 @@ DiskANN::Serialize() const {
 
         bs.Set(DISKANN_PQ, pq_binary);
 
-        pq_str = std::move(disk_pq_compressed_vectors_.str());
+        pq_str = disk_pq_compressed_vectors_.str();
         std::shared_ptr<int8_t[]> compressed_vectors(new int8_t[pq_str.size()]);
         std::copy(pq_str.begin(), pq_str.end(), compressed_vectors.get());
         Binary compressed_binary{
@@ -306,7 +306,7 @@ DiskANN::Serialize() const {
         };
         bs.Set(DISKANN_COMPRESSED_VECTOR, compressed_binary);
 
-        std::string disk_layout = std::move(disk_layout_stream_.str());
+        std::string disk_layout = disk_layout_stream_.str();
         std::shared_ptr<int8_t[]> layout_file(new int8_t[disk_layout.size()]);
         std::copy(disk_layout.begin(), disk_layout.end(), layout_file.get());
 
