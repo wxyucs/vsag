@@ -23,6 +23,7 @@
 namespace vsag {
 
 const static float MACRO_TO_MILLI = 1000;
+const static int64_t DATA_LIMIT = 500;
 
 class LocalMemoryReader : public Reader {
 public:
@@ -93,6 +94,10 @@ DiskANN::DiskANN(diskann::Metric metric,
 tl::expected<int64_t, index_error>
 DiskANN::Build(const Dataset& base) {
     SlowTaskTimer t("diskann build");
+    // FIXME: A exception will be throwed out when there are less data.
+    if (base.GetNumElements() < DATA_LIMIT) {
+        return tl::unexpected(index_error::no_enough_data);
+    }
 
     if (this->index) {
         return tl::unexpected(index_error::build_twice);
@@ -294,7 +299,6 @@ DiskANN::Serialize() const {
 
         pq_str = std::move(disk_pq_compressed_vectors_.str());
         std::shared_ptr<int8_t[]> compressed_vectors(new int8_t[pq_str.size()]);
-        spdlog::info("##### compressed_binary size: {}", pq_str.size());
         std::copy(pq_str.begin(), pq_str.end(), compressed_vectors.get());
         Binary compressed_binary{
             .data = compressed_vectors,
@@ -366,27 +370,21 @@ DiskANN::Deserialize(const ReaderSet& reader_set) {
 
         {
             auto pq_reader = reader_set.Get(DISKANN_PQ);
-            auto pq_pivots_data = new char[pq_reader->Size()];
-            pq_reader->Read(0, pq_reader->Size(), pq_pivots_data);
-            pq_pivots_stream.write(pq_pivots_data, pq_reader->Size());
+            auto pq_pivots_data = std::make_unique<char[]>(pq_reader->Size());
+            pq_reader->Read(0, pq_reader->Size(), pq_pivots_data.get());
+            pq_pivots_stream.write(pq_pivots_data.get(), pq_reader->Size());
             pq_pivots_stream.seekg(0);
-            delete[] pq_pivots_data;
         }
 
         {
             auto compressed_vector_reader = reader_set.Get(DISKANN_COMPRESSED_VECTOR);
-            auto compressed_vector_data = new char[compressed_vector_reader->Size()];
-            spdlog::info(std::string("##### begin memset:"));
-            std::memset(compressed_vector_data, 0, compressed_vector_reader->Size());
-            spdlog::info("##### pointer: {}, length: {}",
-                         static_cast<const void*>(compressed_vector_data),
-                         compressed_vector_reader->Size());
+            auto compressed_vector_data =
+                std::make_unique<char[]>(compressed_vector_reader->Size());
             compressed_vector_reader->Read(
-                0, compressed_vector_reader->Size(), compressed_vector_data);
-            disk_pq_compressed_vectors.write(compressed_vector_data,
+                0, compressed_vector_reader->Size(), compressed_vector_data.get());
+            disk_pq_compressed_vectors.write(compressed_vector_data.get(),
                                              compressed_vector_reader->Size());
             disk_pq_compressed_vectors.seekg(0);
-            delete[] compressed_vector_data;
         }
 
         disk_layout_reader = reader_set.Get(DISKANN_LAYOUT_FILE);
@@ -395,7 +393,7 @@ DiskANN::Deserialize(const ReaderSet& reader_set) {
         index->load_from_separate_paths(
             omp_get_num_procs(), pq_pivots_stream, disk_pq_compressed_vectors);
         status = IndexStatus::HYBRID;
-    } catch (std::runtime_error e) {
+    } catch (std::exception e) {
         spdlog::error(std::string("failed to deserialize: ") + e.what());
         return tl::unexpected(index_error::read_error);
     }

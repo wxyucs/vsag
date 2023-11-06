@@ -26,7 +26,7 @@ readBinaryPOD(std::istream& in, T& podRef) {
 
 void
 float_diskann() {
-    int dim = 64;             // Dimension of the elements
+    int dim = 65;             // Dimension of the elements
     int max_elements = 1000;  // Maximum number of elements, should be known beforehand
     int M = 16;               // Tightly connected with internal dimensionality of the data
     // strongly affects the memory consumption
@@ -36,7 +36,7 @@ float_diskann() {
     float threshold = 8.0;
     float p_val =
         0.5;  // p_val represents how much original data is selected during the training of pq compressed vectors.
-    int chunks_num = 32;  // chunks_num represents the dimensionality of the compressed vector.
+    int chunks_num = 9;  // chunks_num represents the dimensionality of the compressed vector.
     // Initing index
     // {
     // 	"dim": 256,
