@@ -6,7 +6,7 @@ set(install_dir ${CMAKE_CURRENT_BINARY_DIR}/${name}/install)
 get_filename_component(compiler_path ${CMAKE_CXX_COMPILER} DIRECTORY)
 ExternalProject_Add(
     ${name}
-    URL http://aivolvo-dev.cn-hangzhou-alipay-b.oss-cdn.aliyun-inc.com/tbase/third-party/boost_1_67_0.tar.gz
+    URL http://tbase.cn-hangzhou.alipay.aliyun-inc.com/vsag%2Fthirdparty%2Fboost_1_67_0.tar.gz?OSSAccessKeyId=LTAILFuN8FJQZ4Eu&Expires=101699252114&Signature=YhhsJMURecqLTgWG9ArrhVUOHnA%3D
     URL_HASH MD5=4850fceb3f2222ee011d4f3ea304d2cb
     DOWNLOAD_NAME boost_1_67_0.tar.gz
     PREFIX ${CMAKE_CURRENT_BINARY_DIR}/${name}

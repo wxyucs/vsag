@@ -4,7 +4,7 @@ set(source_dir ${CMAKE_CURRENT_BINARY_DIR}/${name}/source)
 set(install_dir ${CMAKE_CURRENT_BINARY_DIR}/${name}/install)
 ExternalProject_Add(
     ${name}
-    URL http://tbase.cn-hangzhou.alipay.aliyun-inc.com/vsag%2Fthirdparty%2FOpenBLAS-v0.3.23.tar.gz
+    URL http://tbase.cn-hangzhou.alipay.aliyun-inc.com/vsag%2Fthirdparty%2FOpenBLAS-v0.3.23.tar.gz?OSSAccessKeyId=LTAILFuN8FJQZ4Eu&Expires=101699251415&Signature=DBQZYH7yKmb51KsRU7ndrV9tVXU%3D
     URL_HASH MD5=115634b39007de71eb7e75cf7591dfb2
     DOWNLOAD_NAME OpenBLAS-v0.3.23.tar.gz
     PREFIX ${CMAKE_CURRENT_BINARY_DIR}/${name}

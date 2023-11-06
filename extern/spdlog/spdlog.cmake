@@ -4,7 +4,7 @@ set(source_dir ${CMAKE_CURRENT_BINARY_DIR}/${name}/source)
 set(install_dir ${CMAKE_CURRENT_BINARY_DIR}/${name}/install)
 ExternalProject_Add(
     ${name}
-    URL http://tbase.cn-hangzhou.alipay.aliyun-inc.com/vsag%2Fthirdparty%2Fspdlog-1.12.0.tar.gz
+    URL http://tbase.cn-hangzhou.alipay.aliyun-inc.com/vsag%2Fthirdparty%2Fspdlog-1.12.0.tar.gz?OSSAccessKeyId=LTAILFuN8FJQZ4Eu&Expires=101699251459&Signature=Wyq9j3MZ2477enqvUHAKWZawlTM%3D
     URL_HASH MD5=6b4446526264c1d1276105482adc18d1
     DOWNLOAD_NAME spdlog-1.12.0.tar.gz
     PREFIX ${CMAKE_CURRENT_BINARY_DIR}/${name}
