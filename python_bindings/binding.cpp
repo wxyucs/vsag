@@ -7,12 +7,9 @@
 
 #include "iostream"
 #include "vsag/vsag.h"
+
 namespace py = pybind11;
 
-int
-add(int a, int b) {
-    return a + b;
-}
 py::array_t<float>
 kmeans(py::array_t<float, py::array::c_style | py::array::forcecast>& datas,
        int clusters,
@@ -29,32 +26,34 @@ kmeans(py::array_t<float, py::array::c_style | py::array::forcecast>& datas,
 
 class Index {
 public:
-    Index(std::string index_name, const std::string& index_parameters) {
-        index = vsag::Factory::CreateIndex(index_name, index_parameters);
+    Index(std::string name, const std::string& parameters) {
+        index_ = vsag::Factory::CreateIndex(name, parameters);
     }
+
+public:
     void
-    build(py::array_t<float> datas, py::array_t<int64_t> ids, size_t max_elements, size_t dim) {
+    Build(py::array_t<float> vectors, py::array_t<int64_t> ids, size_t num_elements, size_t dim) {
         vsag::Dataset dataset;
         dataset.SetOwner(false);
         dataset.SetDim(dim);
-        dataset.SetNumElements(max_elements);
+        dataset.SetNumElements(num_elements);
         dataset.SetIds(ids.mutable_data());
-        dataset.SetFloat32Vectors(datas.mutable_data());
-        index->Build(dataset);
+        dataset.SetFloat32Vectors(vectors.mutable_data());
+        index_->Build(dataset);
     }
 
     py::object
-    KnnSearch(py::array_t<float> point, size_t k, std::string& search_parameters) {
+    KnnSearch(py::array_t<float> vector, size_t k, std::string& parameters) {
         vsag::Dataset query;
         size_t data_num = 1;
         query.SetNumElements(data_num);
-        query.SetDim(point.size());
-        query.SetFloat32Vectors(point.mutable_data());
+        query.SetDim(vector.size());
+        query.SetFloat32Vectors(vector.mutable_data());
         query.SetOwner(false);
 
         auto labels = py::array_t<int64_t>(k);
         auto dists = py::array_t<float>(k);
-        if (auto result = index->KnnSearch(query, k, search_parameters); result.has_value()) {
+        if (auto result = index_->KnnSearch(query, k, parameters); result.has_value()) {
             auto labels_data = labels.mutable_data();
             auto dists_data = dists.mutable_data();
             auto ids = result->GetIds();
@@ -69,7 +68,7 @@ public:
     }
 
     py::object
-    RangeSearch(py::array_t<float> point, float threshold, std::string& search_parameters) {
+    RangeSearch(py::array_t<float> point, float threshold, std::string& parameters) {
         vsag::Dataset query;
         size_t data_num = 1;
         query.SetNumElements(data_num);
@@ -79,8 +78,7 @@ public:
 
         py::array_t<int64_t> labels;
         py::array_t<float> dists;
-        if (auto result = index->RangeSearch(query, threshold, search_parameters);
-            result.has_value()) {
+        if (auto result = index_->RangeSearch(query, threshold, parameters); result.has_value()) {
             auto ids = result->GetIds();
             auto distances = result->GetDistances();
             auto k = result->GetDim();
@@ -98,30 +96,24 @@ public:
     }
 
 private:
-    std::shared_ptr<vsag::Index> index;
+    std::shared_ptr<vsag::Index> index_;
 };
 
 PYBIND11_MODULE(pyvsag, m) {
-    m.def("add", &add, "A function which adds two numbers");
     m.def("kmeans", &kmeans, "Kmeans");
     py::class_<Index>(m, "Index")
-        .def(py::init<std::string, std::string&>(),
-             py::arg("index_name"),
-             py::arg("index_parameters"))
-        .def("KnnSearch",
-             &Index::KnnSearch,
-             py::arg("point"),
-             py::arg("k"),
-             py::arg("search_parameters"))
-        .def("RangeSearch",
-             &Index::RangeSearch,
-             py::arg("point"),
-             py::arg("threshold"),
-             py::arg("search_parameters"))
+        .def(py::init<std::string, std::string&>(), py::arg("name"), py::arg("parameters"))
         .def("build",
-             &Index::build,
-             py::arg("datas"),
+             &Index::Build,
+             py::arg("vectors"),
              py::arg("ids"),
-             py::arg("max_elements"),
-             py::arg("dim"));
+             py::arg("num_elements"),
+             py::arg("dim"))
+        .def(
+            "knn_search", &Index::KnnSearch, py::arg("vector"), py::arg("k"), py::arg("parameters"))
+        .def("range_search",
+             &Index::RangeSearch,
+             py::arg("vector"),
+             py::arg("threshold"),
+             py::arg("parameters"));
 }
