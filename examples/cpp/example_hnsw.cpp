@@ -54,8 +54,8 @@ float_hnsw() {
         {"dtype", "float32"}, {"metric_type", "l2"}, {"dim", dim}, {"hnsw", hnsw_parameters}};
     auto hnsw = vsag::Factory::CreateIndex("hnsw", index_parameters.dump());
 
-    int64_t* ids = new int64_t[max_elements];
-    float* data = new float[dim * max_elements];
+    std::shared_ptr<int64_t[]> ids(new int64_t[max_elements]);
+    std::shared_ptr<float[]> data(new float[dim * max_elements]);
 
     // Generate random data
     std::mt19937 rng;
@@ -65,95 +65,103 @@ float_hnsw() {
     for (int i = 0; i < dim * max_elements; i++) data[i] = distrib_real(rng);
 
     // Build index
-    vsag::Dataset dataset;
-    dataset.SetDim(dim);
-    dataset.SetNumElements(max_elements - 1);
-    dataset.SetIds(ids);
-    dataset.SetFloat32Vectors(data);
-    if (const auto num = hnsw->Build(dataset); num.has_value()) {
-        std::cout << "After Build(), Index constains: " << hnsw->GetNumElements() << std::endl;
-    } else if (num.error() == vsag::index_error::internal_error) {
-        std::cerr << "Failed to build index: internal error" << std::endl;
-        exit(-1);
-    }
+    {
+        vsag::Dataset dataset;
+        dataset.SetDim(dim);
+        dataset.SetNumElements(max_elements - 1);
+        dataset.SetIds(ids.get());
+        dataset.SetFloat32Vectors(data.get());
+        dataset.SetOwner(false);
+        if (const auto num = hnsw->Build(dataset); num.has_value()) {
+            std::cout << "After Build(), Index constains: " << hnsw->GetNumElements() << std::endl;
+        } else if (num.error() == vsag::index_error::internal_error) {
+            std::cerr << "Failed to build index: internal error" << std::endl;
+            exit(-1);
+        }
 
-    // Adding data after index built
-    vsag::Dataset incremental;
-    incremental.SetDim(dim);
-    incremental.SetNumElements(1);
-    incremental.SetIds(ids + max_elements - 1);
-    incremental.SetFloat32Vectors(data + (max_elements - 1) * dim);
-    incremental.SetOwner(false);
-    hnsw->Add(incremental);
-    std::cout << "After Add(), Index constains: " << hnsw->GetNumElements() << std::endl;
+        // Adding data after index built
+        vsag::Dataset incremental;
+        incremental.SetDim(dim);
+        incremental.SetNumElements(1);
+        incremental.SetIds(ids.get() + max_elements - 1);
+        incremental.SetFloat32Vectors(data.get() + (max_elements - 1) * dim);
+        incremental.SetOwner(false);
+        hnsw->Add(incremental);
+        std::cout << "After Add(), Index constains: " << hnsw->GetNumElements() << std::endl;
+    }
 
     // Query the elements for themselves and measure recall 1@1
     float correct = 0;
-    for (int i = 0; i < max_elements; i++) {
-        vsag::Dataset query;
-        query.SetNumElements(1);
-        query.SetDim(dim);
-        query.SetFloat32Vectors(data + i * dim);
-        query.SetOwner(false);
-        // {
-        //   "hnsw": {
-        //     "ef_runtime": 200
-        //   }
-        // }
-        nlohmann::json parameters{
-            {"hnsw", {"ef_runtime", ef_runtime}},
-        };
-        int64_t k = 10;
-        if (auto result = hnsw->KnnSearch(query, k, parameters.dump()); result.has_value()) {
-            if (result->GetIds()[0] == i) {
-                correct++;
+    float recall = 0;
+    {
+        for (int i = 0; i < max_elements; i++) {
+            vsag::Dataset query;
+            query.SetNumElements(1);
+            query.SetDim(dim);
+            query.SetFloat32Vectors(data.get() + i * dim);
+            query.SetOwner(false);
+            // {
+            //   "hnsw": {
+            //     "ef_runtime": 200
+            //   }
+            // }
+            nlohmann::json parameters{
+                {"hnsw", {"ef_runtime", ef_runtime}},
+            };
+            int64_t k = 10;
+            if (auto result = hnsw->KnnSearch(query, k, parameters.dump()); result.has_value()) {
+                if (result->GetIds()[0] == i) {
+                    correct++;
+                }
+            } else if (result.error() == vsag::index_error::internal_error) {
+                std::cerr << "failed to perform knn search on index" << std::endl;
             }
-        } else if (result.error() == vsag::index_error::internal_error) {
-            std::cerr << "failed to perform knn search on index" << std::endl;
         }
+        recall = correct / max_elements;
+        std::cout << std::fixed << std::setprecision(3)
+                  << "Memory Uasage:" << hnsw->GetMemoryUsage() / 1024.0 << " KB" << std::endl;
+        std::cout << "Recall: " << recall << std::endl;
     }
-    float recall = correct / max_elements;
-    std::cout << std::fixed << std::setprecision(3)
-              << "Memory Uasage:" << hnsw->GetMemoryUsage() / 1024.0 << " KB" << std::endl;
-    std::cout << "Recall: " << recall << std::endl;
 
     correct = 0;
     float true_result = 0;
     float return_result = 0;
-    for (int i = 0; i < max_elements; i++) {
-        vsag::Dataset query;
-        query.SetNumElements(1);
-        query.SetDim(dim);
-        query.SetFloat32Vectors(data + i * dim);
-        query.SetOwner(false);
+    {
+        for (int i = 0; i < max_elements; i++) {
+            vsag::Dataset query;
+            query.SetNumElements(1);
+            query.SetDim(dim);
+            query.SetFloat32Vectors(data.get() + i * dim);
+            query.SetOwner(false);
 
-        auto range_result =
-            vsag::l2_and_filtering(dim, max_elements, data, data + i * dim, threshold);
+            auto range_result = vsag::l2_and_filtering(
+                dim, max_elements, data.get(), data.get() + i * dim, threshold);
 
-        nlohmann::json parameters{
-            {"hnsw", {"ef_runtime", ef_runtime}},
-        };
-        if (auto result = hnsw->RangeSearch(query, threshold, parameters.dump());
-            result.has_value()) {
-            if (result->GetNumElements() == 1) {
-                if (result->GetIds()[0] == i) {
-                    correct++;
+            nlohmann::json parameters{
+                {"hnsw", {"ef_runtime", ef_runtime}},
+            };
+            if (auto result = hnsw->RangeSearch(query, threshold, parameters.dump());
+                result.has_value()) {
+                if (result->GetNumElements() == 1) {
+                    if (result->GetIds()[0] == i) {
+                        correct++;
+                    }
+                    for (int j = 0; j < result->GetDim(); ++j) {
+                        assert(range_result->Get(result->GetIds()[j]));
+                    }
+                    true_result += range_result->CountOnes();
+                    return_result += result->GetDim();
                 }
-                for (int j = 0; j < result->GetDim(); ++j) {
-                    assert(range_result->Get(result->GetIds()[j]));
-                }
-                true_result += range_result->CountOnes();
-                return_result += result->GetDim();
+            } else if (result.error() == vsag::index_error::internal_error) {
+                std::cerr << "failed to perform knn search on index" << std::endl;
             }
-        } else if (result.error() == vsag::index_error::internal_error) {
-            std::cerr << "failed to perform knn search on index" << std::endl;
         }
+        recall = correct / max_elements;
+        std::cout << std::fixed << std::setprecision(3)
+                  << "Memory Usage:" << hnsw->GetMemoryUsage() / 1024.0 << " KB" << std::endl;
+        std::cout << "Range Query Top 1 Recall: " << recall
+                  << "    Diff Rate:" << (true_result - return_result) / true_result << std::endl;
     }
-    recall = correct / max_elements;
-    std::cout << std::fixed << std::setprecision(3)
-              << "Memory Usage:" << hnsw->GetMemoryUsage() / 1024.0 << " KB" << std::endl;
-    std::cout << "Range Query Top 1 Recall: " << recall
-              << "    Diff Rate:" << (true_result - return_result) / true_result << std::endl;
 
     // Serialize(multi-file)
     {
@@ -207,7 +215,7 @@ float_hnsw() {
         vsag::Dataset query;
         query.SetNumElements(1);
         query.SetDim(dim);
-        query.SetFloat32Vectors(data + i * dim);
+        query.SetFloat32Vectors(data.get() + i * dim);
         query.SetOwner(false);
         nlohmann::json parameters{
             {"hnsw", {"ef_runtime", ef_runtime}},
@@ -256,7 +264,7 @@ float_hnsw() {
         vsag::Dataset query;
         query.SetNumElements(1);
         query.SetDim(dim);
-        query.SetFloat32Vectors(data + i * dim);
+        query.SetFloat32Vectors(data.get() + i * dim);
         query.SetOwner(false);
         nlohmann::json parameters{
             {"hnsw", {"ef_runtime", ef_runtime}},
@@ -409,7 +417,7 @@ float_hnsw() {
         vsag::Dataset query;
         query.SetNumElements(1);
         query.SetDim(dim);
-        query.SetFloat32Vectors(data + i * dim);
+        query.SetFloat32Vectors(data.get() + i * dim);
         query.SetOwner(false);
         nlohmann::json parameters{
             {"hnsw", {"ef_runtime", ef_runtime}},
