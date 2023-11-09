@@ -23,7 +23,7 @@
 namespace vsag {
 
 const static float MACRO_TO_MILLI = 1000;
-const static int64_t DATA_LIMIT = 500;
+const static int64_t DATA_LIMIT = 200;
 
 class LocalMemoryReader : public Reader {
 public:
@@ -222,10 +222,15 @@ tl::expected<Dataset, index_error>
 DiskANN::RangeSearch(const Dataset& query, float radius, const std::string& parameters) const {
     Dataset result;
     nlohmann::json param = nlohmann::json::parse(parameters);
-    if (!index)
-        return std::move(result);
+
     auto query_num = query.GetNumElements();
     auto query_dim = query.GetDim();
+
+    result.SetDim(0);
+    result.SetNumElements(query_num);
+
+    if (!index)
+        return std::move(result);
 
     if (query_dim != dim_) {
         spdlog::error("dimension not equal: query(" + std::to_string(query_dim) + ") index(" +
@@ -268,6 +273,11 @@ DiskANN::RangeSearch(const Dataset& query, float radius, const std::string& para
         spdlog::error(std::string("failed to perform knn search on diskann: ") + e.what());
     }
     int64_t k = labels.size();
+
+    if (k == 0) {
+        return std::move(result);
+    }
+
     auto dis = new float[k];
     auto ids = new int64_t[k];
     for (int i = 0; i < k; ++i) {
