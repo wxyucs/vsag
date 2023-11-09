@@ -407,13 +407,11 @@ class HierarchicalNSW : public AlgorithmInterface<float> {
         }
 
         visited_array[ep_id] = visited_array_tag;
+        uint64_t visited_count = 0;
 
         while (!candidate_set.empty()) {
             std::pair<float, tableint> current_node_pair = candidate_set.top();
 
-            if ((-current_node_pair.first) > lowerBound && (!isIdAllowed && !has_deletions)) {
-                break;
-            }
             candidate_set.pop();
 
             tableint current_node_id = current_node_pair.second;
@@ -442,11 +440,12 @@ class HierarchicalNSW : public AlgorithmInterface<float> {
 #endif
                 if (!(visited_array[candidate_id] == visited_array_tag)) {
                     visited_array[candidate_id] = visited_array_tag;
+                    ++visited_count;
 
                     char *currObj1 = (getDataByInternalId(candidate_id));
                     float dist = fstdistfunc_(data_point, currObj1, dist_func_param_);
 
-                    if (dist < radius || lowerBound > dist) {
+                    if (visited_count < ef_ || dist < radius || lowerBound > dist) {
                         candidate_set.emplace(-dist, candidate_id);
 #ifdef USE_SSE
                         _mm_prefetch(data_level0_memory_ + candidate_set.top().second * size_data_per_element_ +
