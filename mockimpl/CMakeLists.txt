@@ -1,5 +1,6 @@
 
 add_library (vsag_mockimpl SHARED vsag/simpleflat.cpp vsag/factory.cpp)
+add_library (vsag_mockimpl_static STATIC vsag/simpleflat.cpp vsag/factory.cpp)
 
 add_executable (example_diskann_mockimpl ../examples/cpp/example_diskann.cpp)
 target_link_libraries (example_diskann_mockimpl vsag_mockimpl)
@@ -7,7 +8,8 @@ target_link_libraries (example_diskann_mockimpl vsag_mockimpl)
 add_executable (example_hnsw_mockimpl ../examples/cpp/example_hnsw.cpp)
 target_link_libraries (example_hnsw_mockimpl vsag_mockimpl)
 
-install(TARGETS vsag_mockimpl
+set_target_properties(vsag_mockimpl_static PROPERTIES OUTPUT_NAME "vsag_mockimpl")
+install(TARGETS vsag_mockimpl vsag_mockimpl_static
 	LIBRARY DESTINATION "${CMAKE_INSTALL_LIBDIR}")
 
 find_package (Git)

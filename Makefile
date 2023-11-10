@@ -1,6 +1,7 @@
 
 CMAKE_GENERATOR ?= "Unix Makefiles"
-VSAG_CMAKE_ARGS = -DCMAKE_EXPORT_COMPILE_COMMANDS=1 -DENABLE_TESTS=1 -DENABLE_PYBINDS=1 -G ${CMAKE_GENERATOR} -S. -Bbuild
+CMAKE_INSTALL_PRECIX ?= "/usr/local/"
+VSAG_CMAKE_ARGS = -DCMAKE_EXPORT_COMPILE_COMMANDS=1 -DCMAKE_INSTALL_PREFIX=${CMAKE_INSTALL_PREFIX} -DENABLE_TESTS=1 -DENABLE_PYBINDS=1 -G ${CMAKE_GENERATOR} -S. -Bbuild
 COMPILE_JOBS ?= 4
 
 debug:
@@ -30,6 +31,9 @@ benchmark:
 
 clean:
 	rm -rf build/*
+
+install: debug
+	cmake --install build/
 
 .PHONY: test benchmark clean
 
