@@ -20,6 +20,7 @@ add_custom_target (version_mockimpl
                    -P ${CMAKE_SOURCE_DIR}/cmake/GenerateVersionHeader.cmake
   )
 add_dependencies (vsag_mockimpl version_mockimpl)
+add_dependencies (vsag_mockimpl_static version_mockimpl)
 
 if (ENABLE_TESTS)
     add_executable (tests_mockimpl

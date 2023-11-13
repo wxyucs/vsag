@@ -39,15 +39,16 @@ vsag_build_ut:
     resourceClass: M #4C8G
     #resourceClass: L #8C16G
   steps:
-    #- plugin: clone
+    # - plugin: clone
     - plugin: shell
       inputs:
         image: ${image}
         command:
         - |
           echo "clone source codes..."
-          git clone -b master http://ice_test:${ACI_VAR_ICE_CODE_PASSWORD}@gitlab.alipay-inc.com/octopus/vsag.git
+          git clone http://ice_test:${ACI_VAR_ICE_CODE_PASSWORD}@gitlab.alipay-inc.com/octopus/vsag.git
           cd vsag
+          git checkout -b ${ACI_COMMIT_REF_NAME} origin/${ACI_COMMIT_REF_NAME}
           git fetch --tags
           #
           echo "running unittests..."
