@@ -48,7 +48,7 @@ vsag_build_ut:
           echo "clone source codes..."
           git clone http://ice_test:${ACI_VAR_ICE_CODE_PASSWORD}@gitlab.alipay-inc.com/octopus/vsag.git
           cd vsag
-          git checkout -b ${ACI_COMMIT_REF_NAME} origin/${ACI_COMMIT_REF_NAME}
+          git checkout ${ACI_COMMIT_REF_NAME}
           git fetch --tags
           #
           echo "running unittests..."
