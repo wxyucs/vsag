@@ -194,11 +194,11 @@ DiskANN::KnnSearch(const Dataset& query, int64_t k, const std::string& parameter
             }
             {
                 std::lock_guard<std::mutex> lock(stats_mutex_);
-                result_queues_[STATSTIC_KNN_IO].push(query_stats[i].n_ios);
-                result_queues_[STATSTIC_KNN_HOP].push(query_stats[i].n_hops);
-                result_queues_[STATSTIC_KNN_TIME].push(time_cost);
-                result_queues_[STATSTIC_KNN_CACHE_HIT].push(query_stats[i].n_cache_hits);
-                result_queues_[STATSTIC_KNN_IO_TIME].push(
+                result_queues_[STATSTIC_KNN_IO].Push(query_stats[i].n_ios);
+                result_queues_[STATSTIC_KNN_HOP].Push(query_stats[i].n_hops);
+                result_queues_[STATSTIC_KNN_TIME].Push(time_cost);
+                result_queues_[STATSTIC_KNN_CACHE_HIT].Push(query_stats[i].n_cache_hits);
+                result_queues_[STATSTIC_KNN_IO_TIME].Push(
                     (query_stats[i].io_us / query_stats[i].n_ios) / MACRO_TO_MILLI);
             }
 
@@ -262,11 +262,11 @@ DiskANN::RangeSearch(const Dataset& query, float radius, const std::string& para
         {
             std::lock_guard<std::mutex> lock(stats_mutex_);
 
-            result_queues_[STATSTIC_RANGE_IO].push(query_stats.n_ios);
-            result_queues_[STATSTIC_RANGE_HOP].push(query_stats.n_hops);
-            result_queues_[STATSTIC_RANGE_TIME].push(time_cost);
-            result_queues_[STATSTIC_RANGE_CACHE_HIT].push(query_stats.n_cache_hits);
-            result_queues_[STATSTIC_RANGE_IO_TIME].push((query_stats.io_us / query_stats.n_ios) /
+            result_queues_[STATSTIC_RANGE_IO].Push(query_stats.n_ios);
+            result_queues_[STATSTIC_RANGE_HOP].Push(query_stats.n_hops);
+            result_queues_[STATSTIC_RANGE_TIME].Push(time_cost);
+            result_queues_[STATSTIC_RANGE_CACHE_HIT].Push(query_stats.n_cache_hits);
+            result_queues_[STATSTIC_RANGE_IO_TIME].Push((query_stats.io_us / query_stats.n_ios) /
                                                         MACRO_TO_MILLI);
         }
     } catch (std::runtime_error e) {
@@ -421,7 +421,7 @@ DiskANN::GetStats() const {
     {
         std::lock_guard<std::mutex> lock(stats_mutex_);
         for (auto& item : result_queues_) {
-            j[item.first] = item.second.getAvgResult();
+            j[item.first] = item.second.GetAvgResult();
         }
     }
 

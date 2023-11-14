@@ -146,7 +146,7 @@ HNSW::KnnSearch(const Dataset& query, int64_t k, const std::string& parameters) 
             {
                 std::lock_guard<std::mutex> lock(stats_mutex_);
 
-                result_queues_[STATSTIC_KNN_TIME].push(time_cost);
+                result_queues_[STATSTIC_KNN_TIME].Push(time_cost);
             }
         } catch (std::runtime_error e) {
             return tl::unexpected(index_error::internal_error);
@@ -190,7 +190,7 @@ HNSW::RangeSearch(const Dataset& query, float radius, const std::string& paramet
         }
         {
             std::lock_guard<std::mutex> lock(stats_mutex_);
-            result_queues_[STATSTIC_RANGE_TIME].push(time_cost);
+            result_queues_[STATSTIC_RANGE_TIME].Push(time_cost);
         }
     } catch (std::runtime_error e) {
         return tl::unexpected(index_error::internal_error);
@@ -293,7 +293,7 @@ HNSW::GetStats() const {
     {
         std::lock_guard<std::mutex> lock(stats_mutex_);
         for (auto& item : result_queues_) {
-            j[item.first] = item.second.getAvgResult();
+            j[item.first] = item.second.GetAvgResult();
         }
     }
     return j.dump();
