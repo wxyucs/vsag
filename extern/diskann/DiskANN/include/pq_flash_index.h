@@ -47,6 +47,10 @@ template <typename T, typename LabelT = uint32_t> class PQFlashIndex
     DISKANN_DLLEXPORT int load_from_separate_paths(uint32_t num_threads, const char *index_filepath,
                                                    std::stringstream &pivots_stream, std::stringstream &compressed_stream);
     DISKANN_DLLEXPORT int load_from_separate_paths(uint32_t num_threads, std::stringstream &pivots_stream, std::stringstream &compressed_stream);
+
+    DISKANN_DLLEXPORT size_t load_graph(std::stringstream &in);
+
+
     DISKANN_DLLEXPORT void load_cache_list(std::vector<uint32_t> &node_list);
 
 #ifdef EXEC_ENV_OLS
@@ -83,7 +87,11 @@ template <typename T, typename LabelT = uint32_t> class PQFlashIndex
                                               const bool use_filter, const LabelT &filter_label,
                                               const uint32_t io_limit, const bool use_reorder_data = false,
                                               QueryStats *stats = nullptr);
-
+    DISKANN_DLLEXPORT void cached_beam_search_memory(const T *query, const uint64_t k_search, const uint64_t l_search,
+                                              uint64_t *indices, float *distances, const uint64_t beam_width,
+                                              const bool use_filter, const LabelT &filter_label,
+                                              const uint32_t io_limit, const bool use_reorder_data,
+                                              QueryStats *stats = nullptr);
     DISKANN_DLLEXPORT LabelT get_converted_label(const std::string &filter_label);
 
     DISKANN_DLLEXPORT uint32_t range_search(const T *query1, const double range, const uint64_t min_l_search,
@@ -191,6 +199,12 @@ template <typename T, typename LabelT = uint32_t> class PQFlashIndex
     bool count_visited_nodes = false;
     bool reorder_data_exists = false;
     uint64_t reoreder_data_offset = 0;
+
+
+
+    // Graph related data structures
+    int64_t graph_size = 0;
+    std::vector<std::vector<uint32_t>> final_graph;
 
     // filter support
     uint32_t *_pts_to_label_offsets = nullptr;

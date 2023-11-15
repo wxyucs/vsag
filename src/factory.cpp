@@ -43,8 +43,8 @@ Factory::CreateIndex(const std::string& name, const std::string& parameters) {
             index->SetEfRuntime(params["hnsw"]["ef_runtime"]);
         }
         return index;
-    } else if (name == "diskann") {
-        if (not params.contains("diskann")) {
+    } else if (name == INDEX_DISKANN) {
+        if (not params.contains(INDEX_DISKANN)) {
             throw std::runtime_error("diskann not found in parameters");
         }
         diskann::Metric metric;
@@ -56,13 +56,19 @@ Factory::CreateIndex(const std::string& name, const std::string& parameters) {
             throw std::runtime_error("diskann not support this metric");
         }
 
+        bool preload = false;
+        if (params[INDEX_DISKANN].contains(DISKANN_PARAMETER_PRELOAD)) {
+            preload = params[INDEX_DISKANN][DISKANN_PARAMETER_PRELOAD];
+        }
+
         auto index = std::make_shared<DiskANN>(metric,
                                                params["dtype"],
                                                params["diskann"]["L"],
                                                params["diskann"]["R"],
                                                params["diskann"]["p_val"],
                                                params["diskann"]["disk_pq_dims"],
-                                               params["dim"]);
+                                               params["dim"],
+                                               preload);
         return index;
     } else {
         // not support

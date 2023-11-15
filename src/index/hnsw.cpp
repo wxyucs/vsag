@@ -214,6 +214,10 @@ HNSW::RangeSearch(const Dataset& query, float radius, const std::string& paramet
 
 tl::expected<BinarySet, index_error>
 HNSW::Serialize() const {
+    if (GetNumElements() == 0) {
+        spdlog::error("failed to serialize: hnsw index is empty");
+        return tl::unexpected(index_error::index_empty);
+    }
     SlowTaskTimer t("hnsw serialize");
     size_t num_bytes = alg_hnsw->calcSerializeSize();
     // std::cout << "num_bytes: " << std::to_string(num_bytes) << std::endl;

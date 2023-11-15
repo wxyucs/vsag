@@ -59,14 +59,16 @@ DiskANN::DiskANN(diskann::Metric metric,
                  int R,
                  float p_val,
                  size_t disk_pq_dims,
-                 int64_t dim)
+                 int64_t dim,
+                 bool preload)
     : metric_(metric),
       L_(L),
       R_(R),
       p_val_(p_val),
       data_type_(data_type),
       disk_pq_dims_(disk_pq_dims),
-      dim_(dim) {
+      dim_(dim),
+      preload_(preload) {
     status = IndexStatus::EMPTY;
     batch_read = [&](const std::vector<read_request>& requests) -> void {
         std::vector<std::future<void>> futures;
@@ -114,7 +116,6 @@ DiskANN::Build(const Dataset& base) {
         return tl::unexpected(index_error::dimension_not_equal);
     }
 
-    std::stringstream graph_stream;
     std::stringstream tag_stream;
     std::stringstream data_stream;
 
@@ -125,7 +126,7 @@ DiskANN::Build(const Dataset& base) {
             std::vector<int64_t> tags(ids, ids + data_num);
             auto index_build_params = diskann::IndexWriteParametersBuilder(L_, R_).build();
             build_index->build(vectors, data_num, index_build_params, tags);
-            build_index->save(graph_stream, tag_stream, data_stream);
+            build_index->save(graph_stream_, tag_stream, data_stream);
         }
 
         diskann::generate_disk_quantized_data<float>(data_stream,
@@ -135,21 +136,23 @@ DiskANN::Build(const Dataset& base) {
                                                      p_val_,
                                                      disk_pq_dims_);
 
-        diskann::create_disk_layout<float>(data_stream, graph_stream, disk_layout_stream_, "");
+        diskann::create_disk_layout<float>(data_stream, graph_stream_, disk_layout_stream_, "");
 
         disk_layout_reader = std::make_shared<LocalMemoryReader>(disk_layout_stream_);
-
         reader.reset(new LocalFileReader(batch_read));
         index.reset(new diskann::PQFlashIndex<float>(reader, metric_));
         index->load_from_separate_paths(
             omp_get_num_procs(), pq_pivots_stream_, disk_pq_compressed_vectors_);
+        if (preload_) {
+            index->load_graph(graph_stream_);
+        } else {
+            graph_stream_.clear();
+        }
         status = IndexStatus::MEMORY;
     } catch (std::runtime_error e) {
         return tl::unexpected(index_error::internal_error);
     }
-    //    std::vector<uint32_t> nodes;
-    //    index->cache_bfs_levels(100, nodes);
-    //    index->load_cache_list(nodes);
+
     return this->GetNumElements();
 }
 
@@ -182,15 +185,31 @@ DiskANN::KnnSearch(const Dataset& query, int64_t k, const std::string& parameter
             double time_cost = 0;
             {
                 Timer timer(time_cost);
-                index->cached_beam_search(query.GetFloat32Vectors() + i * dim_,
-                                          k,
-                                          ef_search,
-                                          labels + i * k,
-                                          distances + i * k,
-                                          beam_search,
-                                          io_limit,
-                                          false,
-                                          query_stats + i);
+                if (preload_) {
+                    index->cached_beam_search_memory(query.GetFloat32Vectors() + i * dim_,
+                                                     k,
+                                                     ef_search,
+                                                     labels + i * k,
+                                                     distances + i * k,
+                                                     beam_search,
+                                                     false,
+                                                     0,
+                                                     io_limit,
+                                                     false,
+                                                     query_stats + i);
+                } else {
+                    index->cached_beam_search(query.GetFloat32Vectors() + i * dim_,
+                                              k,
+                                              ef_search,
+                                              labels + i * k,
+                                              distances + i * k,
+                                              beam_search,
+                                              false,
+                                              0,
+                                              io_limit,
+                                              false,
+                                              query_stats + i);
+                }
             }
             {
                 std::lock_guard<std::mutex> lock(stats_mutex_);
@@ -294,6 +313,10 @@ DiskANN::RangeSearch(const Dataset& query, float radius, const std::string& para
 
 tl::expected<BinarySet, index_error>
 DiskANN::Serialize() const {
+    if (status == IndexStatus::EMPTY) {
+        spdlog::error("failed to serialize: diskann index is empty");
+        return tl::unexpected(index_error::index_empty);
+    }
     SlowTaskTimer t("diskann serialize");
     try {
         BinarySet bs;
@@ -304,7 +327,6 @@ DiskANN::Serialize() const {
             .data = pq_pivots,
             .size = pq_str.size(),
         };
-
         bs.Set(DISKANN_PQ, pq_binary);
 
         pq_str = disk_pq_compressed_vectors_.str();
@@ -325,6 +347,20 @@ DiskANN::Serialize() const {
             .size = disk_layout.size(),
         };
         bs.Set(DISKANN_LAYOUT_FILE, layout_binary);
+
+        if (preload_) {
+            std::string graph = graph_stream_.str();
+
+            std::shared_ptr<int8_t[]> graph_content(new int8_t[graph.size()]);
+            std::copy(graph.begin(), graph.end(), graph_content.get());
+
+            Binary graph_binary{
+                .data = graph_content,
+                .size = graph.size(),
+            };
+            bs.Set(DISKANN_GRAPH, graph_binary);
+        }
+
         return bs;
     } catch (const std::bad_alloc& e) {
         return tl::unexpected(index_error::no_enough_memory);
@@ -357,6 +393,21 @@ DiskANN::Deserialize(const BinarySet& binary_set) {
         index.reset(new diskann::PQFlashIndex<float>(reader, metric_));
         index->load_from_separate_paths(
             omp_get_num_procs(), pq_pivots_stream_, disk_pq_compressed_vectors_);
+
+        auto graph = binary_set.Get(DISKANN_GRAPH);
+        if (preload_) {
+            if (graph.data) {
+                graph_stream_.write((char*)graph.data.get(), graph.size);
+                index->load_graph(graph_stream_);
+            } else {
+                spdlog::error("missing file: {} when deserialize diskann index", DISKANN_GRAPH);
+                return tl::unexpected(index_error::missing_file);
+            }
+        } else {
+            if (graph.data) {
+                spdlog::warn("serialize without using file: {} ", DISKANN_GRAPH);
+            }
+        }
         status = IndexStatus::MEMORY;
     } catch (std::runtime_error e) {
         spdlog::error(std::string("failed to deserialize: ") + e.what());
@@ -374,9 +425,8 @@ DiskANN::Deserialize(const ReaderSet& reader_set) {
         spdlog::error("failed to deserialize: index is not empty");
         return tl::unexpected(index_error::index_not_empty);
     }
-
     try {
-        std::stringstream pq_pivots_stream, disk_pq_compressed_vectors;
+        std::stringstream pq_pivots_stream, disk_pq_compressed_vectors, graph;
 
         {
             auto pq_reader = reader_set.Get(DISKANN_PQ);
@@ -402,6 +452,24 @@ DiskANN::Deserialize(const ReaderSet& reader_set) {
         index.reset(new diskann::PQFlashIndex<float>(reader, metric_));
         index->load_from_separate_paths(
             omp_get_num_procs(), pq_pivots_stream, disk_pq_compressed_vectors);
+
+        auto graph_reader = reader_set.Get(DISKANN_GRAPH);
+        if (preload_) {
+            if (graph_reader) {
+                auto graph_data = std::make_unique<char[]>(graph_reader->Size());
+                graph_reader->Read(0, graph_reader->Size(), graph_data.get());
+                graph.write(graph_data.get(), graph_reader->Size());
+                graph.seekg(0);
+                index->load_graph(graph);
+            } else {
+                spdlog::error("miss file: {} when deserialize diskann index", DISKANN_GRAPH);
+                return tl::unexpected(index_error::missing_file);
+            }
+        } else {
+            if (graph_reader) {
+                spdlog::warn("serialize without using file: {} ", DISKANN_GRAPH);
+            }
+        }
         status = IndexStatus::HYBRID;
     } catch (std::exception e) {
         spdlog::error(std::string("failed to deserialize: ") + e.what());

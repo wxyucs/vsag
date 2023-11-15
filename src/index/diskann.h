@@ -37,7 +37,8 @@ public:
             int R,
             float p_val,
             size_t disk_pq_dims,
-            int64_t dim);
+            int64_t dim,
+            bool preload);
 
     ~DiskANN() = default;
 
@@ -87,6 +88,9 @@ private:
     std::stringstream pq_pivots_stream_;
     std::stringstream disk_pq_compressed_vectors_;
     std::stringstream disk_layout_stream_;
+
+    std::stringstream graph_stream_;
+
     std::function<void(const std::vector<read_request>&)> batch_read;
     diskann::Metric metric_;
     std::shared_ptr<Reader> disk_layout_reader;
@@ -96,6 +100,7 @@ private:
     float p_val_ = 0.5;
     size_t disk_pq_dims_ = 8;
     int64_t dim_;
+    bool preload_;
     IndexStatus status;
 
 private:  // Request Statistics
