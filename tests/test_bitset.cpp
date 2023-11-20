@@ -2,13 +2,13 @@
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/matchers/catch_matchers_string.hpp>
 
-#include "vsag/bitmap.h"
+#include "vsag/bitset.h"
 
 using namespace vsag;
 using Catch::Matchers::ContainsSubstring;
 
-TEST_CASE("general usage", "[bitmap]") {
-    BitmapPtr bp = std::make_shared<Bitmap>();
+TEST_CASE("general usage", "[bitset]") {
+    BitsetPtr bp = std::make_shared<Bitset>();
     CHECK(bp->Capcity() == 0);
 
     bp->Set(100, true);
@@ -30,19 +30,19 @@ TEST_CASE("general usage", "[bitmap]") {
     CHECK(bp->Capcity() == 104);
 }
 
-TEST_CASE("get and set", "[bitmap]") {
-    BitmapPtr bp = std::make_shared<Bitmap>();
+TEST_CASE("get and set", "[bitset]") {
+    BitsetPtr bp = std::make_shared<Bitset>();
 
     CHECK_THROWS_WITH(
         bp->Get(-1),
-        ContainsSubstring("failed to get bitmap: offset") && ContainsSubstring("is less than 0"));
+        ContainsSubstring("failed to get bitset: offset") && ContainsSubstring("is less than 0"));
     CHECK_THROWS_WITH(bp->Get(1),
-                      ContainsSubstring("failed to get from bitmap: offset") &&
+                      ContainsSubstring("failed to get from bitset: offset") &&
                           ContainsSubstring("is greater than capcity"));
 
     CHECK_THROWS_WITH(
         bp->Set(-1, true),
-        ContainsSubstring("failed to set bitmap: offset") && ContainsSubstring("is less than 0"));
+        ContainsSubstring("failed to set bitset: offset") && ContainsSubstring("is less than 0"));
 
     CHECK_NOTHROW(bp->Set(0, true));
     CHECK(bp->Capcity() == 8);
@@ -53,8 +53,8 @@ TEST_CASE("get and set", "[bitmap]") {
     CHECK_NOTHROW(bp->Get(8));
 }
 
-TEST_CASE("count ones and zeros", "[bitmap]") {
-    BitmapPtr bp = std::make_shared<Bitmap>();
+TEST_CASE("count ones and zeros", "[bitset]") {
+    BitsetPtr bp = std::make_shared<Bitset>();
 
     bp->Set(1, true);
     CHECK(bp->CountOnes() == 1);
@@ -64,9 +64,9 @@ TEST_CASE("count ones and zeros", "[bitmap]") {
     CHECK(bp->CountZeros() == 14);
 }
 
-TEST_CASE("capcity and extend", "[bitmap]") {
+TEST_CASE("capcity and extend", "[bitset]") {
     int64_t mem_limit = 1024 * 1024;
-    BitmapPtr bp = std::make_shared<Bitmap>(mem_limit);
+    BitsetPtr bp = std::make_shared<Bitset>(mem_limit);
     CHECK(bp->Capcity() == 0);
 
     bp->Set(1, true);
@@ -82,11 +82,11 @@ TEST_CASE("capcity and extend", "[bitmap]") {
     CHECK(bp->Capcity() == 112);
 
     CHECK_THROWS_WITH(bp->Extend(mem_limit * 8 + 1),
-                      ContainsSubstring("failed to extend bitmap: number_of_bytes") &&
+                      ContainsSubstring("failed to extend bitset: number_of_bytes") &&
                           ContainsSubstring("is greater than memory limit"));
 
     CHECK_THROWS_WITH(bp->Extend(64),
-                      ContainsSubstring("failed to extend bitmap: number_of_bits") &&
+                      ContainsSubstring("failed to extend bitset: number_of_bits") &&
                           ContainsSubstring("is less than current capcity"));
 
     CHECK_NOTHROW(bp->Extend(mem_limit * 8));

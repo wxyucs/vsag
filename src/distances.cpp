@@ -21,9 +21,9 @@ l2sqr(const void* vec1, const void* vec2, int64_t dim) {
     return res;
 }
 
-BitmapPtr
+BitsetPtr
 l2_and_filtering(int64_t dim, int64_t nb, const float* base, const float* query, float threshold) {
-    BitmapPtr bp = std::make_shared<Bitmap>();
+    BitsetPtr bp = std::make_shared<Bitset>();
     bp->Extend(nb);
 
     int64_t count = 0;

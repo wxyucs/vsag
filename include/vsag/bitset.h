@@ -12,24 +12,24 @@
 
 namespace vsag {
 
-class Bitmap {
+class Bitset {
     static constexpr int64_t DEFAULT_MEM_LIMIT = 1024 * 1024 * 1024;  // 1MB
 public:
-    Bitmap(uint64_t mem_limit = DEFAULT_MEM_LIMIT) : mem_limit_(mem_limit){};
-    ~Bitmap() = default;
+    Bitset(uint64_t mem_limit = DEFAULT_MEM_LIMIT) : mem_limit_(mem_limit){};
+    ~Bitset() = default;
 
-    Bitmap(const Bitmap&) = delete;
-    Bitmap(Bitmap&&) = delete;
+    Bitset(const Bitset&) = delete;
+    Bitset(Bitset&&) = delete;
 
     /**
-      * Get a bit value from the bitmap
+      * Get a bit value from the bitset
       *
       * @param offset the index of bit to be get, available range: [0, mem_limit * 8)
       */
     bool
     Get(int64_t offset) {
         if (offset < 0) {
-            throw std::runtime_error("failed to get bitmap: offset(" + std::to_string(offset) +
+            throw std::runtime_error("failed to get bitset: offset(" + std::to_string(offset) +
                                      ") is less than 0");
         }
 
@@ -41,7 +41,7 @@ public:
             data_size = data_.size();
         }
         if (byte_index >= data_size) {
-            throw std::runtime_error("failed to get from bitmap: offset(" + std::to_string(offset) +
+            throw std::runtime_error("failed to get from bitset: offset(" + std::to_string(offset) +
                                      ") is greater than capcity(" + std::to_string(data_size * 8) +
                                      ")");
         }
@@ -51,7 +51,7 @@ public:
     }
 
     /**
-      * Set a bit value to the bitmap
+      * Set a bit value to the bitset
       * 
       * @param offset the index of bit to be set, available range: [0, mem_limit * 8)
       * @param value to be set into the specify bit
@@ -59,7 +59,7 @@ public:
     void
     Set(int64_t offset, bool value) {
         if (offset < 0) {
-            throw std::runtime_error("failed to set bitmap: offset(" + std::to_string(offset) +
+            throw std::runtime_error("failed to set bitset: offset(" + std::to_string(offset) +
                                      ") is less than 0");
         }
 
@@ -90,7 +90,7 @@ public:
     /**
       * Count the number of bits have been set to 1
       * 
-      * @return the number of 1s in the bitmap
+      * @return the number of 1s in the bitset
       */
     uint64_t
     CountOnes() {
@@ -101,7 +101,7 @@ public:
     /**
       * Count the number of bits have been set to 0
       * 
-      * @return the number of 0s in the bitmap
+      * @return the number of 0s in the bitset
       */
     uint64_t
     CountZeros() {
@@ -111,7 +111,7 @@ public:
 
 public:
     /**
-      * Get the capcity of this bitmap
+      * Get the capcity of this bitset
       * 
       * @return the number of bits can be used
       */
@@ -122,7 +122,7 @@ public:
     }
 
     /**
-      * Extend the bitmap to specify number of bits
+      * Extend the bitset to specify number of bits
       */
     void
     Extend(uint64_t number_of_bits) {
@@ -130,12 +130,12 @@ public:
         uint64_t number_of_bytes = number_of_bits / 8 + (number_of_bits % 8 > 0 ? 1 : 0);
         if (number_of_bytes > mem_limit_) {
             throw std::runtime_error(
-                "failed to extend bitmap: number_of_bytes(" + std::to_string(number_of_bytes) +
+                "failed to extend bitset: number_of_bytes(" + std::to_string(number_of_bytes) +
                 ") is greater than memory limit(" + std::to_string(mem_limit_) + ")");
         }
         if (number_of_bytes < data_.size()) {
             throw std::runtime_error(
-                "failed to extend bitmap: number_of_bits(" + std::to_string(number_of_bits) +
+                "failed to extend bitset: number_of_bits(" + std::to_string(number_of_bits) +
                 ") is less than current capcity(" + std::to_string(data_.size() * 8) + ")");
         }
         data_.resize(number_of_bytes);
@@ -167,6 +167,6 @@ private:
     int64_t num_ones_ = 0;
 };
 
-using BitmapPtr = std::shared_ptr<Bitmap>;
+using BitsetPtr = std::shared_ptr<Bitset>;
 
 }  //namespace vsag

@@ -69,7 +69,7 @@ if (ENABLE_TESTS)
 	tests/test_kmeans.cpp
 	tests/test_factory.cpp
 	tests/test_utils.cpp
-	tests/test_bitmap.cpp
+	tests/test_bitset.cpp
     )
     target_include_directories(tests PRIVATE ${CMAKE_CURRENT_BINARY_DIR}/spdlog/install/include)
     target_link_libraries (tests PRIVATE Catch2::Catch2WithMain vsag)
