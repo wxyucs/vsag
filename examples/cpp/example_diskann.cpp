@@ -141,7 +141,7 @@ float_diskann() {
         if (auto result = diskann->RangeSearch(query, threshold, parameters.dump());
             result.has_value()) {
             if (result->GetNumElements() == 1) {
-                if (result->GetIds()[0] == i) {
+                if (result->GetDim() != 0 && result->GetIds()[0] == i) {
                     correct++;
                 }
                 for (int j = 0; j < result->GetDim(); ++j) {

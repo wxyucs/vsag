@@ -2298,7 +2298,7 @@ uint32_t PQFlashIndex<T, LabelT>::range_search(const T *query1, const double ran
 
     bool stop_flag = false;
 
-    uint32_t l_search = (uint32_t)min_l_search; // starting size of the candidate list
+    uint32_t l_search = (uint32_t) std::min(min_l_search, num_points); // starting size of the candidate list
     while (!stop_flag)
     {
         indices.resize(l_search);
@@ -2321,7 +2321,7 @@ uint32_t PQFlashIndex<T, LabelT>::range_search(const T *query1, const double ran
         if (res_count < (uint32_t)(l_search / 2.0))
             stop_flag = true;
         l_search = l_search * 2;
-        if (l_search > max_l_search)
+        if (l_search > max_l_search || l_search > num_points)
             stop_flag = true;
     }
     indices.resize(res_count);

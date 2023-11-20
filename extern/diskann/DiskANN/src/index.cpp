@@ -1793,14 +1793,21 @@ void Index<T, TagT, LabelT>::link(const IndexWriteParameters &parameters)
     _indexingMaxC = parameters.max_occlusion_size;
     _indexingAlpha = parameters.alpha;
 
+    // if there are frozen points, the first such one is set to be the _start
+    if (_num_frozen_pts > 0)
+        _start = (uint32_t)_max_points;
+    else
+        _start = calculate_entry_point();
+
     /* visit_order is a vector that is initialized to the entire graph */
     std::vector<uint32_t> visit_order;
     std::vector<diskann::Neighbor> pool, tmp;
     tsl::robin_set<uint32_t> visited;
     visit_order.reserve(_nd + _num_frozen_pts);
-    for (uint32_t i = 0; i < (uint32_t)_nd; i++)
+
+    for (uint32_t i = _start + 1; i < (uint32_t)_nd + _start + 1; i++)
     {
-        visit_order.emplace_back(i);
+        visit_order.emplace_back(i % _nd);
     }
 
     // If there are any frozen points, add them all.
@@ -1808,12 +1815,6 @@ void Index<T, TagT, LabelT>::link(const IndexWriteParameters &parameters)
     {
         visit_order.emplace_back(frozen);
     }
-
-    // if there are frozen points, the first such one is set to be the _start
-    if (_num_frozen_pts > 0)
-        _start = (uint32_t)_max_points;
-    else
-        _start = calculate_entry_point();
 
     for (size_t p = 0; p < _nd; p++)
     {

@@ -23,7 +23,7 @@
 namespace vsag {
 
 const static float MACRO_TO_MILLI = 1000;
-const static int64_t DATA_LIMIT = 200;
+const static int64_t DATA_LIMIT = 2;
 
 class LocalMemoryReader : public Reader {
 public:

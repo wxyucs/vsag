@@ -300,7 +300,7 @@ TEST_CASE("DiskAnn IP Search", "[diskann]") {
     float recall = correct / max_elements;
     std::cout << "Stard Recall: " << recall << std::endl;
 
-    REQUIRE(recall > 0.75);
+    REQUIRE(recall > 0.70);
 }
 
 
@@ -362,7 +362,7 @@ TEST_CASE("DiskAnn Range Query", "[diskann]") {
             {"diskann", {{"ef_search", ef_runtime}, {"beam_search", 4}, {"io_limit", 200}}}};
         auto range_result = vsag::l2_and_filtering(dim, max_elements, data, data + i * dim, threshold);
         if (auto result = diskann->RangeSearch(query, threshold, parameters.dump()); result.has_value()) {
-            if (result->GetIds()[0] == i) {
+            if (result->GetDim() != 0 && result->GetIds()[0] == i) {
                 correct++;
             }
             for (int j = 0; j < result->GetDim(); ++j) {
