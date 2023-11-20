@@ -5,6 +5,7 @@
 #include <queue>
 #include <stdexcept>
 
+#include "bitset.h"
 #include "vsag/binaryset.h"
 #include "vsag/bitset.h"
 #include "vsag/dataset.h"
@@ -37,16 +38,20 @@ public:
     }
 
     /**
-      * Performing batch KNN search on index
+      * Performing single KNN search on index
       * 
       * @param query should contains dim, num_elements and vectors
       * @param k the result size of every query
+      * @param invalid represents whether an element is filteing out by pre-filter
       * @return result contains 
-      *                - num_elements: equals to num_elements in query
+      *                - num_elements: 1
       *                - ids, distances: length is (num_elements * k)
       */
     virtual tl::expected<Dataset, index_error>
-    KnnSearch(const Dataset& query, int64_t k, const std::string& parameters) const = 0;
+    KnnSearch(const Dataset& query,
+              int64_t k,
+              const std::string& parameters,
+              BitsetPtr invalid = nullptr) const = 0;
 
     /**
       * Performing single range search on index

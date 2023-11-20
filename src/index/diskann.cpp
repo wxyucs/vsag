@@ -157,7 +157,10 @@ DiskANN::Build(const Dataset& base) {
 }
 
 tl::expected<Dataset, index_error>
-DiskANN::KnnSearch(const Dataset& query, int64_t k, const std::string& parameters) const {
+DiskANN::KnnSearch(const Dataset& query,
+                   int64_t k,
+                   const std::string& parameters,
+                   BitsetPtr invalid) const {
     SlowTaskTimer t("diskann search", 100);
     nlohmann::json param = nlohmann::json::parse(parameters);
     Dataset result;

@@ -17,6 +17,20 @@ const static int64_t EXPANSION_NUM = 1000000;
 
 namespace vsag {
 
+class Filter : public hnswlib::BaseFilterFunctor {
+public:
+    Filter(BitsetPtr bitset) : bitset_(bitset) {
+    }
+
+    bool
+    operator()(hnswlib::labeltype id) override {
+        return not bitset_->Get(id);
+    }
+
+private:
+    BitsetPtr bitset_;
+};
+
 inline int64_t
 random_integer(int64_t lower_bound, int64_t upper_bound) {
     std::random_device rd;
@@ -108,15 +122,28 @@ HNSW::Add(const Dataset& base) {
 }
 
 tl::expected<Dataset, index_error>
-HNSW::KnnSearch(const Dataset& query, int64_t k, const std::string& parameters) const {
+HNSW::KnnSearch(const Dataset& query,
+                int64_t k,
+                const std::string& parameters,
+                BitsetPtr invalid) const {
     SlowTaskTimer t("hnsw knnsearch", 10);
     nlohmann::json params = nlohmann::json::parse(parameters);
     if (params.contains("hnsw") and params["hnsw"].contains("ef_runtime")) {
         alg_hnsw->setEf(params["hnsw"]["ef_runtime"]);
     }
+
     k = std::min(k, GetNumElements());
 
+    std::shared_ptr<Filter> filter = nullptr;
+    if (invalid != nullptr) {
+        filter = std::make_shared<Filter>(invalid);
+    }
+
     int64_t num_elements = query.GetNumElements();
+    if (num_elements != 1) {
+        spdlog::error("number of elements is NOT 1 in query database");
+        return tl::unexpected(index_error::internal_error);
+    }
     int64_t dim = query.GetDim();
     if (dim != dim_) {
         spdlog::error("dimension not equal: query(" + std::to_string(dim) + ") index(" +
@@ -125,21 +152,13 @@ HNSW::KnnSearch(const Dataset& query, int64_t k, const std::string& parameters) 
     }
     auto vectors = query.GetFloat32Vectors();
 
-    Dataset result;
-    int64_t* ids = new int64_t[num_elements * k];
-    float* dists = new float[num_elements * k];
+    std::priority_queue<std::pair<float, size_t>> results;
     for (int64_t i = 0; i < num_elements; ++i) {
         try {
-            std::priority_queue<std::pair<float, size_t>> results;
             double time_cost;
             {
                 Timer t(time_cost);
-                results = alg_hnsw->searchKnn((const void*)(vectors + i * dim_), k);
-            }
-            for (int64_t j = k - 1; j >= 0; --j) {
-                dists[i * k + j] = results.top().first;
-                ids[i * k + j] = results.top().second;
-                results.pop();
+                results = alg_hnsw->searchKnn((const void*)(vectors + i * dim_), k, filter.get());
             }
 
             // stats
@@ -149,13 +168,23 @@ HNSW::KnnSearch(const Dataset& query, int64_t k, const std::string& parameters) 
                 result_queues_[STATSTIC_KNN_TIME].Push(time_cost);
             }
         } catch (std::runtime_error e) {
+            spdlog::error(e.what());
             return tl::unexpected(index_error::internal_error);
         }
     }
-    result.SetDim(k);
-    result.SetNumElements(num_elements);
+
+    Dataset result;
+    int64_t* ids = new int64_t[results.size()];
+    float* dists = new float[results.size()];
+    result.SetDim(results.size());
+    result.SetNumElements(1);
     result.SetIds(ids);
     result.SetDistances(dists);
+    for (int64_t j = results.size() - 1; j >= 0; --j) {
+        dists[j] = results.top().first;
+        ids[j] = results.top().second;
+        results.pop();
+    }
 
     return std::move(result);
 }

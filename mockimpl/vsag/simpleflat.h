@@ -18,7 +18,10 @@ public:
     Add(const Dataset& base) override;
 
     tl::expected<Dataset, index_error>
-    KnnSearch(const Dataset& query, int64_t k, const std::string& parameters) const override;
+    KnnSearch(const Dataset& query,
+              int64_t k,
+              const std::string& parameters,
+              BitsetPtr invalid = nullptr) const override;
 
     tl::expected<Dataset, index_error>
     RangeSearch(const Dataset& query, float radius, const std::string& parameters) const override;
@@ -52,7 +55,7 @@ private:
     using rs = std::pair<float, int64_t>;
 
     std::vector<rs>
-    knn_search(const float* query, int64_t k) const;
+    knn_search(const float* query, int64_t k, BitsetPtr invalid) const;
 
     std::vector<rs>
     range_search(const float* query, float radius) const;

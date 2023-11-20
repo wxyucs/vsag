@@ -1,10 +1,12 @@
 #pragma once
 
+#include <algorithm>
 #include <cstdint>
 #include <exception>
 #include <iostream>
 #include <memory>
 #include <mutex>
+#include <random>
 #include <sstream>
 #include <stdexcept>
 #include <string>
@@ -12,8 +14,24 @@
 
 namespace vsag {
 
+class Bitset;
+using BitsetPtr = std::shared_ptr<Bitset>;
+
 class Bitset {
     static constexpr int64_t DEFAULT_MEM_LIMIT = 1024 * 1024 * 1024;  // 1MB
+public:
+    static BitsetPtr
+    Random(uint64_t number_of_bits) {
+        auto bitset = std::make_shared<Bitset>();
+        bitset->Extend(number_of_bits);
+        static auto gen =
+            std::bind(std::uniform_int_distribution<>(0, 1), std::default_random_engine());
+        for (uint64_t i = 0; i < number_of_bits; ++i) {
+            bitset->Set(i, gen());
+        }
+        return bitset;
+    }
+
 public:
     Bitset(uint64_t mem_limit = DEFAULT_MEM_LIMIT) : mem_limit_(mem_limit){};
     ~Bitset() = default;
@@ -166,7 +184,5 @@ private:
     std::vector<unsigned char> data_;
     int64_t num_ones_ = 0;
 };
-
-using BitsetPtr = std::shared_ptr<Bitset>;
 
 }  //namespace vsag

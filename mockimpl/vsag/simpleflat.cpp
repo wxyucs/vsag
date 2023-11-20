@@ -62,30 +62,36 @@ SimpleFlat::Add(const Dataset& base) {
 }
 
 tl::expected<Dataset, index_error>
-SimpleFlat::KnnSearch(const Dataset& query, int64_t k, const std::string& parameters) const {
-    int64_t nq = query.GetNumElements();
+SimpleFlat::KnnSearch(const Dataset& query,
+                      int64_t k,
+                      const std::string& parameters,
+                      BitsetPtr invalid) const {
     int64_t dim = query.GetDim();
     k = std::min(k, GetNumElements());
+    int64_t num_elements = query.GetNumElements();
+    if (num_elements != 1) {
+        return tl::unexpected(index_error::internal_error);
+    }
     if (this->dim_ != dim) {
         return tl::unexpected(index_error::dimension_not_equal);
     }
 
-    int64_t* ids = new int64_t[nq * k];
-    float* dists = new float[nq * k];
-    for (int64_t i = 0; i < query.GetNumElements(); ++i) {
-        auto result = knn_search(query.GetFloat32Vectors() + i * dim, k);
-        for (int64_t kk = 0; kk < k; ++kk) {
-            ids[i * k + kk] = result[k - 1 - kk].second;
-            dists[i * k + kk] = result[k - 1 - kk].first;
-        }
+    std::vector<rs> results;
+    results = knn_search(query.GetFloat32Vectors(), k, invalid);
+
+    Dataset dataset;
+    int64_t* ids = new int64_t[results.size()];
+    float* dists = new float[results.size()];
+    dataset.SetDim(results.size());
+    dataset.SetNumElements(1);
+    dataset.SetIds(ids);
+    dataset.SetDistances(dists);
+    for (int64_t i = results.size() - 1; i >= 0; --i) {
+        ids[i] = results[results.size() - 1 - i].second;
+        dists[i] = results[results.size() - 1 - i].first;
     }
 
-    Dataset results;
-    results.SetDim(k);
-    results.SetNumElements(nq);
-    results.SetIds(ids);
-    results.SetDistances(dists);
-    return std::move(results);
+    return std::move(dataset);
 }
 
 tl::expected<Dataset, index_error>
@@ -219,9 +225,12 @@ SimpleFlat::Deserialize(const ReaderSet& reader_set) {
     return {};
 }
 std::vector<SimpleFlat::rs>
-SimpleFlat::knn_search(const float* query, int64_t k) const {
+SimpleFlat::knn_search(const float* query, int64_t k, BitsetPtr invalid) const {
     std::priority_queue<SimpleFlat::rs> q;
     for (int64_t i = 0; i < this->num_elements_; ++i) {
+        if (invalid && invalid->Get(i)) {
+            continue;
+        }
         const float* base = data_.data() + i * this->dim_;
         float distance = 0.0f;
         if (this->metric_type_ == "l2") {
