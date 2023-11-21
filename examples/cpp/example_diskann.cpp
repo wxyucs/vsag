@@ -98,11 +98,8 @@ float_diskann() {
             {"diskann", {{"ef_search", ef_runtime}, {"beam_search", 4}, {"io_limit", io_limit}}}};
         int64_t k = 2;
         if (auto result = diskann->KnnSearch(query, k, parameters.dump()); result.has_value()) {
-            if (result->GetNumElements() == 1) {
-                if (result->GetIds()[0] == i) {
-                    correct++;
-                }
-            }
+            correct += vsag::knn_search_recall(
+                data, max_elements, data + i * dim, dim, result->GetIds(), result->GetDim());
         } else if (result.error() == vsag::index_error::internal_error) {
             std::cerr << "failed to perform knn search on index" << std::endl;
         }
@@ -131,16 +128,13 @@ float_diskann() {
             {"diskann", {{"ef_search", ef_runtime}, {"beam_search", 4}, {"io_limit", io_limit}}}};
         if (auto result = diskann->RangeSearch(query, threshold, parameters.dump());
             result.has_value()) {
-            if (result->GetNumElements() == 1) {
-                if (result->GetDim() != 0 && result->GetIds()[0] == i) {
-                    correct++;
-                }
-                for (int j = 0; j < result->GetDim(); ++j) {
-                    assert(range_result->Get(result->GetIds()[j]));
-                }
-                true_result += range_result->CountOnes();
-                return_result += result->GetDim();
-            }
+            correct += vsag::range_search_recall(data,
+                                                 max_elements,
+                                                 data + i * dim,
+                                                 dim,
+                                                 result->GetIds(),
+                                                 result->GetDim(),
+                                                 threshold);
         } else if (result.error() == vsag::index_error::internal_error) {
             std::cerr << "failed to perform knn search on index" << std::endl;
         }
@@ -148,8 +142,7 @@ float_diskann() {
     recall = correct / max_elements;
     std::cout << std::fixed << std::setprecision(3)
               << "Memory Usage:" << diskann->GetMemoryUsage() / 1024.0 << " KB" << std::endl;
-    std::cout << "Range Query Top 1 Recall: " << recall
-              << "    Diff Rate:" << (true_result - return_result) / true_result << std::endl;
+    std::cout << "Range Query Recall: " << recall << std::endl;
 
     std::cout << "============================================" << std::endl;
     std::cout << "Query Statistical Information:" << diskann->GetStats() << std::endl;
@@ -209,11 +202,8 @@ float_diskann() {
             {"diskann", {{"ef_search", ef_runtime}, {"beam_search", 4}, {"io_limit", io_limit}}}};
         int64_t k = 2;
         if (auto result = diskann->KnnSearch(query, k, parameters.dump()); result.has_value()) {
-            if (result->GetNumElements() == 1) {
-                if (result->GetIds()[0] == i) {
-                    correct++;
-                }
-            }
+            correct += vsag::knn_search_recall(
+                data, max_elements, data + i * dim, dim, result->GetIds(), result->GetDim());
         } else if (result.error() == vsag::index_error::internal_error) {
             std::cerr << "failed to perform knn search on index" << std::endl;
         }
@@ -311,11 +301,8 @@ float_diskann() {
             {"diskann", {{"ef_search", ef_runtime}, {"beam_search", 4}, {"io_limit", io_limit}}}};
         int64_t k = 2;
         if (auto result = diskann->KnnSearch(query, k, parameters.dump()); result.has_value()) {
-            if (result->GetNumElements() == 1) {
-                if (result->GetIds()[0] == i) {
-                    correct++;
-                }
-            }
+            correct += vsag::knn_search_recall(
+                data, max_elements, data + i * dim, dim, result->GetIds(), result->GetDim());
         } else if (result.error() == vsag::index_error::internal_error) {
             std::cerr << "failed to perform knn search on index" << std::endl;
         }
@@ -383,11 +370,8 @@ float_diskann() {
             {"diskann", {{"ef_search", ef_runtime}, {"beam_search", 4}, {"io_limit", io_limit}}}};
         int64_t k = 2;
         if (auto result = diskann->KnnSearch(query, k, parameters.dump()); result.has_value()) {
-            if (result->GetNumElements() == 1) {
-                if (result->GetIds()[0] == i) {
-                    correct++;
-                }
-            }
+            correct += vsag::knn_search_recall(
+                data, max_elements, data + i * dim, dim, result->GetIds(), result->GetDim());
         } else if (result.error() == vsag::index_error::internal_error) {
             std::cerr << "failed to perform knn search on index" << std::endl;
         }

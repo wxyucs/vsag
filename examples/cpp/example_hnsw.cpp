@@ -107,9 +107,12 @@ float_hnsw() {
             };
             int64_t k = 10;
             if (auto result = hnsw->KnnSearch(query, k, parameters.dump()); result.has_value()) {
-                if (result->GetIds()[0] == i) {
-                    correct++;
-                }
+                correct += vsag::knn_search_recall(data.get(),
+                                                   max_elements,
+                                                   data.get() + i * dim,
+                                                   dim,
+                                                   result->GetIds(),
+                                                   result->GetDim());
             } else if (result.error() == vsag::index_error::internal_error) {
                 std::cerr << "failed to perform knn search on index" << std::endl;
             }
@@ -127,25 +130,18 @@ float_hnsw() {
         for (int i = 0; i < max_elements; i++) {
             vsag::Dataset query;
             query.NumElements(1).Dim(dim).Float32Vectors(data.get() + i * dim).Owner(false);
-
-            auto range_result = vsag::l2_and_filtering(
-                dim, max_elements, data.get(), data.get() + i * dim, threshold);
-
             nlohmann::json parameters{
                 {"hnsw", {"ef_runtime", ef_runtime}},
             };
             if (auto result = hnsw->RangeSearch(query, threshold, parameters.dump());
                 result.has_value()) {
-                if (result->GetNumElements() == 1) {
-                    if (result->GetIds()[0] == i) {
-                        correct++;
-                    }
-                    for (int j = 0; j < result->GetDim(); ++j) {
-                        assert(range_result->Get(result->GetIds()[j]));
-                    }
-                    true_result += range_result->CountOnes();
-                    return_result += result->GetDim();
-                }
+                correct += vsag::range_search_recall(data.get(),
+                                                     max_elements,
+                                                     data.get() + i * dim,
+                                                     dim,
+                                                     result->GetIds(),
+                                                     result->GetDim(),
+                                                     threshold);
             } else if (result.error() == vsag::index_error::internal_error) {
                 std::cerr << "failed to perform knn search on index" << std::endl;
             }
@@ -153,8 +149,7 @@ float_hnsw() {
         recall = correct / max_elements;
         std::cout << std::fixed << std::setprecision(3)
                   << "Memory Usage:" << hnsw->GetMemoryUsage() / 1024.0 << " KB" << std::endl;
-        std::cout << "Range Query Top 1 Recall: " << recall
-                  << "    Diff Rate:" << (true_result - return_result) / true_result << std::endl;
+        std::cout << "Range Query Recall: " << recall << std::endl;
     }
 
     // Serialize(multi-file)
@@ -213,9 +208,12 @@ float_hnsw() {
         };
         int64_t k = 10;
         if (auto result = hnsw->KnnSearch(query, k, parameters.dump()); result.has_value()) {
-            if (result->GetIds()[0] == i or result->GetIds()[1] == i) {
-                correct++;
-            }
+            correct += vsag::knn_search_recall(data.get(),
+                                               max_elements,
+                                               data.get() + i * dim,
+                                               dim,
+                                               result->GetIds(),
+                                               result->GetDim());
         } else if (result.error() == vsag::index_error::internal_error) {
             std::cerr << "failed to perform knn search on index" << std::endl;
         }
@@ -259,11 +257,12 @@ float_hnsw() {
         };
         int64_t k = 10;
         if (auto result = hnsw->KnnSearch(query, k, parameters.dump()); result.has_value()) {
-            if (result->GetNumElements() == 1) {
-                if (result->GetIds()[0] == i or result->GetIds()[1] == i) {
-                    correct++;
-                }
-            }
+            correct += vsag::knn_search_recall(data.get(),
+                                               max_elements,
+                                               data.get() + i * dim,
+                                               dim,
+                                               result->GetIds(),
+                                               result->GetDim());
         } else if (result.error() == vsag::index_error::internal_error) {
             std::cerr << "failed to perform search on index" << std::endl;
         }
@@ -409,11 +408,12 @@ float_hnsw() {
         };
         int64_t k = 10;
         if (auto result = hnsw->KnnSearch(query, k, parameters.dump()); result.has_value()) {
-            if (result->GetNumElements() == 1) {
-                if (result->GetIds()[0] == i or result->GetIds()[1] == i) {
-                    correct++;
-                }
-            }
+            correct += vsag::knn_search_recall(data.get(),
+                                               max_elements,
+                                               data.get() + i * dim,
+                                               dim,
+                                               result->GetIds(),
+                                               result->GetDim());
         } else if (result.error() == vsag::index_error::internal_error) {
             std::cerr << "failed to perform search on index" << std::endl;
         }
