@@ -12,7 +12,8 @@ only:
 
 parameters:
   image: reg.docker.alibaba-inc.com/tbase/tbase:dev-20230605-clang13
-      
+  image_gcc: reg.docker.alibaba-inc.com/tbase/tbase:dev-20230605-gcc10
+
 stages:
   - FORMAT-PRE-CHECK
   - BUILD_UT
@@ -31,8 +32,8 @@ format-pre-check:
           if [[ -n $(git status --porcelain) ]]; then
               exit 1
           fi
-  
-vsag_build_ut:
+
+vsag_build_ut_cov:
   stage: BUILD_UT
   agent:
     #resourceClass: S #2C4G
@@ -53,21 +54,51 @@ vsag_build_ut:
           #
           echo "running unittests..."
           sh ./scripts/deps/install_deps_centos.sh
+          osscmd config --host=${OSS_HOST} --id=${OSS_ACCESS_KEY_ID} --key=${OSS_ACCESS_KEY_SECRET}
           #
           # download ccache
-          osscmd config --host=${OSS_HOST} --id=${OSS_ACCESS_KEY_ID} --key=${OSS_ACCESS_KEY_SECRET}
-          osscmd get oss://tbase/vsag/ccache.tar.gz ./ccache.tar.gz
-          mkdir $HOME/.ccache
-          tar -xzf ./ccache.tar.gz -C $HOME
+          bash scripts/misc/ccache.sh
           #
           # compile
           export CC=/usr/bin/gcc
           export CXX=/usr/bin/g++
           export PATH=/usr/lib/ccache:$PATH
-          make test
+          make test_cov
           #
-          # upload ccache
-          cd $HOME/ && tar -czf ccache.tar.gz .ccache
-          osscmd put ./ccache.tar.gz oss://tbase/vsag/ccache.tar.gz  > /dev/null 2>&1
+  timeout: 60
+  allowFailure: false
+
+vsag_build_asan_ut:
+  stage: BUILD_UT
+  agent:
+    #resourceClass: S #2C4G
+    resourceClass: M #4C8G
+    #resourceClass: L #8C16G
+  steps:
+    # - plugin: clone
+    - plugin: shell
+      inputs:
+        image: ${image_gcc}
+        command:
+        - |
+          echo "clone source codes..."
+          git clone http://ice_test:${ACI_VAR_ICE_CODE_PASSWORD}@gitlab.alipay-inc.com/octopus/vsag.git
+          cd vsag
+          git checkout ${ACI_COMMIT_REF_NAME}
+          git fetch --tags
+          #
+          echo "running unittests..."
+          sh ./scripts/deps/install_deps_centos.sh
+          osscmd config --host=${OSS_HOST} --id=${OSS_ACCESS_KEY_ID} --key=${OSS_ACCESS_KEY_SECRET}
+          #
+          # download ccache
+          bash scripts/misc/ccache.sh
+          #
+          # compile
+          export CC=/usr/bin/gcc
+          export CXX=/usr/bin/g++
+          export PATH=/usr/lib/ccache:$PATH
+          make test_asan
+          #
   timeout: 60
   allowFailure: false
