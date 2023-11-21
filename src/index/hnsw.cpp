@@ -176,10 +176,7 @@ HNSW::KnnSearch(const Dataset& query,
     Dataset result;
     int64_t* ids = new int64_t[results.size()];
     float* dists = new float[results.size()];
-    result.SetDim(results.size());
-    result.SetNumElements(1);
-    result.SetIds(ids);
-    result.SetDistances(dists);
+    result.Dim(results.size()).NumElements(1).Ids(ids).Distances(dists);
     for (int64_t j = results.size() - 1; j >= 0; --j) {
         dists[j] = results.top().first;
         ids[j] = results.top().second;
@@ -228,10 +225,7 @@ HNSW::RangeSearch(const Dataset& query, float radius, const std::string& paramet
     Dataset result;
     int64_t* ids = new int64_t[results.size()];
     float* dists = new float[results.size()];
-    result.SetDim(results.size());
-    result.SetNumElements(1);
-    result.SetIds(ids);
-    result.SetDistances(dists);
+    result.Dim(results.size()).NumElements(1).Ids(ids).Distances(dists);
     for (int64_t j = results.size() - 1; j >= 0; --j) {
         dists[+j] = results.top().first;
         ids[j] = results.top().second;

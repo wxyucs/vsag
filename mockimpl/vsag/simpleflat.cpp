@@ -82,10 +82,7 @@ SimpleFlat::KnnSearch(const Dataset& query,
     Dataset dataset;
     int64_t* ids = new int64_t[results.size()];
     float* dists = new float[results.size()];
-    dataset.SetDim(results.size());
-    dataset.SetNumElements(1);
-    dataset.SetIds(ids);
-    dataset.SetDistances(dists);
+    dataset.Dim(results.size()).NumElements(1).Ids(ids).Distances(dists);
     for (int64_t i = results.size() - 1; i >= 0; --i) {
         ids[i] = results[results.size() - 1 - i].second;
         dists[i] = results[results.size() - 1 - i].first;
@@ -115,10 +112,7 @@ SimpleFlat::RangeSearch(const Dataset& query, float radius, const std::string& p
     }
 
     Dataset results;
-    results.SetNumElements(1);
-    results.SetDim(result.size());
-    results.SetIds(ids);
-    results.SetDistances(dists);
+    results.NumElements(1).Dim(result.size()).Ids(ids).Distances(dists);
     return std::move(results);
 }
 

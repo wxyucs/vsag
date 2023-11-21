@@ -35,15 +35,17 @@ public:
         other.data_.clear();
     }
 
-    void
-    SetOwner(bool isOwner) {
-        this->owner_ = isOwner;
+    Dataset&
+    Owner(bool is_owner) {
+        this->owner_ = is_owner;
+        return *this;
     }
 
 public:
-    void
-    SetNumElements(const int64_t num_elements) {
+    Dataset&
+    NumElements(const int64_t num_elements) {
         this->data_[NUM_ELEMENTS] = num_elements;
+        return *this;
     }
 
     int64_t
@@ -54,9 +56,10 @@ public:
         return std::get<int64_t>(this->data_.at(NUM_ELEMENTS));
     }
 
-    void
-    SetDim(const int64_t dim) {
+    Dataset&
+    Dim(const int64_t dim) {
         this->data_[DIM] = dim;
+        return *this;
     }
 
     int64_t
@@ -67,9 +70,10 @@ public:
         return std::get<int64_t>(this->data_.at(DIM));
     }
 
-    void
-    SetIds(const int64_t* ids) {
+    Dataset&
+    Ids(const int64_t* ids) {
         this->data_[IDS] = ids;
+        return *this;
     }
 
     const int64_t*
@@ -80,9 +84,10 @@ public:
         return std::get<const int64_t*>(this->data_.at(IDS));
     }
 
-    void
-    SetDistances(const float* dists) {
+    Dataset&
+    Distances(const float* dists) {
         this->data_[DISTS] = dists;
+        return *this;
     }
 
     const float*
@@ -93,9 +98,10 @@ public:
         return std::get<const float*>(this->data_.at(DISTS));
     }
 
-    void
-    SetInt8Vectors(const int8_t* vectors) {
+    Dataset&
+    Int8Vectors(const int8_t* vectors) {
         this->data_[INT8_VECTORS] = vectors;
+        return *this;
     }
 
     const int8_t*
@@ -106,9 +112,10 @@ public:
         return std::get<const int8_t*>(this->data_.at(INT8_VECTORS));
     }
 
-    void
-    SetFloat32Vectors(const float* vectors) {
+    Dataset&
+    Float32Vectors(const float* vectors) {
         this->data_[FLOAT32_VECTORS] = vectors;
+        return *this;
     }
 
     const float*

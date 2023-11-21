@@ -75,10 +75,7 @@ float_diskann() {
 
     // Build index
     vsag::Dataset dataset;
-    dataset.SetDim(dim);
-    dataset.SetNumElements(max_elements);
-    dataset.SetIds(ids);
-    dataset.SetFloat32Vectors(data);
+    dataset.Dim(dim).NumElements(max_elements).Ids(ids).Float32Vectors(data);
     if (const auto num = diskann->Build(dataset); num.has_value()) {
         std::cout << "After Build(), Index constains: " << diskann->GetNumElements() << std::endl;
     } else if (num.error() == vsag::index_error::internal_error) {
@@ -89,10 +86,7 @@ float_diskann() {
     float correct = 0;
     for (int i = 0; i < max_elements; i++) {
         vsag::Dataset query;
-        query.SetNumElements(1);
-        query.SetDim(dim);
-        query.SetFloat32Vectors(data + i * dim);
-        query.SetOwner(false);
+        query.NumElements(1).Dim(dim).Float32Vectors(data + i * dim).Owner(false);
         // {
         //  "diskann": {
         //    "ef_search": 200,
@@ -123,10 +117,7 @@ float_diskann() {
     float return_result = 0;
     for (int i = 0; i < max_elements; i++) {
         vsag::Dataset query;
-        query.SetNumElements(1);
-        query.SetDim(dim);
-        query.SetFloat32Vectors(data + i * dim);
-        query.SetOwner(false);
+        query.NumElements(1).Dim(dim).Float32Vectors(data + i * dim).Owner(false);
         // {
         //  "diskann": {
         //    "ef_search": 200,
@@ -213,10 +204,7 @@ float_diskann() {
     correct = 0;
     for (int i = 0; i < max_elements; i++) {
         vsag::Dataset query;
-        query.SetNumElements(1);
-        query.SetDim(dim);
-        query.SetFloat32Vectors(data + i * dim);
-        query.SetOwner(false);
+        query.NumElements(1).Dim(dim).Float32Vectors(data + i * dim).Owner(false);
         nlohmann::json parameters{
             {"diskann", {{"ef_search", ef_runtime}, {"beam_search", 4}, {"io_limit", io_limit}}}};
         int64_t k = 2;
@@ -318,10 +306,7 @@ float_diskann() {
     correct = 0;
     for (int i = 0; i < max_elements; i++) {
         vsag::Dataset query;
-        query.SetNumElements(1);
-        query.SetDim(dim);
-        query.SetFloat32Vectors(data + i * dim);
-        query.SetOwner(false);
+        query.NumElements(1).Dim(dim).Float32Vectors(data + i * dim).Owner(false);
         nlohmann::json parameters{
             {"diskann", {{"ef_search", ef_runtime}, {"beam_search", 4}, {"io_limit", io_limit}}}};
         int64_t k = 2;
@@ -393,10 +378,7 @@ float_diskann() {
     correct = 0;
     for (int i = 0; i < max_elements; i++) {
         vsag::Dataset query;
-        query.SetNumElements(1);
-        query.SetDim(dim);
-        query.SetFloat32Vectors(data + i * dim);
-        query.SetOwner(false);
+        query.NumElements(1).Dim(dim).Float32Vectors(data + i * dim).Owner(false);
         nlohmann::json parameters{
             {"diskann", {{"ef_search", ef_runtime}, {"beam_search", 4}, {"io_limit", io_limit}}}};
         int64_t k = 2;

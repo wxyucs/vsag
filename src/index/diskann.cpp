@@ -233,10 +233,7 @@ DiskANN::KnnSearch(const Dataset& query,
         ids[i] = static_cast<int64_t>(labels[i]);
     }
 
-    result.SetNumElements(query_num);
-    result.SetDim(k);
-    result.SetDistances(distances);
-    result.SetIds(ids);
+    result.NumElements(query_num).Dim(k).Distances(distances).Ids(ids);
     return std::move(result);
 }
 
@@ -248,8 +245,7 @@ DiskANN::RangeSearch(const Dataset& query, float radius, const std::string& para
     auto query_num = query.GetNumElements();
     auto query_dim = query.GetDim();
 
-    result.SetDim(0);
-    result.SetNumElements(query_num);
+    result.Dim(0).NumElements(query_num);
 
     if (!index)
         return std::move(result);
@@ -307,10 +303,7 @@ DiskANN::RangeSearch(const Dataset& query, float radius, const std::string& para
         dis[i] = range_distances[i];
     }
 
-    result.SetNumElements(query_num);
-    result.SetDim(k);
-    result.SetDistances(dis);
-    result.SetIds(ids);
+    result.NumElements(query_num).Dim(k).Distances(dis).Ids(ids);
     return std::move(result);
 }
 

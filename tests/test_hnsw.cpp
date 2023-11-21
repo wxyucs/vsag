@@ -54,20 +54,14 @@ TEST_CASE("HNSW Float Recall", "[hnsw]") {
     }
 
     vsag::Dataset dataset;
-    dataset.SetDim(dim);
-    dataset.SetNumElements(max_elements);
-    dataset.SetIds(ids);
-    dataset.SetFloat32Vectors(data);
+    dataset.Dim(dim).NumElements(max_elements).Ids(ids).Float32Vectors(data);
     hnsw->Add(dataset);
 
     // Query the elements for themselves and measure recall 1@1
     float correct = 0;
     for (int i = 0; i < max_elements; i++) {
         vsag::Dataset query;
-        query.SetNumElements(1);
-        query.SetDim(dim);
-        query.SetFloat32Vectors(data + i * dim);
-        query.SetOwner(false);
+        query.NumElements(1).Dim(dim).Float32Vectors(data + i * dim).Owner(false);
         nlohmann::json parameters;
         int64_t k = 10;
         if (auto result = hnsw->KnnSearch(query, k, parameters.dump()); result.has_value()) {
@@ -83,7 +77,6 @@ TEST_CASE("HNSW Float Recall", "[hnsw]") {
 
     REQUIRE(recall == 1);
 }
-
 
 TEST_CASE("HNSW IP Search", "[hnsw]") {
     int dim = 128;
@@ -116,20 +109,14 @@ TEST_CASE("HNSW IP Search", "[hnsw]") {
     }
 
     vsag::Dataset dataset;
-    dataset.SetDim(dim);
-    dataset.SetNumElements(max_elements);
-    dataset.SetIds(ids);
-    dataset.SetFloat32Vectors(data);
+    dataset.Dim(dim).NumElements(max_elements).Ids(ids).Float32Vectors(data);
     hnsw->Build(dataset);
 
     // Query the elements for themselves and measure recall 1@1
     float correct = 0;
     for (int i = 0; i < max_elements; i++) {
         vsag::Dataset query;
-        query.SetNumElements(1);
-        query.SetDim(dim);
-        query.SetFloat32Vectors(data + i * dim);
-        query.SetOwner(false);
+        query.NumElements(1).Dim(dim).Float32Vectors(data + i * dim).Owner(false);
         nlohmann::json parameters;
         int64_t k = 10;
         if (auto result = hnsw->KnnSearch(query, k, parameters.dump()); result.has_value()) {
@@ -144,8 +131,6 @@ TEST_CASE("HNSW IP Search", "[hnsw]") {
 
     REQUIRE(recall > 0.85);
 }
-
-
 
 TEST_CASE("Two HNSW", "[hnsw]") {
     int dim = 128;
@@ -179,10 +164,7 @@ TEST_CASE("Two HNSW", "[hnsw]") {
     }
 
     vsag::Dataset dataset;
-    dataset.SetDim(dim);
-    dataset.SetNumElements(max_elements);
-    dataset.SetIds(ids);
-    dataset.SetFloat32Vectors(data);
+    dataset.Dim(dim).NumElements(max_elements).Ids(ids).Float32Vectors(data);
     hnsw->Build(dataset);
     hnsw2->Build(dataset);
 
@@ -190,10 +172,7 @@ TEST_CASE("Two HNSW", "[hnsw]") {
     float correct = 0;
     for (int i = 0; i < max_elements; i++) {
         vsag::Dataset query;
-        query.SetNumElements(1);
-        query.SetDim(dim);
-        query.SetFloat32Vectors(data + i * dim);
-        query.SetOwner(false);
+        query.NumElements(1).Dim(dim).Float32Vectors(data + i * dim).Owner(false);
         nlohmann::json parameters;
         int64_t k = 10;
 
@@ -239,10 +218,7 @@ TEST_CASE("HNSW build test", "[hnsw build]") {
         data[i] = distrib_real(rng);
     }
     vsag::Dataset dataset;
-    dataset.SetDim(dim);
-    dataset.SetNumElements(max_elements);
-    dataset.SetIds(ids);
-    dataset.SetFloat32Vectors(data);
+    dataset.Dim(dim).NumElements(max_elements).Ids(ids).Float32Vectors(data);
     hnsw->Build(dataset);
 
     for (int i = max_elements; i < 2 * max_elements; i++) {
@@ -254,11 +230,7 @@ TEST_CASE("HNSW build test", "[hnsw build]") {
 
     for (int i = max_elements; i < 2 * max_elements; i++) {
         vsag::Dataset dataset;
-        dataset.SetOwner(false);
-        dataset.SetDim(dim);
-        dataset.SetNumElements(1);
-        dataset.SetIds(ids + i);
-        dataset.SetFloat32Vectors(data + i * dim);
+        dataset.Dim(dim).NumElements(1).Ids(ids + i).Float32Vectors(data + i * dim).Owner(false);
         hnsw->Add(dataset);
     }
 
@@ -296,10 +268,7 @@ TEST_CASE("HNSW range search", "[hnsw]") {
     }
 
     vsag::Dataset dataset;
-    dataset.SetDim(dim);
-    dataset.SetNumElements(max_elements);
-    dataset.SetIds(ids);
-    dataset.SetFloat32Vectors(data);
+    dataset.Dim(dim).NumElements(max_elements).Ids(ids).Float32Vectors(data);
     hnsw->Build(dataset);
 
     REQUIRE(hnsw->GetNumElements() == max_elements);
@@ -310,22 +279,21 @@ TEST_CASE("HNSW range search", "[hnsw]") {
         query_data[i] = distrib_real(rng);
     }
     vsag::Dataset query;
-    query.SetDim(dim);
-    query.SetNumElements(1);
-    query.SetFloat32Vectors(query_data);
+    query.Dim(dim).NumElements(1).Float32Vectors(query_data);
     auto result = hnsw->RangeSearch(query, radius, "{}");
     REQUIRE(result.has_value());
     REQUIRE(result->GetNumElements() == 1);
 
     auto expected = vsag::l2_and_filtering(dim, max_elements, data, query_data, radius);
     if (expected->CountOnes() != result->GetDim()) {
-        std::cout << "not 100% recall: expect " << expected->CountOnes() << " return " << result->GetDim() << std::endl;
+        std::cout << "not 100% recall: expect " << expected->CountOnes() << " return "
+                  << result->GetDim() << std::endl;
     }
 
     // check no false recall
     for (int64_t i = 0; i < result->GetDim(); ++i) {
         auto offset = result->GetIds()[i];
-	CHECK(expected->Get(offset));
+        CHECK(expected->Get(offset));
     }
 
     // recall > 99%
@@ -364,10 +332,7 @@ TEST_CASE("HNSW filtering knn search", "[hnsw]") {
     }
 
     vsag::Dataset dataset;
-    dataset.SetDim(dim);
-    dataset.SetNumElements(max_elements);
-    dataset.SetIds(ids);
-    dataset.SetFloat32Vectors(data);
+    dataset.Dim(dim).NumElements(max_elements).Ids(ids).Float32Vectors(data);
     hnsw->Build(dataset);
 
     REQUIRE(hnsw->GetNumElements() == max_elements);
@@ -375,10 +340,7 @@ TEST_CASE("HNSW filtering knn search", "[hnsw]") {
     // Query the elements for themselves and measure recall 1@1
     for (int i = 0; i < max_elements; i++) {
         vsag::Dataset query;
-        query.SetNumElements(1);
-        query.SetDim(dim);
-        query.SetFloat32Vectors(data + i * dim);
-        query.SetOwner(false);
+        query.NumElements(1).Dim(dim).Float32Vectors(data + i * dim).Owner(false);
         nlohmann::json parameters;
         int64_t k = max_elements;
 

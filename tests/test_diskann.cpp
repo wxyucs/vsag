@@ -49,19 +49,13 @@ TEST_CASE("DiskAnn Float Recall", "[diskann]") {
 
     // Build index
     vsag::Dataset dataset;
-    dataset.SetDim(dim);
-    dataset.SetNumElements(max_elements);
-    dataset.SetIds(ids);
-    dataset.SetFloat32Vectors(data);
+    dataset.Dim(dim).NumElements(max_elements).Ids(ids).Float32Vectors(data);
     diskann->Build(dataset);
 
     float correct = 0;
     for (int i = 0; i < max_elements; i++) {
         vsag::Dataset query;
-        query.SetNumElements(1);
-        query.SetDim(dim);
-        query.SetFloat32Vectors(data + i * dim);
-        query.SetOwner(false);
+        query.NumElements(1).Dim(dim).Float32Vectors(data + i * dim).Owner(false);
         nlohmann::json parameters{
             {"diskann", {{"ef_search", ef_runtime}, {"beam_search", 4}, {"io_limit", 200}}}};
         int64_t k = 2;
@@ -160,10 +154,7 @@ TEST_CASE("DiskAnn Float Recall", "[diskann]") {
     correct = 0;
     for (int i = 0; i < max_elements; i++) {
         vsag::Dataset query;
-        query.SetNumElements(1);
-        query.SetDim(dim);
-        query.SetFloat32Vectors(data + i * dim);
-        query.SetOwner(false);
+        query.NumElements(1).Dim(dim).Float32Vectors(data + i * dim).Owner(false);
         nlohmann::json parameters{
             {"diskann", {{"ef_search", ef_runtime}, {"beam_search", 4}, {"io_limit", 200}}}};
         int64_t k = 2;
@@ -205,10 +196,7 @@ TEST_CASE("DiskAnn Float Recall", "[diskann]") {
     correct = 0;
     for (int i = 0; i < max_elements; i++) {
         vsag::Dataset query;
-        query.SetNumElements(1);
-        query.SetDim(dim);
-        query.SetFloat32Vectors(data + i * dim);
-        query.SetOwner(false);
+        query.NumElements(1).Dim(dim).Float32Vectors(data + i * dim).Owner(false);
         nlohmann::json parameters{
             {"diskann", {{"ef_search", ef_runtime}, {"beam_search", 4}, {"io_limit", 200}}}};
         int64_t k = 2;
@@ -269,19 +257,13 @@ TEST_CASE("DiskAnn IP Search", "[diskann]") {
 
     // Build index
     vsag::Dataset dataset;
-    dataset.SetDim(dim);
-    dataset.SetNumElements(max_elements);
-    dataset.SetIds(ids);
-    dataset.SetFloat32Vectors(data);
+    dataset.Dim(dim).NumElements(max_elements).Ids(ids).Float32Vectors(data);
     diskann->Build(dataset);
 
     float correct = 0;
     for (int i = 0; i < max_elements; i++) {
         vsag::Dataset query;
-        query.SetNumElements(1);
-        query.SetDim(dim);
-        query.SetFloat32Vectors(data + i * dim);
-        query.SetOwner(false);
+        query.NumElements(1).Dim(dim).Float32Vectors(data + i * dim).Owner(false);
         nlohmann::json parameters{
             {"diskann", {{"ef_search", ef_runtime}, {"beam_search", 4}, {"io_limit", 200}}}};
         int64_t k = 2;
@@ -343,10 +325,7 @@ TEST_CASE("DiskAnn Range Query", "[diskann]") {
 
     // Build index
     vsag::Dataset dataset;
-    dataset.SetDim(dim);
-    dataset.SetNumElements(max_elements);
-    dataset.SetIds(ids);
-    dataset.SetFloat32Vectors(data);
+    dataset.Dim(dim).NumElements(max_elements).Ids(ids).Float32Vectors(data);
     diskann->Build(dataset);
 
     float correct = 0;
@@ -354,10 +333,7 @@ TEST_CASE("DiskAnn Range Query", "[diskann]") {
     float return_result = 0;
     for (int i = 0; i < max_elements; i++) {
         vsag::Dataset query;
-        query.SetNumElements(1);
-        query.SetDim(dim);
-        query.SetFloat32Vectors(data + i * dim);
-        query.SetOwner(false);
+        query.NumElements(1).Dim(dim).Float32Vectors(data + i * dim).Owner(false);
         nlohmann::json parameters{
             {"diskann", {{"ef_search", ef_runtime}, {"beam_search", 4}, {"io_limit", 200}}}};
         auto range_result = vsag::l2_and_filtering(dim, max_elements, data, data + i * dim, threshold);
@@ -423,19 +399,13 @@ TEST_CASE("DiskAnn Preload Graph", "[diskann]") {
 
     // Build index
     vsag::Dataset dataset;
-    dataset.SetDim(dim);
-    dataset.SetNumElements(max_elements);
-    dataset.SetIds(ids);
-    dataset.SetFloat32Vectors(data);
+    dataset.Dim(dim).NumElements(max_elements).Ids(ids).Float32Vectors(data);
     diskann->Build(dataset);
 
     float correct = 0;
     for (int i = 0; i < max_elements; i++) {
         vsag::Dataset query;
-        query.SetNumElements(1);
-        query.SetDim(dim);
-        query.SetFloat32Vectors(data + i * dim);
-        query.SetOwner(false);
+        query.NumElements(1).Dim(dim).Float32Vectors(data + i * dim).Owner(false);
         nlohmann::json parameters{
                 {"diskann", {{"ef_search", ef_runtime}, {"beam_search", 4}, {"io_limit", 200}}}};
         int64_t k = 2;

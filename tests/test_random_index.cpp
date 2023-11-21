@@ -90,10 +90,7 @@ TEST_CASE("Random Index Test", "[random]") {
     }
 
     vsag::Dataset dataset;
-    dataset.SetDim(dim);
-    dataset.SetNumElements(max_elements);
-    dataset.SetIds(ids);
-    dataset.SetFloat32Vectors(data);
+    dataset.Dim(dim).NumElements(max_elements).Ids(ids).Float32Vectors(data);
 
 
     auto hnsw = vsag::Factory::CreateIndex("hnsw", index_parameters.dump());
@@ -101,10 +98,7 @@ TEST_CASE("Random Index Test", "[random]") {
 
     for (int i = 0; i < max_elements; i++) {
         vsag::Dataset query;
-        query.SetNumElements(1);
-        query.SetDim(dim);
-        query.SetFloat32Vectors(data + i * dim);
-        query.SetOwner(false);
+        query.NumElements(1).Dim(dim).Float32Vectors(data + i * dim).Owner(false);
         auto knn_result = hnsw->KnnSearch(query, k, parameters.dump());
         REQUIRE(knn_result.has_value());
         auto range_result = hnsw->RangeSearch(query, k, parameters.dump());
@@ -117,10 +111,7 @@ TEST_CASE("Random Index Test", "[random]") {
 
     for (int i = 0; i < max_elements; i++) {
         vsag::Dataset query;
-        query.SetNumElements(1);
-        query.SetDim(dim);
-        query.SetFloat32Vectors(data + i * dim);
-        query.SetOwner(false);
+        query.NumElements(1).Dim(dim).Float32Vectors(data + i * dim).Owner(false);
         auto knn_result = diskann->KnnSearch(query, k, parameters.dump());
         REQUIRE(knn_result.has_value());
         auto range_result = diskann->RangeSearch(query, k, parameters.dump());

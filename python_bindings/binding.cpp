@@ -34,11 +34,11 @@ public:
     void
     Build(py::array_t<float> vectors, py::array_t<int64_t> ids, size_t num_elements, size_t dim) {
         vsag::Dataset dataset;
-        dataset.SetOwner(false);
-        dataset.SetDim(dim);
-        dataset.SetNumElements(num_elements);
-        dataset.SetIds(ids.mutable_data());
-        dataset.SetFloat32Vectors(vectors.mutable_data());
+        dataset.Owner(false)
+            .Dim(dim)
+            .NumElements(num_elements)
+            .Ids(ids.mutable_data())
+            .Float32Vectors(vectors.mutable_data());
         index_->Build(dataset);
     }
 
@@ -46,10 +46,10 @@ public:
     KnnSearch(py::array_t<float> vector, size_t k, std::string& parameters) {
         vsag::Dataset query;
         size_t data_num = 1;
-        query.SetNumElements(data_num);
-        query.SetDim(vector.size());
-        query.SetFloat32Vectors(vector.mutable_data());
-        query.SetOwner(false);
+        query.NumElements(data_num)
+            .Dim(vector.size())
+            .Float32Vectors(vector.mutable_data())
+            .Owner(false);
 
         auto labels = py::array_t<int64_t>(k);
         auto dists = py::array_t<float>(k);
@@ -71,10 +71,10 @@ public:
     RangeSearch(py::array_t<float> point, float threshold, std::string& parameters) {
         vsag::Dataset query;
         size_t data_num = 1;
-        query.SetNumElements(data_num);
-        query.SetDim(point.size());
-        query.SetFloat32Vectors(point.mutable_data());
-        query.SetOwner(false);
+        query.NumElements(data_num)
+            .Dim(point.size())
+            .Float32Vectors(point.mutable_data())
+            .Owner(false);
 
         py::array_t<int64_t> labels;
         py::array_t<float> dists;
