@@ -238,7 +238,10 @@ DiskANN::KnnSearch(const Dataset& query,
 }
 
 tl::expected<Dataset, index_error>
-DiskANN::RangeSearch(const Dataset& query, float radius, const std::string& parameters) const {
+DiskANN::RangeSearch(const Dataset& query,
+                     float radius,
+                     const std::string& parameters,
+                     BitsetPtr invalid) const {
     Dataset result;
     nlohmann::json param = nlohmann::json::parse(parameters);
 

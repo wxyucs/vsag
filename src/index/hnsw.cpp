@@ -187,7 +187,10 @@ HNSW::KnnSearch(const Dataset& query,
 }
 
 tl::expected<Dataset, index_error>
-HNSW::RangeSearch(const Dataset& query, float radius, const std::string& parameters) const {
+HNSW::RangeSearch(const Dataset& query,
+                  float radius,
+                  const std::string& parameters,
+                  BitsetPtr invalid) const {
     SlowTaskTimer t("hnsw rangesearch", 10);
     nlohmann::json params = nlohmann::json::parse(parameters);
     if (params.contains("hnsw") and params["hnsw"].contains("ef_runtime")) {
@@ -205,6 +208,12 @@ HNSW::RangeSearch(const Dataset& query, float radius, const std::string& paramet
                       std::to_string(dim_) + ")");
         return tl::unexpected(index_error::dimension_not_equal);
     }
+
+    std::shared_ptr<Filter> filter = nullptr;
+    if (invalid != nullptr) {
+        filter = std::make_shared<Filter>(invalid);
+    }
+
     auto vector = query.GetFloat32Vectors();
 
     std::priority_queue<std::pair<float, size_t>> results;
@@ -212,7 +221,7 @@ HNSW::RangeSearch(const Dataset& query, float radius, const std::string& paramet
         double time_cost;
         {
             Timer timer(time_cost);
-            results = alg_hnsw->searchRange((const void*)(vector), radius);
+            results = alg_hnsw->searchRange((const void*)(vector), radius, filter.get());
         }
         {
             std::lock_guard<std::mutex> lock(stats_mutex_);

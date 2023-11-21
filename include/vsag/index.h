@@ -64,7 +64,10 @@ public:
       *                - ids, distances: length is dim
       */
     virtual tl::expected<Dataset, index_error>
-    RangeSearch(const Dataset& query, float radius, const std::string& parameters) const {
+    RangeSearch(const Dataset& query,
+                float radius,
+                const std::string& parameters,
+                BitsetPtr invalid = nullptr) const {
         throw std::runtime_error("Index not support range search");
     }
 

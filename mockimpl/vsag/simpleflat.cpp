@@ -92,7 +92,10 @@ SimpleFlat::KnnSearch(const Dataset& query,
 }
 
 tl::expected<Dataset, index_error>
-SimpleFlat::RangeSearch(const Dataset& query, float radius, const std::string& parameters) const {
+SimpleFlat::RangeSearch(const Dataset& query,
+                        float radius,
+                        const std::string& parameters,
+                        BitsetPtr invalid) const {
     int64_t nq = query.GetNumElements();
     int64_t dim = query.GetDim();
     if (this->dim_ != dim) {
@@ -102,7 +105,7 @@ SimpleFlat::RangeSearch(const Dataset& query, float radius, const std::string& p
     if (nq != 1) {
         return tl::unexpected(index_error::internal_error);
     }
-    auto result = range_search(query.GetFloat32Vectors(), radius);
+    auto result = range_search(query.GetFloat32Vectors(), radius, invalid);
 
     int64_t* ids = new int64_t[result.size()];
     float* dists = new float[result.size()];
@@ -252,9 +255,12 @@ SimpleFlat::knn_search(const float* query, int64_t k, BitsetPtr invalid) const {
 }
 
 std::vector<SimpleFlat::rs>
-SimpleFlat::range_search(const float* query, float radius) const {
+SimpleFlat::range_search(const float* query, float radius, BitsetPtr invalid) const {
     std::priority_queue<SimpleFlat::rs> q;
     for (int64_t i = 0; i < this->num_elements_; ++i) {
+        if (invalid && invalid->Get(i)) {
+            continue;
+        }
         const float* base = data_.data() + i * this->dim_;
         float distance = 0.0f;
         if (this->metric_type_ == "l2") {

@@ -34,7 +34,10 @@ public:
               BitsetPtr invalid = nullptr) const override;
 
     tl::expected<Dataset, index_error>
-    RangeSearch(const Dataset& query, float radius, const std::string& parameters) const override;
+    RangeSearch(const Dataset& query,
+                float radius,
+                const std::string& parameters,
+                BitsetPtr invalid = nullptr) const override;
 
 public:
     tl::expected<BinarySet, index_error>
