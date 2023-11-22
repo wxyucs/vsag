@@ -18,6 +18,7 @@ format:
 	find python_bindings/ -iname "*.h" -o -iname "*.cpp" | xargs clang-format -i
 	find examples/cpp/ -iname "*.h" -o -iname "*.cpp" | xargs clang-format -i
 	find mockimpl/ -iname "*.h" -o -iname "*.cpp" | xargs clang-format -i
+	find tests/ -iname "*.h" -o -iname "*.cpp" | xargs clang-format -i
 
 test: debug
 	./build/tests -d yes

@@ -300,7 +300,6 @@ TEST_CASE("HNSW range search", "[hnsw]") {
     CHECK((expected->CountOnes() - result->GetDim()) * 100 < max_elements);
 }
 
-
 TEST_CASE("HNSW filtering knn search", "[hnsw]") {
     int dim = 17;
     int max_elements = 1000;
@@ -344,16 +343,16 @@ TEST_CASE("HNSW filtering knn search", "[hnsw]") {
         nlohmann::json parameters;
         int64_t k = max_elements;
 
-	vsag::BitsetPtr filter = vsag::Bitset::Random(max_elements);
-	int64_t num_deleted = filter->CountOnes();
+        vsag::BitsetPtr filter = vsag::Bitset::Random(max_elements);
+        int64_t num_deleted = filter->CountOnes();
 
-	auto result = hnsw->KnnSearch(query, k, parameters.dump(), filter);
-	REQUIRE(result.has_value());
-	REQUIRE(result->GetDim() == max_elements - num_deleted);
-	for (int64_t j = 0; j < result->GetDim(); ++j) {
-	    // deleted ids NOT in result
-	    REQUIRE(filter->Get(result->GetIds()[j]) == false);
-	}
+        auto result = hnsw->KnnSearch(query, k, parameters.dump(), filter);
+        REQUIRE(result.has_value());
+        REQUIRE(result->GetDim() == max_elements - num_deleted);
+        for (int64_t j = 0; j < result->GetDim(); ++j) {
+            // deleted ids NOT in result
+            REQUIRE(filter->Get(result->GetIds()[j]) == false);
+        }
     }
 }
 
@@ -398,17 +397,17 @@ TEST_CASE("HNSW filtering range search", "[hnsw]") {
         vsag::Dataset query;
         query.NumElements(1).Dim(dim).Float32Vectors(data + i * dim).Owner(false);
         nlohmann::json parameters;
-	float radius = 9.87f;
+        float radius = 9.87f;
 
-	vsag::BitsetPtr filter = vsag::Bitset::Random(max_elements);
-	int64_t num_deleted = filter->CountOnes();
+        vsag::BitsetPtr filter = vsag::Bitset::Random(max_elements);
+        int64_t num_deleted = filter->CountOnes();
 
-	auto result = hnsw->RangeSearch(query, radius, parameters.dump(), filter);
-	REQUIRE(result.has_value());
-	REQUIRE(result->GetDim() == max_elements - num_deleted);
-	for (int64_t j = 0; j < result->GetDim(); ++j) {
-	    // deleted ids NOT in result
-	    REQUIRE(filter->Get(result->GetIds()[j]) == false);
-	}
+        auto result = hnsw->RangeSearch(query, radius, parameters.dump(), filter);
+        REQUIRE(result.has_value());
+        REQUIRE(result->GetDim() == max_elements - num_deleted);
+        for (int64_t j = 0; j < result->GetDim(); ++j) {
+            // deleted ids NOT in result
+            REQUIRE(filter->Get(result->GetIds()[j]) == false);
+        }
     }
 }
