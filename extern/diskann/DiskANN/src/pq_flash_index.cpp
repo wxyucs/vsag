@@ -253,23 +253,15 @@ void PQFlashIndex<T, LabelT>::generate_cache_list_from_sample_queries(std::strin
     std::vector<uint64_t> tmp_result_ids_64(sample_num, 0);
     std::vector<float> tmp_result_dists(sample_num, 0);
 
-    bool filtered_search = false;
-    std::vector<LabelT> random_query_filters(sample_num);
-    if (_filter_to_medoid_ids.size() != 0)
-    {
-        filtered_search = true;
-        generate_random_labels(random_query_filters, (uint32_t)sample_num, nthreads);
-    }
 
 #pragma omp parallel for schedule(dynamic, 1) num_threads(nthreads)
     for (int64_t i = 0; i < (int64_t)sample_num; i++)
     {
-        auto &label_for_search = random_query_filters[i];
         // run a search on the sample query with a random label (sampled from base label distribution), and it will
         // concurrently update the node_visit_counter to track most visited nodes. The last false is to not use the
         // "use_reorder_data" option which enables a final reranking if the disk index itself contains only PQ data.
         cached_beam_search(samples + (i * sample_aligned_dim), 1, l_search, tmp_result_ids_64.data() + i,
-                           tmp_result_dists.data() + i, beamwidth, filtered_search, label_for_search, false);
+                           tmp_result_dists.data() + i, beamwidth, nullptr, std::numeric_limits<uint32_t>::max(), false);
     }
 
     std::sort(this->node_visit_counter.begin(), node_visit_counter.end(),
@@ -1505,58 +1497,13 @@ bool getNextCompletedRequest(const IOContext &ctx, size_t size, int &completedIn
 #endif
 
 template <typename T, typename LabelT>
-void PQFlashIndex<T, LabelT>::cached_beam_search(const T *query1, const uint64_t k_search, const uint64_t l_search,
+int64_t PQFlashIndex<T, LabelT>::cached_beam_search(const T *query1, const uint64_t k_search, const uint64_t l_search,
                                                  uint64_t *indices, float *distances, const uint64_t beam_width,
-                                                 const bool use_reorder_data, QueryStats *stats)
-{
-    cached_beam_search(query1, k_search, l_search, indices, distances, beam_width, std::numeric_limits<uint32_t>::max(),
-                       use_reorder_data, stats);
-}
-
-template <typename T, typename LabelT>
-void PQFlashIndex<T, LabelT>::cached_beam_search(const T *query1, const uint64_t k_search, const uint64_t l_search,
-                                                 uint64_t *indices, float *distances, const uint64_t beam_width,
-                                                 const bool use_filter, const LabelT &filter_label,
-                                                 const bool use_reorder_data, QueryStats *stats)
-{
-    cached_beam_search(query1, k_search, l_search, indices, distances, beam_width, use_filter, filter_label,
-                       std::numeric_limits<uint32_t>::max(), use_reorder_data, stats);
-}
-
-template <typename T, typename LabelT>
-void PQFlashIndex<T, LabelT>::cached_beam_search(const T *query1, const uint64_t k_search, const uint64_t l_search,
-                                                 uint64_t *indices, float *distances, const uint64_t beam_width,
-                                                 const uint32_t io_limit, const bool use_reorder_data,
-                                                 QueryStats *stats)
-{
-    LabelT dummy_filter = 0;
-    cached_beam_search(query1, k_search, l_search, indices, distances, beam_width, false, dummy_filter, io_limit,
-                       use_reorder_data, stats);
-}
-
-template <typename T, typename LabelT>
-void PQFlashIndex<T, LabelT>::cached_beam_search(const T *query1, const uint64_t k_search, const uint64_t l_search,
-                                                 uint64_t *indices, float *distances, const uint64_t beam_width,
-                                                 const bool use_filter, const LabelT &filter_label,
+                                                 std::function<bool(uint32_t)> filter,
                                                  const uint32_t io_limit, const bool use_reorder_data,
                                                  QueryStats *stats)
 {
     int32_t filter_num = 0;
-    if (use_filter)
-    {
-        filter_num = get_filter_number(filter_label);
-        if (filter_num < 0)
-        {
-            if (!_use_universal_label)
-            {
-                return;
-            }
-            else
-            {
-                filter_num = _universal_filter_num;
-            }
-        }
-    }
 
     if (beam_width > MAX_N_SECTOR_READS)
         throw ANNException("Beamwidth can not be higher than MAX_N_SECTOR_READS", -1, __FUNCSIG__, __FILE__, __LINE__);
@@ -1640,41 +1587,16 @@ void PQFlashIndex<T, LabelT>::cached_beam_search(const T *query1, const uint64_t
     std::vector<Neighbor> &full_retset = query_scratch->full_retset;
 
     uint32_t best_medoid = 0;
-    float best_dist = (std::numeric_limits<float>::max)();
-    if (!use_filter)
+    float best_dist = std::numeric_limits<float>::max();
+
+    for (uint64_t cur_m = 0; cur_m < num_medoids; cur_m++)
     {
-        for (uint64_t cur_m = 0; cur_m < num_medoids; cur_m++)
-        {
-            float cur_expanded_dist =
+        float cur_expanded_dist =
                 dist_cmp_float->compare(query_float, centroid_data + aligned_dim * cur_m, (uint32_t)aligned_dim);
-            if (cur_expanded_dist < best_dist)
-            {
-                best_medoid = medoids[cur_m];
-                best_dist = cur_expanded_dist;
-            }
-        }
-    }
-    else
-    {
-        if (_filter_to_medoid_ids.find(filter_label) != _filter_to_medoid_ids.end())
+        if (cur_expanded_dist < best_dist)
         {
-            const auto &medoid_ids = _filter_to_medoid_ids[filter_label];
-            for (uint64_t cur_m = 0; cur_m < medoid_ids.size(); cur_m++)
-            {
-                // for filtered index, we dont store global centroid data as for unfiltered index, so we use PQ distance
-                // as approximation to decide closest medoid matching the query filter.
-                compute_dists(&medoid_ids[cur_m], 1, dist_scratch);
-                float cur_expanded_dist = dist_scratch[0];
-                if (cur_expanded_dist < best_dist)
-                {
-                    best_medoid = medoid_ids[cur_m];
-                    best_dist = cur_expanded_dist;
-                }
-            }
-        }
-        else
-        {
-            throw ANNException("Cannot find medoid for specified filter.", -1, __FUNCSIG__, __FILE__, __LINE__);
+            best_medoid = medoids[cur_m];
+            best_dist = cur_expanded_dist;
         }
     }
 
@@ -1814,11 +1736,6 @@ void PQFlashIndex<T, LabelT>::cached_beam_search(const T *query1, const uint64_t
                 uint32_t id = node_nbrs[m];
                 if (visited.insert(id).second)
                 {
-                    if (!use_filter && _dummy_pts.find(id) != _dummy_pts.end())
-                        continue;
-
-                    if (use_filter && !point_has_label(id, filter_num) && !point_has_label(id, _universal_filter_num))
-                        continue;
                     cmps++;
                     float dist = dist_scratch[m];
                     Neighbor nn(id, dist);
@@ -1877,11 +1794,6 @@ void PQFlashIndex<T, LabelT>::cached_beam_search(const T *query1, const uint64_t
                 uint32_t id = node_nbrs[m];
                 if (visited.insert(id).second)
                 {
-                    if (!use_filter && _dummy_pts.find(id) != _dummy_pts.end())
-                        continue;
-
-                    if (use_filter && !point_has_label(id, filter_num) && !point_has_label(id, _universal_filter_num))
-                        continue;
                     cmps++;
                     float dist = dist_scratch[m];
                     if (stats != nullptr)
@@ -1955,24 +1867,31 @@ void PQFlashIndex<T, LabelT>::cached_beam_search(const T *query1, const uint64_t
     }
 
     // copy k_search values
-    for (uint64_t i = 0; i < k_search; i++)
+    int64_t result_size = 0;
+    for (uint64_t i = 0; i < full_retset.size(); i++)
     {
-        indices[i] = full_retset[i].id;
-        auto key = (uint32_t)indices[i];
-
+        if (filter && filter(full_retset[i].id)) {
+            continue;
+        }
+        if (result_size >= k_search) {
+            break;
+        }
+        indices[result_size] = full_retset[i].id;
+        auto key = (uint32_t)indices[result_size];
         if (distances != nullptr)
         {
-            distances[i] = full_retset[i].distance;
+            distances[result_size] = full_retset[i].distance;
             if (metric == diskann::Metric::INNER_PRODUCT)
             {
                 // flip the sign to convert min to max
-                distances[i] = (-distances[i]);
+                distances[result_size] = (-distances[result_size]);
                 // rescale to revert back to original norms (cancelling the
                 // effect of base and query pre-processing)
                 if (max_base_norm != 0)
-                    distances[i] *= (max_base_norm * query_norm);
+                    distances[result_size] *= (max_base_norm * query_norm);
             }
         }
+        result_size ++;
     }
 
 #ifdef USE_BING_INFRA
@@ -1983,6 +1902,7 @@ void PQFlashIndex<T, LabelT>::cached_beam_search(const T *query1, const uint64_t
     {
         stats->total_us = (float)query_timer.elapsed();
     }
+    return result_size;
 }
 
 template <typename T, typename LabelT>
@@ -2042,28 +1962,13 @@ size_t PQFlashIndex<T, LabelT>::load_graph(std::stringstream &in)
 
 
 template <typename T, typename LabelT>
-void PQFlashIndex<T, LabelT>::cached_beam_search_memory(const T *query, const uint64_t k_search, const uint64_t l_search,
+int64_t PQFlashIndex<T, LabelT>::cached_beam_search_memory(const T *query, const uint64_t k_search, const uint64_t l_search,
                                                  uint64_t *indices, float *distances, const uint64_t beam_width,
-                                                 const bool use_filter, const LabelT &filter_label,
+                                                 std::function<bool(uint32_t)> filter,
                                                  const uint32_t io_limit, const bool use_reorder_data,
                                                  QueryStats *stats)
 {
     int32_t filter_num = 0;
-    if (use_filter)
-    {
-        filter_num = get_filter_number(filter_label);
-        if (filter_num < 0)
-        {
-            if (!_use_universal_label)
-            {
-                return;
-            }
-            else
-            {
-                filter_num = _universal_filter_num;
-            }
-        }
-    }
 
     if (beam_width > MAX_N_SECTOR_READS)
         throw ANNException("Beamwidth can not be higher than MAX_N_SECTOR_READS", -1, __FUNCSIG__, __FILE__, __LINE__);
@@ -2262,41 +2167,51 @@ void PQFlashIndex<T, LabelT>::cached_beam_search_memory(const T *query, const ui
     std::sort(full_retset.begin(), full_retset.end());
 
     // copy k_search values
-    for (uint64_t i = 0; i < k_search; i++)
+    int64_t result_size = 0;
+    for (uint64_t i = 0; i < full_retset.size(); i++)
     {
-        indices[i] = full_retset[i].id;
-        auto key = (uint32_t)indices[i];
+        if (filter && filter(full_retset[i].id)) {
+            continue;
+        }
+        if (result_size >= k_search) {
+            break;
+        }
+        indices[result_size] = full_retset[i].id;
+        auto key = (uint32_t)indices[result_size];
         if (distances != nullptr)
         {
-            distances[i] = full_retset[i].distance;
+            distances[result_size] = full_retset[i].distance;
             if (metric == diskann::Metric::INNER_PRODUCT)
             {
                 // flip the sign to convert min to max
-                distances[i] = (-distances[i]);
+                distances[result_size] = (-distances[result_size]);
                 // rescale to revert back to original norms (cancelling the
                 // effect of base and query pre-processing)
                 if (max_base_norm != 0)
-                    distances[i] *= (max_base_norm * query_norm);
+                    distances[result_size] *= (max_base_norm * query_norm);
             }
         }
+        result_size ++;
     }
     if (stats != nullptr)
     {
         stats->total_us = (float)query_timer.elapsed();
     }
+    return result_size;
 }
 // range search returns results of all neighbors within distance of range.
 // indices and distances need to be pre-allocated of size l_search and the
 // return value is the number of matching hits.
 template <typename T, typename LabelT>
-uint32_t PQFlashIndex<T, LabelT>::range_search(const T *query1, const double range, const uint64_t min_l_search,
+int64_t PQFlashIndex<T, LabelT>::range_search(const T *query, const double range, const uint64_t min_l_search,
                                                const uint64_t max_l_search, std::vector<uint64_t> &indices,
                                                std::vector<float> &distances, const uint64_t min_beam_width,
+                                               std::function<bool(uint32_t)> filter, bool memory,
                                                QueryStats *stats)
 {
-    uint32_t res_count = 0;
-
+    int64_t res_count = 0;
     bool stop_flag = false;
+    uint32_t io_limit = std::numeric_limits<uint32_t>::max();
 
     uint32_t l_search = (uint32_t) std::min(min_l_search, num_points); // starting size of the candidate list
     while (!stop_flag)
@@ -2307,18 +2222,23 @@ uint32_t PQFlashIndex<T, LabelT>::range_search(const T *query1, const double ran
         cur_bw = (cur_bw > 100) ? 100 : cur_bw;
         for (auto &x : distances)
             x = std::numeric_limits<float>::max();
-        this->cached_beam_search(query1, l_search, l_search, indices.data(), distances.data(), cur_bw, false, stats);
-        for (uint32_t i = 0; i < l_search; i++)
+        int64_t result_size = 0;
+        if (memory) {
+            result_size = this->cached_beam_search_memory(query, l_search, l_search, indices.data(), distances.data(), cur_bw, filter, io_limit, false, stats);
+        } else {
+            result_size = this->cached_beam_search(query, l_search, l_search, indices.data(), distances.data(), cur_bw, filter, io_limit, false, stats);
+        }
+        for (uint32_t i = 0; i < result_size; i++)
         {
             if (distances[i] > (float)range)
             {
                 res_count = i;
                 break;
             }
-            else if (i == l_search - 1)
-                res_count = l_search;
+            else if (i == result_size - 1)
+                res_count = result_size;
         }
-        if (res_count < (uint32_t)(l_search / 2.0))
+        if (res_count < (result_size / 2.0))
             stop_flag = true;
         l_search = l_search * 2;
         if (l_search > max_l_search || l_search > num_points)

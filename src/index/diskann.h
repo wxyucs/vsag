@@ -98,6 +98,7 @@ private:
     std::stringstream graph_stream_;
 
     std::function<void(const std::vector<read_request>&)> batch_read;
+    std::function<bool(uint32_t)> filter = nullptr;
     diskann::Metric metric_;
     std::shared_ptr<Reader> disk_layout_reader;
     std::string data_type_;

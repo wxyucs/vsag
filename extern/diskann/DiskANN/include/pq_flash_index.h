@@ -68,35 +68,22 @@ template <typename T, typename LabelT = uint32_t> class PQFlashIndex
     DISKANN_DLLEXPORT void cache_bfs_levels(uint64_t num_nodes_to_cache, std::vector<uint32_t> &node_list,
                                             const bool shuffle = false);
 
-    DISKANN_DLLEXPORT void cached_beam_search(const T *query, const uint64_t k_search, const uint64_t l_search,
+    DISKANN_DLLEXPORT int64_t cached_beam_search(const T *query, const uint64_t k_search, const uint64_t l_search,
                                               uint64_t *res_ids, float *res_dists, const uint64_t beam_width,
-                                              const bool use_reorder_data = false, QueryStats *stats = nullptr);
-
-    DISKANN_DLLEXPORT void cached_beam_search(const T *query, const uint64_t k_search, const uint64_t l_search,
-                                              uint64_t *res_ids, float *res_dists, const uint64_t beam_width,
-                                              const bool use_filter, const LabelT &filter_label,
-                                              const bool use_reorder_data = false, QueryStats *stats = nullptr);
-
-    DISKANN_DLLEXPORT void cached_beam_search(const T *query, const uint64_t k_search, const uint64_t l_search,
-                                              uint64_t *res_ids, float *res_dists, const uint64_t beam_width,
+                                              std::function<bool(uint32_t)> filter,
                                               const uint32_t io_limit, const bool use_reorder_data = false,
                                               QueryStats *stats = nullptr);
-
-    DISKANN_DLLEXPORT void cached_beam_search(const T *query, const uint64_t k_search, const uint64_t l_search,
-                                              uint64_t *res_ids, float *res_dists, const uint64_t beam_width,
-                                              const bool use_filter, const LabelT &filter_label,
-                                              const uint32_t io_limit, const bool use_reorder_data = false,
-                                              QueryStats *stats = nullptr);
-    DISKANN_DLLEXPORT void cached_beam_search_memory(const T *query, const uint64_t k_search, const uint64_t l_search,
+    DISKANN_DLLEXPORT int64_t cached_beam_search_memory(const T *query, const uint64_t k_search, const uint64_t l_search,
                                               uint64_t *indices, float *distances, const uint64_t beam_width,
-                                              const bool use_filter, const LabelT &filter_label,
-                                              const uint32_t io_limit, const bool use_reorder_data,
+                                              std::function<bool(uint32_t)> filter,
+                                              const uint32_t io_limit, const bool use_reorder_data = false,
                                               QueryStats *stats = nullptr);
     DISKANN_DLLEXPORT LabelT get_converted_label(const std::string &filter_label);
 
-    DISKANN_DLLEXPORT uint32_t range_search(const T *query1, const double range, const uint64_t min_l_search,
+    DISKANN_DLLEXPORT int64_t range_search(const T *query1, const double range, const uint64_t min_l_search,
                                             const uint64_t max_l_search, std::vector<uint64_t> &indices,
                                             std::vector<float> &distances, const uint64_t min_beam_width,
+                                            std::function<bool(uint32_t)> filter, bool memory,
                                             QueryStats *stats = nullptr);
 
     DISKANN_DLLEXPORT uint64_t get_data_dim();

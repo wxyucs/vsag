@@ -85,11 +85,6 @@ DiskANN::DiskANN(diskann::Metric metric,
         for (int i = 0; i < requests.size(); ++i) {
             futures[i].wait();
         }
-
-        //        for (int i = 0; i < requests.size(); ++i) {
-        //            disk_layout_reader->Read(
-        //                std::get<0>(requests[i]), std::get<1>(requests[i]), std::get<2>(requests[i]));
-        //        }
     };
 }
 
@@ -176,6 +171,11 @@ DiskANN::KnnSearch(const Dataset& query,
         return tl::unexpected(index_error::dimension_not_equal);
     }
 
+    std::function<bool(uint32_t)> filter = nullptr;
+    if (invalid) {
+        filter = [&](uint32_t offset) -> bool { return invalid->Get(offset); };
+    }
+
     size_t beam_search = param["diskann"]["beam_search"];
     size_t io_limit = param["diskann"]["io_limit"];
     size_t ef_search = param["diskann"]["ef_search"];
@@ -195,8 +195,7 @@ DiskANN::KnnSearch(const Dataset& query,
                                                      labels + i * k,
                                                      distances + i * k,
                                                      beam_search,
-                                                     false,
-                                                     0,
+                                                     filter,
                                                      io_limit,
                                                      false,
                                                      query_stats + i);
@@ -207,8 +206,7 @@ DiskANN::KnnSearch(const Dataset& query,
                                               labels + i * k,
                                               distances + i * k,
                                               beam_search,
-                                              false,
-                                              0,
+                                              filter,
                                               io_limit,
                                               false,
                                               query_stats + i);
@@ -245,8 +243,8 @@ DiskANN::RangeSearch(const Dataset& query,
     Dataset result;
     nlohmann::json param = nlohmann::json::parse(parameters);
 
-    auto query_num = query.GetNumElements();
-    auto query_dim = query.GetDim();
+    int64_t query_num = query.GetNumElements();
+    int64_t query_dim = query.GetDim();
 
     result.Dim(0).NumElements(query_num);
 
@@ -259,7 +257,15 @@ DiskANN::RangeSearch(const Dataset& query,
         return tl::unexpected(index_error::dimension_not_equal);
     }
 
-    assert(query_num == 1);
+    if (query_num != 1) {
+        spdlog::error("number of elements is NOT 1 in query database");
+        return tl::unexpected(index_error::internal_error);
+    }
+
+    std::function<bool(uint32_t)> filter = nullptr;
+    if (invalid) {
+        filter = [&](uint32_t offset) -> bool { return invalid->Get(offset); };
+    }
 
     size_t beam_search = param["diskann"]["beam_search"];
     size_t ef_search = param["diskann"]["ef_search"];
@@ -278,6 +284,8 @@ DiskANN::RangeSearch(const Dataset& query,
                                 labels,
                                 range_distances,
                                 beam_search,
+                                filter,
+                                preload_,
                                 &query_stats);
         }
         {

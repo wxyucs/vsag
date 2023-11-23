@@ -58,6 +58,7 @@ public:
       *
       * @param query should contains dim, num_elements and vectors
       * @param radius of search, determines which results will be returned
+      * @param invalid represents whether an element is filteing out by pre-filter
       * @return result contains
       *                - num_elements: 1
       *                - dim: the size of results

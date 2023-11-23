@@ -408,7 +408,7 @@ TEST_CASE("DiskAnn Preload Graph", "[diskann]") {
         if (auto result = diskann->KnnSearch(query, k, parameters.dump()); result.has_value()) {
             if (result->GetNumElements() == 1) {
                 REQUIRE(!std::isinf(result->GetDistances()[0]));
-                if (result->GetIds()[0] == i) {
+                if (result->GetDim() != 0 && result->GetIds()[0] == i) {
                     correct++;
                 }
             }
@@ -420,3 +420,97 @@ TEST_CASE("DiskAnn Preload Graph", "[diskann]") {
     float recall = correct / max_elements;
     REQUIRE(recall >= 0.99);
 }
+
+
+TEST_CASE("DiskAnn Filter Test", "[diskann]") {
+    int dim = 65;             // Dimension of the elements
+    int max_elements = 1000;  // Maximum number of elements, should be known beforehand
+    int M = 16;                // Tightly connected with internal dimensionality of the data
+    // strongly affects the memory consumption
+    int ef_construction = 200;  // Controls index search speed/build speed tradeoff
+    int ef_runtime = 200;
+    float p_val =
+            0.5;  // p_val represents how much original data is selected during the training of pq compressed vectors.
+    int chunks_num = 9;  // chunks_num represents the dimensionality of the compressed vector.
+    float threshold = 8.0;
+    int64_t k = 10;
+    // Initing index
+    nlohmann::json diskann_parameters{
+            {"R", M},
+            {"L", ef_construction},
+            {"p_val", p_val},
+            {"disk_pq_dims", chunks_num},
+            {"preload", true}
+    };
+    nlohmann::json index_parameters{
+            {"dtype", "float32"},
+            {"metric_type", "l2"},
+            {"dim", dim},
+            {"diskann", diskann_parameters},
+    };
+    auto diskann = vsag::Factory::CreateIndex("diskann", index_parameters.dump());
+
+    int64_t* ids = new int64_t[max_elements];
+    float* data = new float[dim * max_elements];
+
+    // Generate random data
+    std::mt19937 rng;
+    rng.seed(47);
+    std::uniform_real_distribution<> distrib_real;
+    for (int i = 0; i < max_elements; i++) ids[i] = i;
+    for (int i = 0; i < dim * max_elements; i++) data[i] = distrib_real(rng);
+
+    // Build index
+    vsag::Dataset dataset;
+    dataset.Dim(dim).NumElements(max_elements).Ids(ids).Float32Vectors(data);
+    diskann->Build(dataset);
+
+    float correct_knn = 0.0f;
+    float recall_knn = 0.0f;
+    float correct_range = 0.0f;
+    float recall_range = 0.0f;
+    for (int i = 0; i < max_elements; i++) {
+        vsag::Dataset query;
+        query.NumElements(1).Dim(dim).Float32Vectors(data + i * dim).Owner(false);
+
+        vsag::BitsetPtr invalid = vsag::Bitset::Random(max_elements);
+        int64_t num_deleted = invalid->CountOnes();
+        nlohmann::json parameters{
+                {"diskann", {{"ef_search", ef_runtime}, {"beam_search", 4}, {"io_limit", 200}}}};
+        if (auto result = diskann->KnnSearch(query, k, parameters.dump(), invalid); result.has_value()) {
+            if (result->GetNumElements() == 1) {
+                REQUIRE(!std::isinf(result->GetDistances()[0]));
+                if (result->GetDim() != 0 && result->GetIds()[0] == i) {
+                    correct_knn++;
+                }
+                for (int64_t j = 0; j < result->GetDim(); j ++) {
+                    REQUIRE(invalid->Get(result->GetIds()[j]) == false);
+                }
+            }
+        } else if (result.error() == vsag::index_error::internal_error) {
+            std::cerr << "failed to knn search on index: internal error" << std::endl;
+            exit(-1);
+        }
+
+        if (auto result = diskann->RangeSearch(query, threshold, parameters.dump(), invalid); result.has_value()) {
+            if (result->GetNumElements() == 1) {
+                if (result->GetDim() != 0 && result->GetIds()[0] == i) {
+                    correct_range++;
+                }
+                for (int64_t j = 0; j < result->GetDim(); j ++) {
+                    REQUIRE(invalid->Get(result->GetIds()[j]) == false);
+                }
+            }
+        } else if (result.error() == vsag::index_error::internal_error) {
+            std::cerr << "failed to range search on index: internal error" << std::endl;
+            exit(-1);
+        }
+    }
+
+    recall_knn = correct_knn / max_elements;
+    std::cout << "recall for knn search with filter: " << recall_knn << std::endl;
+    recall_range = correct_range / max_elements;
+    std::cout << "recall for range search with filter: " << recall_range << std::endl;
+
+}
+
