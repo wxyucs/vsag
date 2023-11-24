@@ -1,7 +1,9 @@
 #pragma once
 
 #include <algorithm>
+#include <bitset>
 #include <cstdint>
+#include <cstring>
 #include <exception>
 #include <iostream>
 #include <memory>
@@ -34,6 +36,21 @@ public:
 
 public:
     Bitset(uint64_t mem_limit = DEFAULT_MEM_LIMIT) : mem_limit_(mem_limit){};
+    /**
+      * Construct a bitset object from a bitset binary
+      *
+      * @param src pointer to the memory of the bitset binary
+      * @param length the number of bytes
+      * @param mem_limit the maximum size of memory that can be used by this bitset
+      */
+    Bitset(const uint8_t* src, const uint64_t length, uint64_t mem_limit = DEFAULT_MEM_LIMIT)
+        : mem_limit_(mem_limit) {
+        this->Extend(length * 8);
+        memcpy(data_.data(), src, length);
+        for (uint8_t num : data_) {
+            num_ones_ += std::popcount(num);
+        }
+    }
     ~Bitset() = default;
 
     Bitset(const Bitset&) = delete;
@@ -166,7 +183,7 @@ public:
     Dump(int64_t offset) {
         std::lock_guard<std::mutex> lock(mutex_);
         int64_t byte_index = offset / 8;
-        unsigned char ch = data_.data()[byte_index];
+        uint8_t ch = data_.data()[byte_index];
         std::stringstream ss;
         for (int64_t i = 0; i < 8; ++i) {
             if (ch & (1 << i)) {
@@ -181,7 +198,7 @@ public:
 private:
     const int64_t mem_limit_;
     std::mutex mutex_;
-    std::vector<unsigned char> data_;
+    std::vector<uint8_t> data_;
     int64_t num_ones_ = 0;
 };
 

@@ -11,7 +11,7 @@ project (VSAG
 
 set(NUM_BUILDING_JOBS 4)
 
-set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD 20)
 
 option(ENABLE_JEMALLOC "Whether to link jemalloc to all executables" OFF)
 option(ENABLE_ASAN "Whether to turn AddressSanitizer ON or OFF" OFF)

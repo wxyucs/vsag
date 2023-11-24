@@ -1,4 +1,5 @@
 
+#include <catch2/benchmark/catch_benchmark.hpp>
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/matchers/catch_matchers_string.hpp>
 
@@ -91,4 +92,60 @@ TEST_CASE("capcity and extend", "[bitset]") {
 
     CHECK_NOTHROW(bp->Extend(mem_limit * 8));
     CHECK(bp->Capcity() == mem_limit * 8);
+}
+
+TEST_CASE("construct from memory", "[bitset]") {
+    auto memory = std::shared_ptr<uint8_t[]>(new uint8_t[2]);
+    memory[0] = 0b01010101;
+    memory[1] = 0b11111010;
+    BitsetPtr bp = std::make_shared<Bitset>(memory.get(), 2);
+    CHECK(bp->Capcity() == 16);
+
+    CHECK(bp->Get(0) == true);
+    CHECK(bp->Get(1) == false);
+    CHECK(bp->Get(2) == true);
+    CHECK(bp->Get(3) == false);
+    CHECK(bp->Get(4) == true);
+    CHECK(bp->Get(5) == false);
+    CHECK(bp->Get(6) == true);
+    CHECK(bp->Get(7) == false);
+
+    CHECK(bp->Get(8) == false);
+    CHECK(bp->Get(9) == true);
+    CHECK(bp->Get(10) == false);
+    CHECK(bp->Get(11) == true);
+    CHECK(bp->Get(12) == true);
+    CHECK(bp->Get(13) == true);
+    CHECK(bp->Get(14) == true);
+    CHECK(bp->Get(15) == true);
+
+    CHECK(bp->CountOnes() == 10);
+    CHECK(bp->CountZeros() == 6);
+
+    std::vector<uint8_t> buffer(1'000'000);
+    static auto gen =
+        std::bind(std::uniform_int_distribution<>(0, 1), std::default_random_engine());
+    auto ptr = (float*)buffer.data();
+    for (uint64_t i = 0; i < buffer.size() / 4; ++i) {
+        ptr[i] = gen();
+    }
+
+    uint64_t count1 = 0;
+    BENCHMARK("popcount") {
+        for (uint8_t num : buffer) {
+            count1 += std::popcount(num);
+        }
+    };
+
+    uint64_t count2 = 0;
+    BENCHMARK("while") {
+        for (uint8_t num : buffer) {
+            while (num) {
+                count2 += num & 1;
+                num >>= 1;
+            }
+        }
+    };
+
+    REQUIRE(count1 == count2);
 }
