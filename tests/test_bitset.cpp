@@ -133,7 +133,7 @@ TEST_CASE("construct from memory", "[bitset]") {
     uint64_t count1 = 0;
     BENCHMARK("popcount") {
         for (uint8_t num : buffer) {
-            count1 += std::popcount(num);
+            count1 += std::__popcount(num);
         }
     };
 

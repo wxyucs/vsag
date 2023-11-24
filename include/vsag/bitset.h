@@ -1,6 +1,7 @@
 #pragma once
 
 #include <algorithm>
+#include <bit>
 #include <bitset>
 #include <cstdint>
 #include <cstring>
@@ -48,7 +49,7 @@ public:
         this->Extend(length * 8);
         memcpy(data_.data(), src, length);
         for (uint8_t num : data_) {
-            num_ones_ += std::popcount(num);
+            num_ones_ += std::__popcount(num);
         }
     }
     ~Bitset() = default;
