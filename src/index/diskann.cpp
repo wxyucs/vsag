@@ -69,14 +69,14 @@ DiskANN::DiskANN(diskann::Metric metric,
       disk_pq_dims_(disk_pq_dims),
       dim_(dim),
       preload_(preload) {
-    status = IndexStatus::EMPTY;
-    batch_read = [&](const std::vector<read_request>& requests) -> void {
+    status_ = IndexStatus::EMPTY;
+    batch_read_ = [&](const std::vector<read_request>& requests) -> void {
         std::vector<std::future<void>> futures;
         for (int i = 0; i < requests.size(); ++i) {
             futures.push_back(std::async(
                 std::launch::async,
                 [&](uint64_t offset, uint64_t len, void* dest) {
-                    disk_layout_reader->Read(offset, len, dest);
+                    disk_layout_reader_->Read(offset, len, dest);
                 },
                 std::get<0>(requests[i]),
                 std::get<1>(requests[i]),
@@ -96,7 +96,7 @@ DiskANN::Build(const Dataset& base) {
         return tl::unexpected(index_error::no_enough_data);
     }
 
-    if (this->index) {
+    if (this->index_) {
         return tl::unexpected(index_error::build_twice);
     }
 
@@ -116,12 +116,12 @@ DiskANN::Build(const Dataset& base) {
 
     try {
         {  // build graph
-            build_index = std::make_shared<diskann::Index<float, int64_t, int64_t>>(
+            build_index_ = std::make_shared<diskann::Index<float, int64_t, int64_t>>(
                 metric_, data_dim, data_num, false, true, false, false, 0, false);
             std::vector<int64_t> tags(ids, ids + data_num);
             auto index_build_params = diskann::IndexWriteParametersBuilder(L_, R_).build();
-            build_index->build(vectors, data_num, index_build_params, tags);
-            build_index->save(graph_stream_, tag_stream, data_stream);
+            build_index_->build(vectors, data_num, index_build_params, tags);
+            build_index_->save(graph_stream_, tag_stream, data_stream);
         }
 
         diskann::generate_disk_quantized_data<float>(data_stream,
@@ -133,17 +133,17 @@ DiskANN::Build(const Dataset& base) {
 
         diskann::create_disk_layout<float>(data_stream, graph_stream_, disk_layout_stream_, "");
 
-        disk_layout_reader = std::make_shared<LocalMemoryReader>(disk_layout_stream_);
-        reader.reset(new LocalFileReader(batch_read));
-        index.reset(new diskann::PQFlashIndex<float>(reader, metric_));
-        index->load_from_separate_paths(
+        disk_layout_reader_ = std::make_shared<LocalMemoryReader>(disk_layout_stream_);
+        reader_.reset(new LocalFileReader(batch_read_));
+        index_.reset(new diskann::PQFlashIndex<float>(reader_, metric_));
+        index_->load_from_separate_paths(
             omp_get_num_procs(), pq_pivots_stream_, disk_pq_compressed_vectors_);
         if (preload_) {
-            index->load_graph(graph_stream_);
+            index_->load_graph(graph_stream_);
         } else {
             graph_stream_.clear();
         }
-        status = IndexStatus::MEMORY;
+        status_ = IndexStatus::MEMORY;
     } catch (std::runtime_error e) {
         return tl::unexpected(index_error::internal_error);
     }
@@ -158,9 +158,10 @@ DiskANN::KnnSearch(const Dataset& query,
                    BitsetPtr invalid) const {
     SlowTaskTimer t("diskann search", 100);
     nlohmann::json param = nlohmann::json::parse(parameters);
-    Dataset result;
-    if (!index)
-        return std::move(result);
+    if (!index_) {
+        spdlog::error("failed to search: diskann index is empty");
+        return tl::unexpected(index_error::index_empty);
+    }
     k = std::min(k, GetNumElements());
     auto query_num = query.GetNumElements();
     auto query_dim = query.GetDim();
@@ -171,9 +172,13 @@ DiskANN::KnnSearch(const Dataset& query,
         return tl::unexpected(index_error::dimension_not_equal);
     }
 
-    std::function<bool(uint32_t)> filter = nullptr;
+    std::function<bool(uint32_t)> filter_ = nullptr;
     if (invalid) {
-        filter = [&](uint32_t offset) -> bool { return invalid->Get(offset); };
+        if (invalid->Capcity() < GetNumElements()) {
+            spdlog::error("number of invalid is less than the size of index");
+            return tl::unexpected(index_error::internal_error);
+        }
+        filter_ = [&](uint32_t offset) -> bool { return invalid->Get(offset); };
     }
 
     size_t beam_search = param["diskann"]["beam_search"];
@@ -189,27 +194,27 @@ DiskANN::KnnSearch(const Dataset& query,
             {
                 Timer timer(time_cost);
                 if (preload_) {
-                    index->cached_beam_search_memory(query.GetFloat32Vectors() + i * dim_,
-                                                     k,
-                                                     ef_search,
-                                                     labels + i * k,
-                                                     distances + i * k,
-                                                     beam_search,
-                                                     filter,
-                                                     io_limit,
-                                                     false,
-                                                     query_stats + i);
+                    k = index_->cached_beam_search_memory(query.GetFloat32Vectors() + i * dim_,
+                                                          k,
+                                                          ef_search,
+                                                          labels + i * k,
+                                                          distances + i * k,
+                                                          beam_search,
+                                                          filter_,
+                                                          io_limit,
+                                                          false,
+                                                          query_stats + i);
                 } else {
-                    index->cached_beam_search(query.GetFloat32Vectors() + i * dim_,
-                                              k,
-                                              ef_search,
-                                              labels + i * k,
-                                              distances + i * k,
-                                              beam_search,
-                                              filter,
-                                              io_limit,
-                                              false,
-                                              query_stats + i);
+                    k = index_->cached_beam_search(query.GetFloat32Vectors() + i * dim_,
+                                                   k,
+                                                   ef_search,
+                                                   labels + i * k,
+                                                   distances + i * k,
+                                                   beam_search,
+                                                   filter_,
+                                                   io_limit,
+                                                   false,
+                                                   query_stats + i);
                 }
             }
             {
@@ -227,6 +232,15 @@ DiskANN::KnnSearch(const Dataset& query,
         }
         //        distances[i * k] = static_cast<float>(stats->n_ios);
     }
+
+    Dataset result;
+    result.NumElements(query.GetNumElements()).Dim(0);
+
+    if (k == 0) {
+        delete[] distances;
+        delete[] ids;
+        return std::move(result);
+    }
     for (int i = 0; i < query_num * k; ++i) {
         ids[i] = static_cast<int64_t>(labels[i]);
     }
@@ -240,16 +254,15 @@ DiskANN::RangeSearch(const Dataset& query,
                      float radius,
                      const std::string& parameters,
                      BitsetPtr invalid) const {
-    Dataset result;
     nlohmann::json param = nlohmann::json::parse(parameters);
 
     int64_t query_num = query.GetNumElements();
     int64_t query_dim = query.GetDim();
 
-    result.Dim(0).NumElements(query_num);
-
-    if (!index)
-        return std::move(result);
+    if (!index_) {
+        spdlog::error("failed to search: diskann index is empty");
+        return tl::unexpected(index_error::index_empty);
+    }
 
     if (query_dim != dim_) {
         spdlog::error("dimension not equal: query(" + std::to_string(query_dim) + ") index(" +
@@ -262,9 +275,13 @@ DiskANN::RangeSearch(const Dataset& query,
         return tl::unexpected(index_error::internal_error);
     }
 
-    std::function<bool(uint32_t)> filter = nullptr;
+    std::function<bool(uint32_t)> filter_ = nullptr;
     if (invalid) {
-        filter = [&](uint32_t offset) -> bool { return invalid->Get(offset); };
+        if (invalid->Capcity() < GetNumElements()) {
+            spdlog::error("number of invalid is less than the size of index");
+            return tl::unexpected(index_error::internal_error);
+        }
+        filter_ = [&](uint32_t offset) -> bool { return invalid->Get(offset); };
     }
 
     size_t beam_search = param["diskann"]["beam_search"];
@@ -277,16 +294,16 @@ DiskANN::RangeSearch(const Dataset& query,
         double time_cost = 0;
         {
             Timer timer(time_cost);
-            index->range_search(query.GetFloat32Vectors(),
-                                radius,
-                                ef_search,
-                                ef_search * 2,
-                                labels,
-                                range_distances,
-                                beam_search,
-                                filter,
-                                preload_,
-                                &query_stats);
+            index_->range_search(query.GetFloat32Vectors(),
+                                 radius,
+                                 ef_search,
+                                 ef_search * 2,
+                                 labels,
+                                 range_distances,
+                                 beam_search,
+                                 filter_,
+                                 preload_,
+                                 &query_stats);
         }
         {
             std::lock_guard<std::mutex> lock(stats_mutex_);
@@ -303,6 +320,8 @@ DiskANN::RangeSearch(const Dataset& query,
     }
     int64_t k = labels.size();
 
+    Dataset result;
+    result.Dim(0).NumElements(query_num);
     if (k == 0) {
         return std::move(result);
     }
@@ -320,7 +339,7 @@ DiskANN::RangeSearch(const Dataset& query,
 
 tl::expected<BinarySet, index_error>
 DiskANN::Serialize() const {
-    if (status == IndexStatus::EMPTY) {
+    if (status_ == IndexStatus::EMPTY) {
         spdlog::error("failed to serialize: diskann index is empty");
         return tl::unexpected(index_error::index_empty);
     }
@@ -378,7 +397,7 @@ tl::expected<void, index_error>
 DiskANN::Deserialize(const BinarySet& binary_set) {
     SlowTaskTimer t("diskann deserialize");
 
-    if (this->index) {
+    if (this->index_) {
         spdlog::error("failed to deserialize: index is not empty");
         return tl::unexpected(index_error::index_not_empty);
     }
@@ -394,18 +413,18 @@ DiskANN::Deserialize(const BinarySet& binary_set) {
         auto disk_layout = binary_set.Get(DISKANN_LAYOUT_FILE);
         disk_layout_stream_.write((char*)disk_layout.data.get(), disk_layout.size);
 
-        disk_layout_reader = std::make_shared<LocalMemoryReader>(disk_layout_stream_);
+        disk_layout_reader_ = std::make_shared<LocalMemoryReader>(disk_layout_stream_);
 
-        reader.reset(new LocalFileReader(batch_read));
-        index.reset(new diskann::PQFlashIndex<float>(reader, metric_));
-        index->load_from_separate_paths(
+        reader_.reset(new LocalFileReader(batch_read_));
+        index_.reset(new diskann::PQFlashIndex<float>(reader_, metric_));
+        index_->load_from_separate_paths(
             omp_get_num_procs(), pq_pivots_stream_, disk_pq_compressed_vectors_);
 
         auto graph = binary_set.Get(DISKANN_GRAPH);
         if (preload_) {
             if (graph.data) {
                 graph_stream_.write((char*)graph.data.get(), graph.size);
-                index->load_graph(graph_stream_);
+                index_->load_graph(graph_stream_);
             } else {
                 spdlog::error("missing file: {} when deserialize diskann index", DISKANN_GRAPH);
                 return tl::unexpected(index_error::missing_file);
@@ -415,7 +434,7 @@ DiskANN::Deserialize(const BinarySet& binary_set) {
                 spdlog::warn("serialize without using file: {} ", DISKANN_GRAPH);
             }
         }
-        status = IndexStatus::MEMORY;
+        status_ = IndexStatus::MEMORY;
     } catch (std::runtime_error e) {
         spdlog::error(std::string("failed to deserialize: ") + e.what());
         return tl::unexpected(index_error::internal_error);
@@ -428,7 +447,7 @@ tl::expected<void, index_error>
 DiskANN::Deserialize(const ReaderSet& reader_set) {
     SlowTaskTimer t("diskann deserialize");
 
-    if (this->index) {
+    if (this->index_) {
         spdlog::error("failed to deserialize: index is not empty");
         return tl::unexpected(index_error::index_not_empty);
     }
@@ -454,10 +473,10 @@ DiskANN::Deserialize(const ReaderSet& reader_set) {
             disk_pq_compressed_vectors.seekg(0);
         }
 
-        disk_layout_reader = reader_set.Get(DISKANN_LAYOUT_FILE);
-        reader.reset(new LocalFileReader(batch_read));
-        index.reset(new diskann::PQFlashIndex<float>(reader, metric_));
-        index->load_from_separate_paths(
+        disk_layout_reader_ = reader_set.Get(DISKANN_LAYOUT_FILE);
+        reader_.reset(new LocalFileReader(batch_read_));
+        index_.reset(new diskann::PQFlashIndex<float>(reader_, metric_));
+        index_->load_from_separate_paths(
             omp_get_num_procs(), pq_pivots_stream, disk_pq_compressed_vectors);
 
         auto graph_reader = reader_set.Get(DISKANN_GRAPH);
@@ -467,7 +486,7 @@ DiskANN::Deserialize(const ReaderSet& reader_set) {
                 graph_reader->Read(0, graph_reader->Size(), graph_data.get());
                 graph.write(graph_data.get(), graph_reader->Size());
                 graph.seekg(0);
-                index->load_graph(graph);
+                index_->load_graph(graph);
             } else {
                 spdlog::error("miss file: {} when deserialize diskann index", DISKANN_GRAPH);
                 return tl::unexpected(index_error::missing_file);
@@ -477,7 +496,7 @@ DiskANN::Deserialize(const ReaderSet& reader_set) {
                 spdlog::warn("serialize without using file: {} ", DISKANN_GRAPH);
             }
         }
-        status = IndexStatus::HYBRID;
+        status_ = IndexStatus::HYBRID;
     } catch (std::exception e) {
         spdlog::error(std::string("failed to deserialize: ") + e.what());
         return tl::unexpected(index_error::read_error);

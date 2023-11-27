@@ -477,10 +477,6 @@ TEST_CASE("DiskAnn Filter Test", "[diskann]") {
         if (auto result = diskann->KnnSearch(query, k, parameters.dump(), invalid);
             result.has_value()) {
             if (result->GetNumElements() == 1) {
-                REQUIRE(!std::isinf(result->GetDistances()[0]));
-                if (result->GetDim() != 0 && result->GetIds()[0] == i) {
-                    correct_knn++;
-                }
                 for (int64_t j = 0; j < result->GetDim(); j++) {
                     REQUIRE(invalid->Get(result->GetIds()[j]) == false);
                 }
@@ -493,9 +489,6 @@ TEST_CASE("DiskAnn Filter Test", "[diskann]") {
         if (auto result = diskann->RangeSearch(query, threshold, parameters.dump(), invalid);
             result.has_value()) {
             if (result->GetNumElements() == 1) {
-                if (result->GetDim() != 0 && result->GetIds()[0] == i) {
-                    correct_range++;
-                }
                 for (int64_t j = 0; j < result->GetDim(); j++) {
                     REQUIRE(invalid->Get(result->GetIds()[j]) == false);
                 }
@@ -504,10 +497,65 @@ TEST_CASE("DiskAnn Filter Test", "[diskann]") {
             std::cerr << "failed to range search on index: internal error" << std::endl;
             exit(-1);
         }
+        size_t bytes_count = max_elements / 4 + 1;
+        auto bits_ones = new uint8_t[bytes_count];
+        std::memset(bits_ones, 0xFF, bytes_count);
+        vsag::BitsetPtr ones = std::make_shared<vsag::Bitset>(bits_ones, bytes_count);
+        if (auto result = diskann->RangeSearch(query, threshold, parameters.dump(), ones);
+            result.has_value()) {
+            REQUIRE(result->GetDim() == 0);
+            REQUIRE(result->GetDistances() == nullptr);
+            REQUIRE(result->GetIds() == nullptr);
+        } else if (result.error() == vsag::index_error::internal_error) {
+            std::cerr << "failed to range search on index: internal error" << std::endl;
+            exit(-1);
+        }
+
+        if (auto result = diskann->KnnSearch(query, k, parameters.dump(), ones);
+            result.has_value()) {
+            REQUIRE(result->GetDim() == 0);
+            REQUIRE(result->GetDistances() == nullptr);
+            REQUIRE(result->GetIds() == nullptr);
+        } else if (result.error() == vsag::index_error::internal_error) {
+            std::cerr << "failed to range search on index: internal error" << std::endl;
+            exit(-1);
+        }
+
+        auto bits_zeros = new uint8_t[bytes_count];
+        std::memset(bits_zeros, 0, bytes_count);
+        vsag::BitsetPtr zeros = std::make_shared<vsag::Bitset>(bits_zeros, bytes_count);
+
+        if (auto result = diskann->KnnSearch(query, k, parameters.dump(), zeros);
+            result.has_value()) {
+            if (result->GetNumElements() == 1) {
+                REQUIRE(!std::isinf(result->GetDistances()[0]));
+                if (result->GetDim() != 0 && result->GetIds()[0] == i) {
+                    correct_knn++;
+                }
+            }
+        } else if (result.error() == vsag::index_error::internal_error) {
+            std::cerr << "failed to knn search on index: internal error" << std::endl;
+            exit(-1);
+        }
+
+        if (auto result = diskann->RangeSearch(query, threshold, parameters.dump(), zeros);
+            result.has_value()) {
+            if (result->GetNumElements() == 1) {
+                if (result->GetDim() != 0 && result->GetIds()[0] == i) {
+                    correct_range++;
+                }
+            }
+        } else if (result.error() == vsag::index_error::internal_error) {
+            std::cerr << "failed to range search on index: internal error" << std::endl;
+            exit(-1);
+        }
+        delete[] bits_ones;
+        delete[] bits_zeros;
     }
 
     recall_knn = correct_knn / max_elements;
-    std::cout << "recall for knn search with filter: " << recall_knn << std::endl;
     recall_range = correct_range / max_elements;
-    std::cout << "recall for range search with filter: " << recall_range << std::endl;
+
+    REQUIRE(recall_range == 1);
+    REQUIRE(recall_knn == 1);
 }

@@ -136,6 +136,10 @@ HNSW::KnnSearch(const Dataset& query,
 
     std::shared_ptr<Filter> filter = nullptr;
     if (invalid != nullptr) {
+        if (invalid->Capcity() < GetNumElements()) {
+            spdlog::error("number of invalid is less than the size of index");
+            return tl::unexpected(index_error::internal_error);
+        }
         filter = std::make_shared<Filter>(invalid);
     }
 
@@ -174,6 +178,10 @@ HNSW::KnnSearch(const Dataset& query,
     }
 
     Dataset result;
+    if (results.size() == 0) {
+        result.Dim(0).NumElements(1);
+        return result;
+    }
     int64_t* ids = new int64_t[results.size()];
     float* dists = new float[results.size()];
     result.Dim(results.size()).NumElements(1).Ids(ids).Distances(dists);
@@ -211,6 +219,10 @@ HNSW::RangeSearch(const Dataset& query,
 
     std::shared_ptr<Filter> filter = nullptr;
     if (invalid != nullptr) {
+        if (invalid->Capcity() < GetNumElements()) {
+            spdlog::error("number of invalid is less than the size of index");
+            return tl::unexpected(index_error::internal_error);
+        }
         filter = std::make_shared<Filter>(invalid);
     }
 
@@ -232,6 +244,10 @@ HNSW::RangeSearch(const Dataset& query,
     }
 
     Dataset result;
+    if (results.size() == 0) {
+        result.Dim(0).NumElements(1);
+        return result;
+    }
     int64_t* ids = new int64_t[results.size()];
     float* dists = new float[results.size()];
     result.Dim(results.size()).NumElements(1).Ids(ids).Distances(dists);

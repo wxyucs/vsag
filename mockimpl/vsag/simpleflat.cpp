@@ -76,19 +76,26 @@ SimpleFlat::KnnSearch(const Dataset& query,
         return tl::unexpected(index_error::dimension_not_equal);
     }
 
-    std::vector<rs> results;
-    results = knn_search(query.GetFloat32Vectors(), k, invalid);
-
-    Dataset dataset;
-    int64_t* ids = new int64_t[results.size()];
-    float* dists = new float[results.size()];
-    dataset.Dim(results.size()).NumElements(1).Ids(ids).Distances(dists);
-    for (int64_t i = results.size() - 1; i >= 0; --i) {
-        ids[i] = results[results.size() - 1 - i].second;
-        dists[i] = results[results.size() - 1 - i].first;
+    if (invalid && invalid->Capcity() < GetNumElements()) {
+        return tl::unexpected(index_error::internal_error);
     }
 
-    return std::move(dataset);
+    std::vector<rs> knn_result = knn_search(query.GetFloat32Vectors(), k, invalid);
+
+    Dataset result;
+    if (knn_result.size() == 0) {
+        result.Dim(0).NumElements(1);
+        return result;
+    }
+
+    int64_t* ids = new int64_t[knn_result.size()];
+    float* dists = new float[knn_result.size()];
+    for (int64_t kk = 0; kk < knn_result.size(); ++kk) {
+        ids[kk] = knn_result[knn_result.size() - 1 - kk].second;
+        dists[kk] = knn_result[knn_result.size() - 1 - kk].first;
+    }
+    result.NumElements(1).Dim(knn_result.size()).Ids(ids).Distances(dists);
+    return std::move(result);
 }
 
 tl::expected<Dataset, index_error>
@@ -105,18 +112,27 @@ SimpleFlat::RangeSearch(const Dataset& query,
     if (nq != 1) {
         return tl::unexpected(index_error::internal_error);
     }
-    auto result = range_search(query.GetFloat32Vectors(), radius, invalid);
 
-    int64_t* ids = new int64_t[result.size()];
-    float* dists = new float[result.size()];
-    for (int64_t kk = 0; kk < result.size(); ++kk) {
-        ids[kk] = result[result.size() - 1 - kk].second;
-        dists[kk] = result[result.size() - 1 - kk].first;
+    if (invalid && invalid->Capcity() < GetNumElements()) {
+        return tl::unexpected(index_error::internal_error);
     }
 
-    Dataset results;
-    results.NumElements(1).Dim(result.size()).Ids(ids).Distances(dists);
-    return std::move(results);
+    auto range_result = range_search(query.GetFloat32Vectors(), radius, invalid);
+
+    Dataset result;
+    if (range_result.size() == 0) {
+        result.Dim(0).NumElements(1);
+        return result;
+    }
+
+    int64_t* ids = new int64_t[range_result.size()];
+    float* dists = new float[range_result.size()];
+    for (int64_t kk = 0; kk < range_result.size(); ++kk) {
+        ids[kk] = range_result[range_result.size() - 1 - kk].second;
+        dists[kk] = range_result[range_result.size() - 1 - kk].first;
+    }
+    result.NumElements(1).Dim(range_result.size()).Ids(ids).Distances(dists);
+    return std::move(result);
 }
 
 tl::expected<BinarySet, index_error>

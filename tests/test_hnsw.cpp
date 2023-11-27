@@ -356,7 +356,7 @@ TEST_CASE("HNSW filtering knn search", "[hnsw]") {
     }
 }
 
-TEST_CASE("HNSW filtering range search", "[hnsw]") {
+TEST_CASE("HNSW Filtering Test", "[hnsw]") {
     int dim = 17;
     int max_elements = 1000;
     int M = 16;
@@ -393,21 +393,100 @@ TEST_CASE("HNSW filtering range search", "[hnsw]") {
     REQUIRE(hnsw->GetNumElements() == max_elements);
 
     // Query the elements for themselves and measure recall 1@1
+    float correct_knn = 0.0f;
+    float recall_knn = 0.0f;
+    float correct_range = 0.0f;
+    float recall_range = 0.0f;
     for (int i = 0; i < max_elements; i++) {
         vsag::Dataset query;
         query.NumElements(1).Dim(dim).Float32Vectors(data + i * dim).Owner(false);
         nlohmann::json parameters;
         float radius = 9.87f;
+        int64_t k = 10;
 
         vsag::BitsetPtr filter = vsag::Bitset::Random(max_elements);
         int64_t num_deleted = filter->CountOnes();
 
-        auto result = hnsw->RangeSearch(query, radius, parameters.dump(), filter);
-        REQUIRE(result.has_value());
-        REQUIRE(result->GetDim() == max_elements - num_deleted);
-        for (int64_t j = 0; j < result->GetDim(); ++j) {
-            // deleted ids NOT in result
-            REQUIRE(filter->Get(result->GetIds()[j]) == false);
+        if (auto result = hnsw->RangeSearch(query, radius, parameters.dump(), filter);
+            result.has_value()) {
+            REQUIRE(result->GetDim() == max_elements - num_deleted);
+            for (int64_t j = 0; j < result->GetDim(); ++j) {
+                // deleted ids NOT in result
+                REQUIRE(filter->Get(result->GetIds()[j]) == false);
+            }
+        } else {
+            std::cerr << "failed to range search on index: internal error" << std::endl;
+            exit(-1);
         }
+
+        if (auto result = hnsw->KnnSearch(query, k, parameters.dump(), filter);
+            result.has_value()) {
+            REQUIRE(result.has_value());
+            for (int64_t j = 0; j < result->GetDim(); ++j) {
+                // deleted ids NOT in result
+                REQUIRE(filter->Get(result->GetIds()[j]) == false);
+            }
+        } else {
+            std::cerr << "failed to knn search on index: internal error" << std::endl;
+            exit(-1);
+        }
+
+        size_t bytes_count = max_elements / 4 + 1;
+        auto bits_ones = new uint8_t[bytes_count];
+        std::memset(bits_ones, 0xFF, bytes_count);
+        vsag::BitsetPtr ones = std::make_shared<vsag::Bitset>(bits_ones, bytes_count);
+        if (auto result = hnsw->RangeSearch(query, radius, parameters.dump(), ones);
+            result.has_value()) {
+            REQUIRE(result->GetDim() == 0);
+            REQUIRE(result->GetDistances() == nullptr);
+            REQUIRE(result->GetIds() == nullptr);
+        } else if (result.error() == vsag::index_error::internal_error) {
+            std::cerr << "failed to range search on index: internal error" << std::endl;
+            exit(-1);
+        }
+
+        if (auto result = hnsw->KnnSearch(query, k, parameters.dump(), ones); result.has_value()) {
+            REQUIRE(result->GetDim() == 0);
+            REQUIRE(result->GetDistances() == nullptr);
+            REQUIRE(result->GetIds() == nullptr);
+        } else if (result.error() == vsag::index_error::internal_error) {
+            std::cerr << "failed to knn search on index: internal error" << std::endl;
+            exit(-1);
+        }
+
+        auto bits_zeros = new uint8_t[bytes_count];
+        std::memset(bits_zeros, 0, bytes_count);
+        vsag::BitsetPtr zeros = std::make_shared<vsag::Bitset>(bits_zeros, bytes_count);
+
+        if (auto result = hnsw->KnnSearch(query, k, parameters.dump(), zeros); result.has_value()) {
+            if (result->GetNumElements() == 1) {
+                REQUIRE(!std::isinf(result->GetDistances()[0]));
+                if (result->GetDim() != 0 && result->GetIds()[0] == i) {
+                    correct_knn++;
+                }
+            }
+        } else if (result.error() == vsag::index_error::internal_error) {
+            std::cerr << "failed to knn search on index: internal error" << std::endl;
+            exit(-1);
+        }
+
+        if (auto result = hnsw->RangeSearch(query, radius, parameters.dump(), zeros);
+            result.has_value()) {
+            if (result->GetNumElements() == 1) {
+                if (result->GetDim() != 0 && result->GetIds()[0] == i) {
+                    correct_range++;
+                }
+            }
+        } else if (result.error() == vsag::index_error::internal_error) {
+            std::cerr << "failed to range search on index: internal error" << std::endl;
+            exit(-1);
+        }
+        delete[] bits_ones;
+        delete[] bits_zeros;
     }
+    recall_knn = correct_knn / max_elements;
+    recall_range = correct_range / max_elements;
+
+    REQUIRE(recall_range == 1);
+    REQUIRE(recall_knn == 1);
 }

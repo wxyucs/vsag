@@ -68,18 +68,18 @@ public:
 
     int64_t
     GetNumElements() const override {
-        if (status == EMPTY)
+        if (status_ == EMPTY)
             return 0;
-        return index->get_data_num();
+        return index_->get_data_num();
     }
 
     int64_t
     GetMemoryUsage() const override {
-        if (status == MEMORY) {
-            return index->get_memory_usage() + disk_layout_stream_.str().size() +
+        if (status_ == MEMORY) {
+            return index_->get_memory_usage() + disk_layout_stream_.str().size() +
                    pq_pivots_stream_.str().size() + disk_layout_stream_.str().size();
-        } else if (status == HYBRID) {
-            return index->get_memory_usage();
+        } else if (status_ == HYBRID) {
+            return index_->get_memory_usage();
         }
         return 0;
     }
@@ -88,19 +88,19 @@ public:
     GetStats() const override;
 
 private:
-    std::shared_ptr<AlignedFileReader> reader;
-    std::shared_ptr<diskann::PQFlashIndex<float>> index;
-    std::shared_ptr<diskann::Index<float, int64_t, int64_t>> build_index;
+    std::shared_ptr<AlignedFileReader> reader_;
+    std::shared_ptr<diskann::PQFlashIndex<float>> index_;
+    std::shared_ptr<diskann::Index<float, int64_t, int64_t>> build_index_;
     std::stringstream pq_pivots_stream_;
     std::stringstream disk_pq_compressed_vectors_;
     std::stringstream disk_layout_stream_;
 
     std::stringstream graph_stream_;
 
-    std::function<void(const std::vector<read_request>&)> batch_read;
+    std::function<void(const std::vector<read_request>&)> batch_read_;
     std::function<bool(uint32_t)> filter = nullptr;
     diskann::Metric metric_;
-    std::shared_ptr<Reader> disk_layout_reader;
+    std::shared_ptr<Reader> disk_layout_reader_;
     std::string data_type_;
     int L_ = 200;
     int R_ = 64;
@@ -108,7 +108,7 @@ private:
     size_t disk_pq_dims_ = 8;
     int64_t dim_;
     bool preload_;
-    IndexStatus status;
+    IndexStatus status_;
 
 private:  // Request Statistics
     mutable std::mutex stats_mutex_;
