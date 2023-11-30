@@ -20,6 +20,8 @@ TEST_CASE("l2_and_filtering", "[utils]") {
 
     float* query = new float[dim]{5, 5, 5, 5};
     auto res = l2_and_filtering(dim, nb, base, query, 20.0f);
+    delete[] base;
+    delete[] query;
     CHECK(res->Capcity() == 16);
     CHECK(res->CountOnes() == 5);
     CHECK_FALSE(res->Get(0));

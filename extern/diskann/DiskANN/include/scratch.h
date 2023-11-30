@@ -203,9 +203,11 @@ template <typename T> class ScratchStoreManager
 
     ~ScratchStoreManager()
     {
-        _scratch->clear();
-        _scratch_pool.push(_scratch);
-        _scratch_pool.push_notify_all();
+        if (_scratch) {
+            _scratch->clear();
+            _scratch_pool.push(_scratch);
+            _scratch_pool.push_notify_all();
+        }
     }
 
     void destroy()
@@ -220,6 +222,8 @@ template <typename T> class ScratchStoreManager
             }
             delete scratch;
         }
+        delete _scratch;
+        _scratch = nullptr;
     }
 
   private:

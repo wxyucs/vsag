@@ -79,6 +79,8 @@ TEST_CASE("InnerProduct", "[Kmeans]") {
     for (int i = 0; i < clusters; ++i) {
         deviation += (avg - data_id[i].size()) * (avg - data_id[i].size());
     }
+    delete[] data;
+    delete[] centroids;
     REQUIRE(std::sqrt(deviation) < 450);
     REQUIRE(loss < 8340);
 }
@@ -127,6 +129,8 @@ TEST_CASE("L2", "[Kmeans]") {
     for (int i = 0; i < clusters; ++i) {
         deviation += (avg - data_id[i].size()) * (avg - data_id[i].size());
     }
+    delete[] data;
+    delete[] centroids;
     REQUIRE(std::sqrt(deviation) < 550);
     REQUIRE(loss < 88890);
 }

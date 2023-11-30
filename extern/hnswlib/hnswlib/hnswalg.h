@@ -265,8 +265,9 @@ class HierarchicalNSW : public AlgorithmInterface<float> {
                 tableint candidate_id = *(datal + j);
 //                    if (candidate_id == 0) continue;
 #ifdef USE_SSE
-                _mm_prefetch((char *) (visited_array + *(datal + j + 1)), _MM_HINT_T0);
-                _mm_prefetch(getDataByInternalId(*(datal + j + 1)), _MM_HINT_T0);
+                size_t pre_l = std::min(j, size - 2);
+                _mm_prefetch((char *) (visited_array + *(datal + pre_l + 1)), _MM_HINT_T0);
+                _mm_prefetch(getDataByInternalId(*(datal + pre_l + 1)), _MM_HINT_T0);
 #endif
                 if (visited_array[candidate_id] == visited_array_tag) continue;
                 visited_array[candidate_id] = visited_array_tag;

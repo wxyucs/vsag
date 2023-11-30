@@ -100,6 +100,11 @@ template <typename T, typename LabelT> PQFlashIndex<T, LabelT>::~PQFlashIndex()
     {
         delete[] _pts_to_labels;
     }
+
+    if (medoids != nullptr) {
+        delete[] medoids;
+    }
+
 }
 
 template <typename T, typename LabelT>

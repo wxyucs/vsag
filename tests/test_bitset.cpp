@@ -122,9 +122,10 @@ TEST_CASE("construct from memory", "[bitset]") {
     CHECK(bp->CountOnes() == 10);
     CHECK(bp->CountZeros() == 6);
 
-    std::vector<uint8_t> buffer(1'000'000);
+    std::vector<uint8_t> buffer;
+    buffer.resize(1'000'000);
     static auto gen =
-        std::bind(std::uniform_int_distribution<>(0, 1), std::default_random_engine());
+        std::bind(std::uniform_real_distribution<float>(0, 1), std::default_random_engine());
     auto ptr = (float*)buffer.data();
     for (uint64_t i = 0; i < buffer.size() / 4; ++i) {
         ptr[i] = gen();
@@ -132,19 +133,23 @@ TEST_CASE("construct from memory", "[bitset]") {
 
     uint64_t count1 = 0;
     BENCHMARK("popcount") {
+        uint64_t count = 0;
         for (uint8_t num : buffer) {
-            count1 += std::__popcount(num);
+            count += std::__popcount(num);
         }
+        count1 = count;
     };
 
     uint64_t count2 = 0;
     BENCHMARK("while") {
+        uint64_t count = 0;
         for (uint8_t num : buffer) {
             while (num) {
-                count2 += num & 1;
+                count += num & 1;
                 num >>= 1;
             }
         }
+        count2 = count;
     };
 
     REQUIRE(count1 == count2);

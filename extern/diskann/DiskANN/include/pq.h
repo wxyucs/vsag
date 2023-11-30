@@ -80,6 +80,14 @@ template <typename T> struct PQScratch
         memset(rotated_query, 0, aligned_dim * sizeof(float));
     }
 
+    ~PQScratch() {
+        diskann::aligned_free(aligned_pq_coord_scratch);
+        diskann::aligned_free(aligned_pqtable_dist_scratch);
+        diskann::aligned_free(aligned_dist_scratch);
+        diskann::aligned_free(aligned_query_float);
+        diskann::aligned_free(rotated_query);
+    }
+
     void set(size_t dim, T *query, const float norm = 1.0f)
     {
         for (size_t d = 0; d < dim; ++d)
