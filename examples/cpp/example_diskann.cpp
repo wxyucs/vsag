@@ -61,7 +61,15 @@ float_diskann() {
         {"dim", dim},
         {"diskann", diskann_parameters},
     };
-    auto diskann = vsag::Factory::CreateIndex("diskann", index_parameters.dump());
+
+    std::shared_ptr<vsag::Index> diskann;
+    if (auto index = vsag::Factory::CreateIndex("diskann", index_parameters.dump());
+        index.has_value()) {
+        diskann = index.value();
+    } else {
+        std::cout << "Build DiskANN Error" << std::endl;
+        return;
+    }
 
     int64_t* ids = new int64_t[max_elements];
     float* data = new float[dim * max_elements];
@@ -110,8 +118,6 @@ float_diskann() {
     std::cout << "Stard Recall: " << recall << std::endl;
 
     correct = 0;
-    float true_result = 0;
-    float return_result = 0;
     for (int i = 0; i < max_elements; i++) {
         vsag::Dataset query;
         query.NumElements(1).Dim(dim).Float32Vectors(data + i * dim).Owner(false);
@@ -189,7 +195,14 @@ float_diskann() {
             file.read((char*)b.data.get(), b.size);
             bs.Set(key, b);
         }
-        diskann = vsag::Factory::CreateIndex("diskann", index_parameters.dump());
+
+        if (auto index = vsag::Factory::CreateIndex("diskann", index_parameters.dump());
+            index.has_value()) {
+            diskann = index.value();
+        } else {
+            std::cout << "Build DiskANN Error" << std::endl;
+            return;
+        }
         diskann->Deserialize(bs);
     }
 
@@ -288,8 +301,13 @@ float_diskann() {
             file.read((char*)b.data.get(), b.size);
             bs.Set(keys[i], b);
         }
-
-        diskann = vsag::Factory::CreateIndex("diskann", index_parameters.dump());
+        if (auto index = vsag::Factory::CreateIndex("diskann", index_parameters.dump());
+            index.has_value()) {
+            diskann = index.value();
+        } else {
+            std::cout << "Build DiskANN Error" << std::endl;
+            return;
+        }
         diskann->Deserialize(bs);
     }
 
@@ -356,7 +374,13 @@ float_diskann() {
             rs.Set(keys[i], file_reader);
         }
 
-        diskann = vsag::Factory::CreateIndex("diskann", index_parameters.dump());
+        if (auto index = vsag::Factory::CreateIndex("diskann", index_parameters.dump());
+            index.has_value()) {
+            diskann = index.value();
+        } else {
+            std::cout << "Build DiskANN Error" << std::endl;
+            return;
+        }
         diskann->Deserialize(rs);
     }
 

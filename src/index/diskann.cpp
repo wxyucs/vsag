@@ -24,6 +24,8 @@ namespace vsag {
 
 const static float MACRO_TO_MILLI = 1000;
 const static int64_t DATA_LIMIT = 2;
+const static size_t MAXIMAL_BEAM_SEARCH = 64;
+const static size_t MINIMAL_BEAM_SEARCH = 1;
 
 class LocalMemoryReader : public Reader {
 public:
@@ -91,7 +93,7 @@ DiskANN::DiskANN(diskann::Metric metric,
 tl::expected<int64_t, index_error>
 DiskANN::Build(const Dataset& base) {
     SlowTaskTimer t("diskann build");
-    // FIXME: A exception will be throwed out when there are less data.
+
     if (base.GetNumElements() < DATA_LIMIT) {
         return tl::unexpected(index_error::no_enough_data);
     }
@@ -162,6 +164,12 @@ DiskANN::KnnSearch(const Dataset& query,
         spdlog::error("failed to search: diskann index is empty");
         return tl::unexpected(index_error::index_empty);
     }
+
+    if (k <= 0) {
+        spdlog::error("invalid parameter: k (" + std::to_string(k) + ")");
+        return tl::unexpected(index_error::invalid_parameter);
+    }
+
     k = std::min(k, GetNumElements());
     auto query_num = query.GetNumElements();
     auto query_dim = query.GetDim();
@@ -181,9 +189,36 @@ DiskANN::KnnSearch(const Dataset& query,
         filter_ = [&](uint32_t offset) -> bool { return invalid->Get(offset); };
     }
 
-    size_t beam_search = param["diskann"]["beam_search"];
-    size_t io_limit = param["diskann"]["io_limit"];
-    size_t ef_search = param["diskann"]["ef_search"];
+    if (!param.contains(INDEX_DISKANN)) {
+        spdlog::error("missing parameter: {}", INDEX_DISKANN);
+        return tl::unexpected(index_error::invalid_parameter);
+    }
+
+    if (!param[INDEX_DISKANN].contains(DISKANN_PARAMETER_BEAM_SEARCH)) {
+        spdlog::error("missing parameter: {}", DISKANN_PARAMETER_BEAM_SEARCH);
+        return tl::unexpected(index_error::invalid_parameter);
+    }
+
+    if (!param[INDEX_DISKANN].contains(DISKANN_PARAMETER_IO_LIMIT)) {
+        spdlog::error("missing parameter: {}", DISKANN_PARAMETER_IO_LIMIT);
+        return tl::unexpected(index_error::invalid_parameter);
+    }
+
+    if (!param[INDEX_DISKANN].contains(DISKANN_PARAMETER_EF_SEARCH)) {
+        spdlog::error("missing parameter: {}", DISKANN_PARAMETER_EF_SEARCH);
+        return tl::unexpected(index_error::invalid_parameter);
+    }
+
+    size_t beam_search = param[INDEX_DISKANN][DISKANN_PARAMETER_BEAM_SEARCH];
+    int64_t io_limit = param[INDEX_DISKANN][DISKANN_PARAMETER_IO_LIMIT];
+    int64_t ef_search = param[INDEX_DISKANN][DISKANN_PARAMETER_EF_SEARCH];
+
+    // ensure that in the topK scenario, ef_search > k and io_limit > k.
+    ef_search = std::max(ef_search, k);
+    io_limit = std::max(io_limit, k);
+    beam_search = std::min(beam_search, MAXIMAL_BEAM_SEARCH);
+    beam_search = std::max(beam_search, MINIMAL_BEAM_SEARCH);
+
     uint64_t labels[query_num * k];
     auto distances = new float[query_num * k];
     auto ids = new int64_t[query_num * k];
@@ -256,11 +291,16 @@ DiskANN::RangeSearch(const Dataset& query,
                      BitsetPtr invalid) const {
     nlohmann::json param = nlohmann::json::parse(parameters);
 
+    if (radius <= 0) {
+        spdlog::error("invalid parameter: radius (" + std::to_string(radius) + ")");
+        return tl::unexpected(index_error::invalid_parameter);
+    }
+
     int64_t query_num = query.GetNumElements();
     int64_t query_dim = query.GetDim();
 
     if (!index_) {
-        spdlog::error("failed to search: diskann index is empty");
+        spdlog::error("failed to search: {} index is empty", INDEX_DISKANN);
         return tl::unexpected(index_error::index_empty);
     }
 
@@ -284,8 +324,36 @@ DiskANN::RangeSearch(const Dataset& query,
         filter_ = [&](uint32_t offset) -> bool { return invalid->Get(offset); };
     }
 
-    size_t beam_search = param["diskann"]["beam_search"];
-    size_t ef_search = param["diskann"]["ef_search"];
+    if (!param.contains(INDEX_DISKANN)) {
+        spdlog::error("missing parameter: {}", INDEX_DISKANN);
+        return tl::unexpected(index_error::invalid_parameter);
+    }
+
+    if (!param[INDEX_DISKANN].contains(DISKANN_PARAMETER_BEAM_SEARCH)) {
+        spdlog::error("missing parameter: {}", DISKANN_PARAMETER_BEAM_SEARCH);
+        return tl::unexpected(index_error::invalid_parameter);
+    }
+
+    if (!param[INDEX_DISKANN].contains(DISKANN_PARAMETER_IO_LIMIT)) {
+        spdlog::error("missing parameter: {}", DISKANN_PARAMETER_IO_LIMIT);
+        return tl::unexpected(index_error::invalid_parameter);
+    }
+
+    if (!param[INDEX_DISKANN].contains(DISKANN_PARAMETER_EF_SEARCH)) {
+        spdlog::error("missing parameter: {}", DISKANN_PARAMETER_EF_SEARCH);
+        return tl::unexpected(index_error::invalid_parameter);
+    }
+
+    size_t beam_search = param[INDEX_DISKANN][DISKANN_PARAMETER_BEAM_SEARCH];
+    int64_t ef_search = param[INDEX_DISKANN][DISKANN_PARAMETER_EF_SEARCH];
+
+    if (ef_search <= 0) {
+        spdlog::error("invalid parameter: {} (" + std::to_string(ef_search) + ")", ef_search);
+        return tl::unexpected(index_error::invalid_parameter);
+    }
+
+    beam_search = std::min(beam_search, MAXIMAL_BEAM_SEARCH);
+    beam_search = std::max(beam_search, MINIMAL_BEAM_SEARCH);
 
     std::vector<uint64_t> labels;
     std::vector<float> range_distances;
@@ -340,7 +408,7 @@ DiskANN::RangeSearch(const Dataset& query,
 tl::expected<BinarySet, index_error>
 DiskANN::Serialize() const {
     if (status_ == IndexStatus::EMPTY) {
-        spdlog::error("failed to serialize: diskann index is empty");
+        spdlog::error("failed to serialize: {} index is empty", INDEX_DISKANN);
         return tl::unexpected(index_error::index_empty);
     }
     SlowTaskTimer t("diskann serialize");
@@ -448,7 +516,7 @@ DiskANN::Deserialize(const ReaderSet& reader_set) {
     SlowTaskTimer t("diskann deserialize");
 
     if (this->index_) {
-        spdlog::error("failed to deserialize: index is not empty");
+        spdlog::error("failed to deserialize: {} is not empty", INDEX_DISKANN);
         return tl::unexpected(index_error::index_not_empty);
     }
     try {

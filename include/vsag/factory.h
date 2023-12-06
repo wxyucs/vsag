@@ -19,7 +19,7 @@ public:
 	- ef_runtime: integer, optional
       Vamana: Not supported
      */
-    static std::shared_ptr<Index>
+    static tl::expected<std::shared_ptr<Index>, index_error>
     CreateIndex(const std::string& name, const std::string& parameters);
 
     static std::shared_ptr<Reader>

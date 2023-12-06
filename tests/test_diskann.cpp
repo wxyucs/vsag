@@ -34,7 +34,10 @@ TEST_CASE("DiskAnn Float Recall", "[diskann]") {
         {"dim", dim},
         {"diskann", diskann_parameters},
     };
-    auto diskann = vsag::Factory::CreateIndex("diskann", index_parameters.dump());
+    std::shared_ptr<vsag::Index> diskann;
+    auto index = vsag::Factory::CreateIndex("diskann", index_parameters.dump());
+    REQUIRE(index.has_value());
+    diskann = index.value();
 
     int64_t* ids = new int64_t[max_elements];
     float* data = new float[dim * max_elements];
@@ -144,7 +147,9 @@ TEST_CASE("DiskAnn Float Recall", "[diskann]") {
         bs.Set(vsag::DISKANN_LAYOUT_FILE, disk_layout_b);
 
         diskann = nullptr;
-        diskann = vsag::Factory::CreateIndex("diskann", index_parameters.dump());
+        index = vsag::Factory::CreateIndex("diskann", index_parameters.dump());
+        REQUIRE(index.has_value());
+        diskann = index.value();
 
         std::cout << "#####" << std::endl;
         diskann->Deserialize(bs);
@@ -187,7 +192,9 @@ TEST_CASE("DiskAnn Float Recall", "[diskann]") {
         rs.Set(vsag::DISKANN_LAYOUT_FILE, disk_layout_reader);
 
         diskann = nullptr;
-        diskann = vsag::Factory::CreateIndex("diskann", index_parameters.dump());
+        index = vsag::Factory::CreateIndex("diskann", index_parameters.dump());
+        REQUIRE(index.has_value());
+        diskann = index.value();
 
         std::cout << "#####" << std::endl;
         diskann->Deserialize(rs);
@@ -242,7 +249,11 @@ TEST_CASE("DiskAnn IP Search", "[diskann]") {
         {"dim", dim},
         {"diskann", diskann_parameters},
     };
-    auto diskann = vsag::Factory::CreateIndex("diskann", index_parameters.dump());
+
+    std::shared_ptr<vsag::Index> diskann;
+    auto index = vsag::Factory::CreateIndex("diskann", index_parameters.dump());
+    REQUIRE(index.has_value());
+    diskann = index.value();
 
     int64_t* ids = new int64_t[max_elements];
     float* data = new float[dim * max_elements];
@@ -308,7 +319,11 @@ TEST_CASE("DiskAnn Range Query", "[diskann]") {
         {"dim", dim},
         {"diskann", diskann_parameters},
     };
-    auto diskann = vsag::Factory::CreateIndex("diskann", index_parameters.dump());
+
+    std::shared_ptr<vsag::Index> diskann;
+    auto index = vsag::Factory::CreateIndex("diskann", index_parameters.dump());
+    REQUIRE(index.has_value());
+    diskann = index.value();
 
     int64_t* ids = new int64_t[max_elements];
     float* data = new float[dim * max_elements];
@@ -381,7 +396,11 @@ TEST_CASE("DiskAnn Preload Graph", "[diskann]") {
         {"dim", dim},
         {"diskann", diskann_parameters},
     };
-    auto diskann = vsag::Factory::CreateIndex("diskann", index_parameters.dump());
+
+    std::shared_ptr<vsag::Index> diskann;
+    auto index = vsag::Factory::CreateIndex("diskann", index_parameters.dump());
+    REQUIRE(index.has_value());
+    diskann = index.value();
 
     int64_t* ids = new int64_t[max_elements];
     float* data = new float[dim * max_elements];
@@ -445,7 +464,11 @@ TEST_CASE("DiskAnn Filter Test", "[diskann]") {
         {"dim", dim},
         {"diskann", diskann_parameters},
     };
-    auto diskann = vsag::Factory::CreateIndex("diskann", index_parameters.dump());
+
+    std::shared_ptr<vsag::Index> diskann;
+    auto index = vsag::Factory::CreateIndex("diskann", index_parameters.dump());
+    REQUIRE(index.has_value());
+    diskann = index.value();
 
     int64_t* ids = new int64_t[max_elements];
     float* data = new float[dim * max_elements];

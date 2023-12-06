@@ -5,6 +5,7 @@
 #include <cstdint>
 #include <fstream>
 #include <ios>
+#include <locale>
 #include <memory>
 #include <mutex>
 #include <nlohmann/json.hpp>
@@ -15,64 +16,96 @@
 #include "index/hnsw.h"
 
 namespace vsag {
+bool
+case_insensitive_char_compare(char a, char b) {
+    return std::tolower(a) == std::tolower(b);
+}
 
-std::shared_ptr<Index>
+index_error
+convert_index_error(const char* message) {
+    if (std::strcmp(MESSAGE_PARAMETER, message) == 0) {
+        return index_error::invalid_parameter;
+    } else {
+        return index_error::unexpected_error;
+    }
+}
+
+tl::expected<std::shared_ptr<Index>, index_error>
 Factory::CreateIndex(const std::string& name, const std::string& parameters) {
     nlohmann::json params = nlohmann::json::parse(parameters);
 
-    if (params["dtype"] != "float32" || !params.contains("dim")) {
-        return nullptr;
+    if (params[PARAMETER_DTYPE] != DATATYPE_FLOAT32) {
+        spdlog::error("only support {}", DATATYPE_FLOAT32);
+        return tl::unexpected(index_error::invalid_parameter);
     }
-    if (name == "hnsw") {
-        if (not params.contains("hnsw")) {
-            throw std::runtime_error("hnsw not found in parameters");
+
+    if (!params.contains(PARAMETER_DIM)) {
+        spdlog::error("missing parameter: {}", PARAMETER_DIM);
+        return tl::unexpected(index_error::invalid_parameter);
+    }
+    if (std::equal(name.begin(), name.end(), INDEX_HNSW, case_insensitive_char_compare)) {
+        if (not params.contains(INDEX_HNSW)) {
+            spdlog::error("{} not found in parameters", INDEX_HNSW);
+            return tl::unexpected(index_error::invalid_parameter);
         }
         std::shared_ptr<hnswlib::SpaceInterface> space = nullptr;
-        if (params["metric_type"] == METRIC_L2) {
-            space = std::make_shared<hnswlib::L2Space>(params["dim"]);
-        } else if (params["metric_type"] == METRIC_IP) {
-            space = std::make_shared<hnswlib::InnerProductSpace>(params["dim"]);
+        if (params[PARAMETER_METRIC_TYPE] == METRIC_L2) {
+            space = std::make_shared<hnswlib::L2Space>(params[PARAMETER_DIM]);
+        } else if (params[PARAMETER_METRIC_TYPE] == METRIC_IP) {
+            space = std::make_shared<hnswlib::InnerProductSpace>(params[PARAMETER_DIM]);
         } else {
-            throw std::runtime_error("hnsw not support this metric");
+            std::string metric = params[PARAMETER_METRIC_TYPE];
+            spdlog::error("{} not support this metric: {}", INDEX_HNSW, metric);
+            return tl::unexpected(index_error::invalid_parameter);
         }
-        auto index = std::make_shared<HNSW>(space,
-                                            params["hnsw"]["max_elements"],
-                                            params["hnsw"]["M"],
-                                            params["hnsw"]["ef_construction"]);
-        if (params["hnsw"].contains("ef_runtime")) {
-            index->SetEfRuntime(params["hnsw"]["ef_runtime"]);
+        std::shared_ptr<HNSW> index;
+        try {
+            index = std::make_shared<HNSW>(space,
+                                           params[INDEX_HNSW][HNSW_PARAMETER_M],
+                                           params[INDEX_HNSW][HNSW_PARAMETER_CONSTRUCTION]);
+        } catch (std::runtime_error e) {
+            spdlog::error("create {} index faild: {}", INDEX_HNSW, e.what());
+            return tl::unexpected(convert_index_error(e.what()));
         }
         return index;
-    } else if (name == INDEX_DISKANN) {
+    } else if (std::equal(name.begin(), name.end(), INDEX_DISKANN, case_insensitive_char_compare)) {
         if (not params.contains(INDEX_DISKANN)) {
-            throw std::runtime_error("diskann not found in parameters");
+            spdlog::error("{} not found in parameters", INDEX_DISKANN);
+            return tl::unexpected(index_error::invalid_parameter);
         }
         diskann::Metric metric;
-        if (params["metric_type"] == METRIC_L2) {
+        if (params[PARAMETER_METRIC_TYPE] == METRIC_L2) {
             metric = diskann::Metric::L2;
-        } else if (params["metric_type"] == METRIC_IP) {
+        } else if (params[PARAMETER_METRIC_TYPE] == METRIC_IP) {
             metric = diskann::Metric::INNER_PRODUCT;
         } else {
-            throw std::runtime_error("diskann not support this metric");
+            std::string metric = params[PARAMETER_METRIC_TYPE];
+            spdlog::error("{} not support this metric: {}", INDEX_DISKANN, metric);
+            return tl::unexpected(index_error::invalid_parameter);
         }
 
         bool preload = false;
         if (params[INDEX_DISKANN].contains(DISKANN_PARAMETER_PRELOAD)) {
             preload = params[INDEX_DISKANN][DISKANN_PARAMETER_PRELOAD];
         }
-
-        auto index = std::make_shared<DiskANN>(metric,
-                                               params["dtype"],
-                                               params["diskann"]["L"],
-                                               params["diskann"]["R"],
-                                               params["diskann"]["p_val"],
-                                               params["diskann"]["disk_pq_dims"],
-                                               params["dim"],
-                                               preload);
+        std::shared_ptr<DiskANN> index;
+        try {
+            index = std::make_shared<DiskANN>(metric,
+                                              params[PARAMETER_DTYPE],
+                                              params[INDEX_DISKANN][DISKANN_PARAMETER_L],
+                                              params[INDEX_DISKANN][DISKANN_PARAMETER_R],
+                                              params[INDEX_DISKANN][DISKANN_PARAMETER_P_VAL],
+                                              params[INDEX_DISKANN][DISKANN_PARAMETER_DISK_PQ_DIMS],
+                                              params[PARAMETER_DIM],
+                                              preload);
+        } catch (std::runtime_error e) {
+            spdlog::error("create {} index faild: {}", INDEX_DISKANN, e.what());
+            return tl::unexpected(convert_index_error(e.what()));
+        }
         return index;
     } else {
-        // not support
-        return nullptr;
+        spdlog::error("no support this index: {}", name);
+        return tl::unexpected(index_error::invalid_index);
     }
 }
 

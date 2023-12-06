@@ -13,9 +13,12 @@
 #include "vsag/errors.h"
 #include "vsag/expected.hpp"
 
-const static int64_t EXPANSION_NUM = 1000000;
-
 namespace vsag {
+
+const static int64_t EXPANSION_NUM = 1000000;
+const static int64_t DEFAULT_MAX_ELEMENT = 10000;
+const static int64_t MINIMAL_M = 2;
+const static int64_t MAXIMAL_M = 500;
 
 class Filter : public hnswlib::BaseFilterFunctor {
 public:
@@ -39,14 +42,20 @@ random_integer(int64_t lower_bound, int64_t upper_bound) {
     return distribution(generator);
 }
 
-HNSW::HNSW(std::shared_ptr<hnswlib::SpaceInterface> spaceInterface,
-           int max_elements,
-           int M,
-           int ef_construction)
-    : space(std::move(spaceInterface)) {
+HNSW::HNSW(std::shared_ptr<hnswlib::SpaceInterface> space_interface, int M, int ef_construction)
+    : space(std::move(space_interface)) {
     dim_ = *((size_t*)space->get_dist_func_param());
-    alg_hnsw =
-        std::make_shared<hnswlib::HierarchicalNSW>(space.get(), max_elements, M, ef_construction);
+
+    if (M < MINIMAL_M || M > MAXIMAL_M) {
+        throw std::runtime_error(MESSAGE_PARAMETER);
+    }
+
+    if (ef_construction <= 0) {
+        throw std::runtime_error(MESSAGE_PARAMETER);
+    }
+
+    alg_hnsw = std::make_shared<hnswlib::HierarchicalNSW>(
+        space.get(), DEFAULT_MAX_ELEMENT, M, ef_construction);
 }
 
 tl::expected<int64_t, index_error>
@@ -128,9 +137,18 @@ HNSW::KnnSearch(const Dataset& query,
                 BitsetPtr invalid) const {
     SlowTaskTimer t("hnsw knnsearch", 10);
     nlohmann::json params = nlohmann::json::parse(parameters);
-    if (params.contains("hnsw") and params["hnsw"].contains("ef_runtime")) {
-        alg_hnsw->setEf(params["hnsw"]["ef_runtime"]);
+
+    if (k <= 0) {
+        spdlog::error("invalid parameter: k (" + std::to_string(k) + ")");
+        return tl::unexpected(index_error::invalid_parameter);
     }
+
+    if (!params.contains(INDEX_HNSW) || !params[INDEX_HNSW].contains(HNSW_PARAMETER_EF_RUNTIME)) {
+        spdlog::error("missing parameter: {}", HNSW_PARAMETER_EF_RUNTIME);
+        return tl::unexpected(index_error::invalid_parameter);
+    }
+
+    alg_hnsw->setEf(params[INDEX_HNSW][HNSW_PARAMETER_EF_RUNTIME]);
 
     k = std::min(k, GetNumElements());
 
@@ -201,9 +219,18 @@ HNSW::RangeSearch(const Dataset& query,
                   BitsetPtr invalid) const {
     SlowTaskTimer t("hnsw rangesearch", 10);
     nlohmann::json params = nlohmann::json::parse(parameters);
-    if (params.contains("hnsw") and params["hnsw"].contains("ef_runtime")) {
-        alg_hnsw->setEf(params["hnsw"]["ef_runtime"]);
+
+    if (radius <= 0) {
+        spdlog::error("invalid parameter: radius (" + std::to_string(radius) + ")");
+        return tl::unexpected(index_error::invalid_parameter);
     }
+
+    if (!params.contains(INDEX_HNSW) || !params[INDEX_HNSW].contains(HNSW_PARAMETER_EF_RUNTIME)) {
+        spdlog::error("missing parameter: {}", HNSW_PARAMETER_EF_RUNTIME);
+        return tl::unexpected(index_error::invalid_parameter);
+    }
+
+    alg_hnsw->setEf(params[INDEX_HNSW][HNSW_PARAMETER_EF_RUNTIME]);
 
     int64_t num_elements = query.GetNumElements();
     if (num_elements != 1) {
@@ -263,12 +290,11 @@ HNSW::RangeSearch(const Dataset& query,
 tl::expected<BinarySet, index_error>
 HNSW::Serialize() const {
     if (GetNumElements() == 0) {
-        spdlog::error("failed to serialize: hnsw index is empty");
+        spdlog::error("failed to serialize: {} index is empty", INDEX_HNSW);
         return tl::unexpected(index_error::index_empty);
     }
     SlowTaskTimer t("hnsw serialize");
     size_t num_bytes = alg_hnsw->calcSerializeSize();
-    // std::cout << "num_bytes: " << std::to_string(num_bytes) << std::endl;
     try {
         std::shared_ptr<int8_t[]> bin(new int8_t[num_bytes]);
         alg_hnsw->saveIndex(bin.get());

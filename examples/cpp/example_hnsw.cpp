@@ -52,8 +52,14 @@ float_hnsw() {
     };
     nlohmann::json index_parameters{
         {"dtype", "float32"}, {"metric_type", "l2"}, {"dim", dim}, {"hnsw", hnsw_parameters}};
-    auto hnsw = vsag::Factory::CreateIndex("hnsw", index_parameters.dump());
-
+    std::shared_ptr<vsag::Index> hnsw;
+    if (auto index = vsag::Factory::CreateIndex("hnsw", index_parameters.dump());
+        index.has_value()) {
+        hnsw = index.value();
+    } else {
+        std::cout << "Build HNSW Error" << std::endl;
+        return;
+    }
     std::shared_ptr<int64_t[]> ids(new int64_t[max_elements]);
     std::shared_ptr<float[]> data(new float[dim * max_elements]);
 
@@ -102,8 +108,9 @@ float_hnsw() {
             //     "ef_runtime": 200
             //   }
             // }
+
             nlohmann::json parameters{
-                {"hnsw", {"ef_runtime", ef_runtime}},
+                {"hnsw", {{"ef_runtime", ef_runtime}}},
             };
             int64_t k = 10;
             if (auto result = hnsw->KnnSearch(query, k, parameters.dump()); result.has_value()) {
@@ -124,14 +131,13 @@ float_hnsw() {
     }
 
     correct = 0;
-    float true_result = 0;
-    float return_result = 0;
     {
         for (int i = 0; i < max_elements; i++) {
             vsag::Dataset query;
             query.NumElements(1).Dim(dim).Float32Vectors(data.get() + i * dim).Owner(false);
+
             nlohmann::json parameters{
-                {"hnsw", {"ef_runtime", ef_runtime}},
+                {"hnsw", {{"ef_runtime", ef_runtime}}},
             };
             if (auto result = hnsw->RangeSearch(query, threshold, parameters.dump());
                 result.has_value()) {
@@ -194,7 +200,13 @@ float_hnsw() {
             file.read((char*)b.data.get(), b.size);
             bs.Set(key, b);
         }
-        hnsw = vsag::Factory::CreateIndex("hnsw", index_parameters.dump());
+        if (auto index = vsag::Factory::CreateIndex("hnsw", index_parameters.dump());
+            index.has_value()) {
+            hnsw = index.value();
+        } else {
+            std::cout << "Build HNSW Error" << std::endl;
+            return;
+        }
         hnsw->Deserialize(bs);
     }
 
@@ -204,7 +216,7 @@ float_hnsw() {
         vsag::Dataset query;
         query.NumElements(1).Dim(dim).Float32Vectors(data.get() + i * dim).Owner(false);
         nlohmann::json parameters{
-            {"hnsw", {"ef_runtime", ef_runtime}},
+            {"hnsw", {{"ef_runtime", ef_runtime}}},
         };
         int64_t k = 10;
         if (auto result = hnsw->KnnSearch(query, k, parameters.dump()); result.has_value()) {
@@ -243,7 +255,13 @@ float_hnsw() {
                 vsag::Factory::CreateLocalFileReader(tmp_dir + "hnsw.index." + key, 0, size);
             rs.Set(key, file_reader);
         }
-        hnsw = vsag::Factory::CreateIndex("hnsw", index_parameters.dump());
+        if (auto index = vsag::Factory::CreateIndex("hnsw", index_parameters.dump());
+            index.has_value()) {
+            hnsw = index.value();
+        } else {
+            std::cout << "Build HNSW Error" << std::endl;
+            return;
+        }
         hnsw->Deserialize(rs);
     }
 
@@ -253,7 +271,7 @@ float_hnsw() {
         vsag::Dataset query;
         query.NumElements(1).Dim(dim).Float32Vectors(data.get() + i * dim).Owner(false);
         nlohmann::json parameters{
-            {"hnsw", {"ef_runtime", ef_runtime}},
+            {"hnsw", {{"ef_runtime", ef_runtime}}},
         };
         int64_t k = 10;
         if (auto result = hnsw->KnnSearch(query, k, parameters.dump()); result.has_value()) {
@@ -347,7 +365,13 @@ float_hnsw() {
             bs.Set(keys[i], b);
         }
 
-        hnsw = vsag::Factory::CreateIndex("hnsw", index_parameters.dump());
+        if (auto index = vsag::Factory::CreateIndex("hnsw", index_parameters.dump());
+            index.has_value()) {
+            hnsw = index.value();
+        } else {
+            std::cout << "Build HNSW Error" << std::endl;
+            return;
+        }
         hnsw->Deserialize(bs);
     }
 
@@ -394,7 +418,13 @@ float_hnsw() {
             rs.Set(keys[i], file_reader);
         }
 
-        hnsw = vsag::Factory::CreateIndex("hnsw", index_parameters.dump());
+        if (auto index = vsag::Factory::CreateIndex("hnsw", index_parameters.dump());
+            index.has_value()) {
+            hnsw = index.value();
+        } else {
+            std::cout << "Build HNSW Error" << std::endl;
+            return;
+        }
         hnsw->Deserialize(rs);
     }
 
@@ -404,7 +434,7 @@ float_hnsw() {
         vsag::Dataset query;
         query.NumElements(1).Dim(dim).Float32Vectors(data.get() + i * dim).Owner(false);
         nlohmann::json parameters{
-            {"hnsw", {"ef_runtime", ef_runtime}},
+            {"hnsw", {{"ef_runtime", ef_runtime}}},
         };
         int64_t k = 10;
         if (auto result = hnsw->KnnSearch(query, k, parameters.dump()); result.has_value()) {

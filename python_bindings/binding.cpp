@@ -27,7 +27,18 @@ kmeans(py::array_t<float, py::array::c_style | py::array::forcecast>& datas,
 class Index {
 public:
     Index(std::string name, const std::string& parameters) {
-        index_ = vsag::Factory::CreateIndex(name, parameters);
+        if (auto index = vsag::Factory::CreateIndex(name, parameters)) {
+            index_ = index.value();
+        } else {
+            vsag::index_error error_code = index.error();
+            if (error_code == vsag::index_error::invalid_index) {
+                throw std::runtime_error("error type: invalid_index");
+            } else if (error_code == vsag::index_error::invalid_parameter) {
+                throw std::runtime_error("error type: invalid_parameter");
+            } else {
+                throw std::runtime_error("error type: unexpected error");
+            }
+        }
     }
 
 public:

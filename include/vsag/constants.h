@@ -19,9 +19,26 @@ constexpr const char* SIMPLEFLAT_VECTORS = "simpleflat_vectors";
 constexpr const char* SIMPLEFLAT_IDS = "simpleflat_ids";
 constexpr const char* METRIC_L2 = "l2";
 constexpr const char* METRIC_IP = "ip";
+constexpr const char* DATATYPE_FLOAT32 = "float32";
 
-// build parameters
+// parameters
+constexpr const char* PARAMETER_DTYPE = "dtype";
+constexpr const char* PARAMETER_DIM = "dim";
+constexpr const char* PARAMETER_METRIC_TYPE = "metric_type";
+
+constexpr const char* DISKANN_PARAMETER_L = "L";
+constexpr const char* DISKANN_PARAMETER_R = "R";
+constexpr const char* DISKANN_PARAMETER_P_VAL = "p_val";
+constexpr const char* DISKANN_PARAMETER_DISK_PQ_DIMS = "disk_pq_dims";
 constexpr const char* DISKANN_PARAMETER_PRELOAD = "preload";
+
+constexpr const char* DISKANN_PARAMETER_BEAM_SEARCH = "beam_search";
+constexpr const char* DISKANN_PARAMETER_IO_LIMIT = "io_limit";
+constexpr const char* DISKANN_PARAMETER_EF_SEARCH = "ef_search";
+
+constexpr const char* HNSW_PARAMETER_EF_RUNTIME = "ef_runtime";
+constexpr const char* HNSW_PARAMETER_M = "M";
+constexpr const char* HNSW_PARAMETER_CONSTRUCTION = "ef_construction";
 
 // statstic key
 
@@ -39,5 +56,9 @@ constexpr const char* STATSTIC_RANGE_IO = "range_io";
 constexpr const char* STATSTIC_RANGE_HOP = "range_hop";
 constexpr const char* STATSTIC_RANGE_CACHE_HIT = "range_cache_hit";
 constexpr const char* STATSTIC_RANGE_IO_TIME = "range_io_time";
+
+// error message
+
+constexpr const char* MESSAGE_PARAMETER = "invalid parameter";
 
 }  // namespace vsag

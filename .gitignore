@@ -31,6 +31,7 @@
 *.out
 *.log
 *.app
+*.pyc
 
 CMakeLists.txt.user
 CMakeCache.txt
@@ -54,5 +55,6 @@ third-party/build/
 third-party/downloads/
 third-party/install/
 dist/
+data/
 /src/version.h
 /mockimpl/vsag/version.h

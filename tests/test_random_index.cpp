@@ -83,7 +83,7 @@ TEST_CASE("Random Index Test", "[random]") {
 
     nlohmann::json parameters{
         {"diskann", {{"ef_search", ef_runtime}, {"beam_search", 4}, {"io_limit", io_limit}}},
-        {"hnsw", {"ef_runtime", ef_runtime}}};
+        {"hnsw", {{"ef_runtime", ef_runtime}}}};
 
     // Generate random data
     std::uniform_real_distribution<> distrib_real;
@@ -99,7 +99,10 @@ TEST_CASE("Random Index Test", "[random]") {
     vsag::Dataset dataset;
     dataset.Dim(dim).NumElements(max_elements).Ids(ids).Float32Vectors(data);
 
-    auto hnsw = vsag::Factory::CreateIndex("hnsw", index_parameters.dump());
+    std::shared_ptr<vsag::Index> hnsw;
+    auto index = vsag::Factory::CreateIndex("hnsw", index_parameters.dump());
+    REQUIRE(index.has_value());
+    hnsw = index.value();
     hnsw->Build(dataset);
 
     for (int i = 0; i < max_elements; i++) {
@@ -107,11 +110,17 @@ TEST_CASE("Random Index Test", "[random]") {
         query.NumElements(1).Dim(dim).Float32Vectors(data + i * dim).Owner(false);
         auto knn_result = hnsw->KnnSearch(query, k, parameters.dump());
         REQUIRE(knn_result.has_value());
+
+        REQUIRE(knn_result.value().GetDim() == std::min(k, (int64_t)max_elements));
         auto range_result = hnsw->RangeSearch(query, k, parameters.dump());
         REQUIRE(range_result.has_value());
     }
 
-    auto diskann = vsag::Factory::CreateIndex("diskann", index_parameters.dump());
+    std::shared_ptr<vsag::Index> diskann;
+    index = vsag::Factory::CreateIndex("diskann", index_parameters.dump());
+    REQUIRE(index.has_value());
+    diskann = index.value();
+
     diskann->Build(dataset);
 
     for (int i = 0; i < max_elements; i++) {
@@ -119,6 +128,7 @@ TEST_CASE("Random Index Test", "[random]") {
         query.NumElements(1).Dim(dim).Float32Vectors(data + i * dim).Owner(false);
         auto knn_result = diskann->KnnSearch(query, k, parameters.dump());
         REQUIRE(knn_result.has_value());
+        REQUIRE(knn_result.value().GetDim() == std::min(k, (int64_t)max_elements));
         auto range_result = diskann->RangeSearch(query, k, parameters.dump());
         REQUIRE(range_result.has_value());
     }

@@ -28,7 +28,6 @@ l2_and_filtering(int64_t dim, int64_t nb, const float* base, const float* query,
     BitsetPtr bp = std::make_shared<Bitset>();
     bp->Extend(nb);
 
-    int64_t count = 0;
     for (int64_t i = 0; i < nb; ++i) {
         const float dist = l2sqr(base + i * dim, query, dim);
         if (dist <= threshold) {
@@ -64,7 +63,6 @@ knn_search_recall(const float* base,
                   int64_t data_dim,
                   const int64_t* result_ids,
                   int64_t result_size) {
-    float recall = 0;
     int64_t nearest_id = 0;
     float nearest_dis = std::numeric_limits<float>::max();
     for (int64_t i = 0; i < base_num; ++i) {

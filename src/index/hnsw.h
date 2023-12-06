@@ -16,10 +16,7 @@ namespace vsag {
 
 class HNSW : public Index {
 public:
-    HNSW(std::shared_ptr<hnswlib::SpaceInterface> spaceInterface,
-         int max_elements,
-         int M,
-         int ef_construction);
+    HNSW(std::shared_ptr<hnswlib::SpaceInterface> space_interface, int M, int ef_construction);
 
     tl::expected<int64_t, index_error>
     Build(const Dataset& base) override;

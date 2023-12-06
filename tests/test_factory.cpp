@@ -20,8 +20,10 @@ TEST_CASE("index params", "[factory]") {
     };
     nlohmann::json index_parameters{
         {"dtype", "float32"}, {"metric_type", "l2"}, {"dim", dim}, {"hnsw", hnsw_parameters}};
-    auto hnsw = vsag::Factory::CreateIndex("hnsw", index_parameters.dump());
-
+    std::shared_ptr<vsag::Index> hnsw;
+    auto index = vsag::Factory::CreateIndex("hnsw", index_parameters.dump());
+    REQUIRE(index.has_value());
+    hnsw = index.value();
     // Generate random data
     std::mt19937 rng;
     rng.seed(47);
@@ -44,7 +46,10 @@ TEST_CASE("index params", "[factory]") {
     for (int i = 0; i < max_elements; i++) {
         vsag::Dataset query;
         query.NumElements(1).Dim(dim).Float32Vectors(data + i * dim).Owner(false);
-        nlohmann::json parameters;
+
+        nlohmann::json parameters{
+            {"hnsw", {{"ef_runtime", ef_runtime}}},
+        };
         int64_t k = 10;
         if (auto result = hnsw->KnnSearch(query, k, parameters.dump()); result.has_value()) {
             if (result->GetIds()[0] == i) {

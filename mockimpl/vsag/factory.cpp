@@ -13,13 +13,13 @@
 
 namespace vsag {
 
-std::shared_ptr<Index>
+tl::expected<std::shared_ptr<Index>, index_error>
 Factory::CreateIndex(const std::string& name, const std::string& parameters) {
     nlohmann::json params = nlohmann::json::parse(parameters);
-    if (not params.contains("metric_type") and not params.contains("dim")) {
-        return nullptr;
+    if (not params.contains(PARAMETER_METRIC_TYPE) and not params.contains(PARAMETER_DIM)) {
+        return tl::unexpected(index_error::invalid_parameter);
     }
-    return std::make_shared<SimpleFlat>(params["metric_type"], params["dim"]);
+    return std::make_shared<SimpleFlat>(params[PARAMETER_METRIC_TYPE], params[PARAMETER_DIM]);
 }
 
 class LocalFileReader : public Reader {
@@ -81,7 +81,6 @@ l2_and_filtering(int64_t dim, int64_t nb, const float* base, const float* query,
     BitsetPtr bp = std::make_shared<Bitset>();
     bp->Extend(nb);
 
-    int64_t count = 0;
     for (int64_t i = 0; i < nb; ++i) {
         const float dist = l2sqr(base + i * dim, query, dim);
         if (dist <= threshold) {
@@ -122,7 +121,6 @@ knn_search_recall(const float* base,
                   int64_t data_dim,
                   const int64_t* result_ids,
                   int64_t result_size) {
-    float recall = 0;
     int64_t nearest_id = 0;
     float nearest_dis = std::numeric_limits<float>::max();
     for (int64_t i = 0; i < base_num; ++i) {
