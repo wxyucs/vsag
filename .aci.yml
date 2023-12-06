@@ -100,5 +100,12 @@ vsag_build_asan_ut:
           export PATH=/usr/lib/ccache:$PATH
           make test_asan
           #
+    - plugin: memcheck-log-parser
+      inputs:
+        tools: "asan ubsan"
+        log_file_path: "testresult/"
+        upload: "true"
+      outputs:
+        - memory_check_error
   timeout: 60
   allowFailure: false
