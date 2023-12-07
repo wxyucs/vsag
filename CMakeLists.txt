@@ -122,7 +122,7 @@ if (ENABLE_TESTS)
 endif ()
 
 if (ENABLE_PYBINDS)
-#    find_package(Python3 REQUIRED COMPONENTS Interpreter Development)
+    find_package(Python3 REQUIRED COMPONENTS Interpreter Development)
     add_subdirectory(extern/pybind11)
     pybind11_add_module(pyvsag python_bindings/binding.cpp)
     target_link_libraries(pyvsag PRIVATE pybind11::module vsag)

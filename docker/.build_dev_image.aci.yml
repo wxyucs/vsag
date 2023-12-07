@@ -1,0 +1,31 @@
+environments:
+  imageTag: dev-20230605
+
+stages:
+  - BUILD_IMAGE
+
+Build-x64-image:
+  stage: BUILD_IMAGE
+  plugin: ANT-BUILD
+  pluginConfig:
+    image: reg.docker.alibaba-inc.com/alipay/7u2-common:202009.0
+    environments: 
+      tag: ${imageTag}
+    beforeScript:
+      - pwd
+      - whoami
+    script:
+      - ls -al
+    inputs:
+      params:
+        - name: DIRECTORY
+          value: "docker"
+        - name: DOCKERFILE
+          value: docker/Dockerfile.tbase
+    outputs:
+      - name: tbase
+        type: image
+        repository: reg.docker.alibaba-inc.com
+        namespace: tbase
+        tag: ${imageTag}-vsag
+        desc: "Vsag dev image for centos"

@@ -1,0 +1,60 @@
+FROM reg.docker.alibaba-inc.com/tbase/tbase:base-20220408-1
+RUN yum clean all && yum -y install cppunit-devel perl-Thread-Queue perl-Digest-MD5 && \
+    yum -y install python-requests python-pip && \
+    yum -y install patch git git-config && \
+    yum -y install libtool-2.4.2 && \
+    yum -y install autoconf automake && \
+    yum -y install maven tcl && \
+    yum -y install -b test cmake && \
+    yum -y install nano tops-osscmd && \
+    yum -y install libtool-ltdl-devel && \
+    yum -y install make && \
+    rpm  -Uvh --force http://yum.tbsite.net/alios/7/os/x86_64/Packages/libedit-3.0-12.20121213cvs.1.alios7.x86_64.rpm && \
+    yum -y install gcc g++ gcc-c++ libatomic libstdc++-devel libstdc++-static libstdc++ binutils binutils-devel libasan coreutils gdb && \
+    yum -y remove llvm llvm-libs && yum clean all && \
+    yum -b current -y install llvm13 llvm13-devel llvm13-libs llvm13-static lld13 lld13-devel clang13-libs clang13 clang13-devel clang13-tools-extra clang13-analyzer compiler-rt13 git-clang13-format libcxx13 && \
+    yum -b current -y install ob-ccache && \
+    yum -b current -y install dsniff && \
+    yum makecache && \
+    yum update -y openssh util-linux bash-completion gnupg2 python perl && \
+    yum install -y alios7u-2_32-gcc-10-repo && \
+    yum update -y libdb && \
+    yum install gcc binutils -y && \
+    yum install -y glibc glibc-langpack-en && \
+    yum install -y gfortran libaio libaio-devel libffi-devel && \
+    yum clean all
+
+ENV LD_LIBRARY_PATH /usr/local/lib:/usr/local/lib64/:/usr/local/openssl/lib/
+
+RUN mkdir -p /root/.pip
+ADD pip.conf /root/.pip/
+
+# Install openssl-1.1.1
+RUN wget "http://tbase.cn-hangzhou.alipay.aliyun-inc.com/vsag%2Fthirdparty%2Fopenssl-1.1.1.tar.gz?OSSAccessKeyId=LTAILFuN8FJQZ4Eu&Expires=4854944865&Signature=Q7d7hNxx8dSo56lR8pfOvGCMtEc%3D" -O openssl-1.1.1.tar.gz && \
+    tar -zxf openssl-1.1.1.tar.gz && \
+    cd openssl-1.1.1 && \
+    ./config --prefix=/usr/local/openssl && \
+    make && \
+    make install && \
+    ln -sf /usr/local/openssl/bin/openssl /usr/bin/openssl
+
+# Install python 3.9
+RUN wget "http://tbase.cn-hangzhou.alipay.aliyun-inc.com/vsag%2Fthirdparty%2FPython-3.9.9.tgz?OSSAccessKeyId=LTAILFuN8FJQZ4Eu&Expires=4854915403&Signature=UAzZqma5S4NetoOUYv9vk8nmO0w%3D" -O Python-3.9.9.tgz && \
+    tar -zxf Python-3.9.9.tgz && \
+    cd Python-3.9.9/ && \
+    ./configure --enable-shared --with-openssl=/usr/local/openssl && \
+    make && \
+    make install && \
+    ln -s /usr/local/bin/python3 /usr/bin/python3 && \
+    /usr/bin/python3 -m ssl && \
+    /usr/bin/python3 -m pip install --upgrade pip && \
+    pip3 install poetry black mypy lxml
+
+ADD requirements.txt /tmp/
+RUN pip3 install --no-cache-dir -r /tmp/requirements.txt
+
+##### CC/CXX related issues #####
+ENV CC      /usr/bin/gcc
+ENV CXX     /usr/bin/g++
+
+ENTRYPOINT [ "/bin/bash" ]
