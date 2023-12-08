@@ -68,6 +68,7 @@ include(extern/aio/aio.cmake)
 include(extern/diskann/diskann.cmake)
 include(extern/spdlog/spdlog.cmake)
 include(extern/catch2/catch2.cmake)
+include(extern/cpuinfo/cpuinfo.cmake)
 
 include_directories(extern/hnswlib)
 include_directories(extern/json/single_include)
@@ -79,7 +80,7 @@ file (GLOB CPP_SRCS "src/*.cpp")
 file (GLOB CPP_INDEX_SRCS "src/index/*.cpp")
 # set_source_files_properties(src/index/hnsw.cpp PROPERTIES COMPILE_FLAGS "-mavx512f -mavx512dq -mavx512bw -mavx512vl -mavx2 -mavx -msse")
 add_library (vsag SHARED ${CPP_SRCS} ${CPP_INDEX_SRCS})
-target_link_libraries (vsag diskann pthread m dl)
+target_link_libraries (vsag diskann pthread m dl cpuinfo)
 add_dependencies(vsag spdlog)
 
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++17 -fPIC -Werror=suggest-override")
@@ -113,8 +114,9 @@ if (ENABLE_TESTS)
 	tests/test_kmeans.cpp
 	tests/test_factory.cpp
 	tests/test_utils.cpp
-    tests/test_bitset.cpp
-    tests/test_random_index.cpp
+	tests/test_bitset.cpp
+	tests/test_random_index.cpp
+	tests/test_cpuinfo.cpp
     )
     target_include_directories(tests PRIVATE ${CMAKE_CURRENT_BINARY_DIR}/spdlog/install/include)
     target_link_libraries (tests PRIVATE Catch2::Catch2WithMain vsag)

@@ -12,10 +12,10 @@
 #include <omp.h>
 #include <pq_flash_index.h>
 
-#include <cstring>
 #include <functional>
 #include <map>
 #include <queue>
+#include <string>
 
 #include "../utils.h"
 #include "vsag/index.h"
