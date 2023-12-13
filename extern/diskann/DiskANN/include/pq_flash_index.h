@@ -46,7 +46,8 @@ template <typename T, typename LabelT = uint32_t> class PQFlashIndex
 
     DISKANN_DLLEXPORT int load_from_separate_paths(uint32_t num_threads, const char *index_filepath,
                                                    std::stringstream &pivots_stream, std::stringstream &compressed_stream);
-    DISKANN_DLLEXPORT int load_from_separate_paths(uint32_t num_threads, std::stringstream &pivots_stream, std::stringstream &compressed_stream);
+    DISKANN_DLLEXPORT int load_from_separate_paths(uint32_t num_threads, std::stringstream &pivots_stream, std::stringstream &compressed_stream,
+                                                   std::stringstream &tag_stream);
 
     DISKANN_DLLEXPORT size_t load_graph(std::stringstream &in);
 
@@ -192,6 +193,9 @@ template <typename T, typename LabelT = uint32_t> class PQFlashIndex
     // Graph related data structures
     int64_t graph_size = 0;
     std::vector<std::vector<uint32_t>> final_graph;
+
+    // ID mapping
+    LabelT* tags;
 
     // filter support
     uint32_t *_pts_to_label_offsets = nullptr;

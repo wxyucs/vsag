@@ -74,6 +74,10 @@ template <typename T, typename LabelT> PQFlashIndex<T, LabelT>::~PQFlashIndex()
     }
 #endif
 
+    if (tags != nullptr) {
+        delete[] tags;
+    }
+
     if (centroid_data != nullptr)
         aligned_free(centroid_data);
     // delete backing bufs for nhood and coord cache
@@ -1335,8 +1339,8 @@ int PQFlashIndex<T, LabelT>::load_from_separate_paths(uint32_t num_threads, cons
 }
 
 template <typename T, typename LabelT>
-int PQFlashIndex<T, LabelT>::load_from_separate_paths(uint32_t num_threads,
-                                                          std::stringstream &pivots_stream, std::stringstream &compressed_stream)
+int PQFlashIndex<T, LabelT>::load_from_separate_paths(uint32_t num_threads, std::stringstream &pivots_stream,
+                                                      std::stringstream &compressed_stream, std::stringstream& tag_stream)
 {
 
     size_t num_pts_in_label_file = 0;
@@ -1364,6 +1368,10 @@ int PQFlashIndex<T, LabelT>::load_from_separate_paths(uint32_t num_threads,
 
     this->num_points = npts_u64;
     this->n_chunks = nchunks_u64;
+
+    size_t tag_len = 1;
+    diskann::load_bin<LabelT>(tag_stream, this->tags, npts_u64, tag_len);
+
     pq_table.load_pq_centroid_bin(pivots_stream, nchunks_u64);
     diskann::cout << "Loaded PQ centroids and in-memory compressed vectors. #points: " << num_points
                   << " #dim: " << data_dim << " #aligned_dim: " << aligned_dim << " #chunks: " << n_chunks << std::endl;
@@ -1875,13 +1883,13 @@ int64_t PQFlashIndex<T, LabelT>::cached_beam_search(const T *query1, const uint6
     int64_t result_size = 0;
     for (uint64_t i = 0; i < full_retset.size(); i++)
     {
-        if (filter && filter(full_retset[i].id)) {
+        if (filter && filter(tags[full_retset[i].id])) {
             continue;
         }
         if (result_size >= k_search) {
             break;
         }
-        indices[result_size] = full_retset[i].id;
+        indices[result_size] = tags[full_retset[i].id];
         auto key = (uint32_t)indices[result_size];
         if (distances != nullptr)
         {
@@ -2175,13 +2183,13 @@ int64_t PQFlashIndex<T, LabelT>::cached_beam_search_memory(const T *query, const
     int64_t result_size = 0;
     for (uint64_t i = 0; i < full_retset.size(); i++)
     {
-        if (filter && filter(full_retset[i].id)) {
+        if (filter && filter(tags[full_retset[i].id])) {
             continue;
         }
         if (result_size >= k_search) {
             break;
         }
-        indices[result_size] = full_retset[i].id;
+        indices[result_size] = tags[full_retset[i].id];
         auto key = (uint32_t)indices[result_size];
         if (distances != nullptr)
         {
@@ -2309,5 +2317,6 @@ template class PQFlashIndex<float>;
 template class PQFlashIndex<uint8_t, uint16_t>;
 template class PQFlashIndex<int8_t, uint16_t>;
 template class PQFlashIndex<float, uint16_t>;
+template class PQFlashIndex<float, int64_t>;
 
 } // namespace diskann

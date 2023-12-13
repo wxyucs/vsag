@@ -55,6 +55,20 @@ private:
     std::mutex mutex_;
 };
 
+Binary
+convertStreamToBinary(const std::stringstream& stream) {
+    std::streambuf* buf = stream.rdbuf();
+    std::streamsize size = buf->pubseekoff(0, stream.end, stream.in);  // get the stream buffer size
+    buf->pubseekpos(0, stream.in);                                     // reset pointer pos
+    std::shared_ptr<int8_t[]> binary_data(new int8_t[size]);
+    buf->sgetn((char*)binary_data.get(), size);
+    Binary binary{
+        .data = binary_data,
+        .size = (size_t)size,
+    };
+    return std::move(binary);
+}
+
 DiskANN::DiskANN(diskann::Metric metric,
                  std::string data_type,
                  int L,
@@ -113,7 +127,6 @@ DiskANN::Build(const Dataset& base) {
         return tl::unexpected(index_error::dimension_not_equal);
     }
 
-    std::stringstream tag_stream;
     std::stringstream data_stream;
 
     try {
@@ -123,7 +136,7 @@ DiskANN::Build(const Dataset& base) {
             std::vector<int64_t> tags(ids, ids + data_num);
             auto index_build_params = diskann::IndexWriteParametersBuilder(L_, R_).build();
             build_index_->build(vectors, data_num, index_build_params, tags);
-            build_index_->save(graph_stream_, tag_stream, data_stream);
+            build_index_->save(graph_stream_, tag_stream_, data_stream);
         }
 
         diskann::generate_disk_quantized_data<float>(data_stream,
@@ -137,9 +150,9 @@ DiskANN::Build(const Dataset& base) {
 
         disk_layout_reader_ = std::make_shared<LocalMemoryReader>(disk_layout_stream_);
         reader_.reset(new LocalFileReader(batch_read_));
-        index_.reset(new diskann::PQFlashIndex<float>(reader_, metric_));
+        index_.reset(new diskann::PQFlashIndex<float, int64_t>(reader_, metric_));
         index_->load_from_separate_paths(
-            omp_get_num_procs(), pq_pivots_stream_, disk_pq_compressed_vectors_);
+            omp_get_num_procs(), pq_pivots_stream_, disk_pq_compressed_vectors_, tag_stream_);
         if (preload_) {
             index_->load_graph(graph_stream_);
         } else {
@@ -414,47 +427,14 @@ DiskANN::Serialize() const {
     SlowTaskTimer t("diskann serialize");
     try {
         BinarySet bs;
-        std::string pq_str = pq_pivots_stream_.str();
-        std::shared_ptr<int8_t[]> pq_pivots(new int8_t[pq_str.size()]);
-        std::copy(pq_str.begin(), pq_str.end(), pq_pivots.get());
-        Binary pq_binary{
-            .data = pq_pivots,
-            .size = pq_str.size(),
-        };
-        bs.Set(DISKANN_PQ, pq_binary);
 
-        pq_str = disk_pq_compressed_vectors_.str();
-        std::shared_ptr<int8_t[]> compressed_vectors(new int8_t[pq_str.size()]);
-        std::copy(pq_str.begin(), pq_str.end(), compressed_vectors.get());
-        Binary compressed_binary{
-            .data = compressed_vectors,
-            .size = pq_str.size(),
-        };
-        bs.Set(DISKANN_COMPRESSED_VECTOR, compressed_binary);
-
-        std::string disk_layout = disk_layout_stream_.str();
-        std::shared_ptr<int8_t[]> layout_file(new int8_t[disk_layout.size()]);
-        std::copy(disk_layout.begin(), disk_layout.end(), layout_file.get());
-
-        Binary layout_binary{
-            .data = layout_file,
-            .size = disk_layout.size(),
-        };
-        bs.Set(DISKANN_LAYOUT_FILE, layout_binary);
-
+        bs.Set(DISKANN_PQ, convertStreamToBinary(pq_pivots_stream_));
+        bs.Set(DISKANN_COMPRESSED_VECTOR, convertStreamToBinary(disk_pq_compressed_vectors_));
+        bs.Set(DISKANN_LAYOUT_FILE, convertStreamToBinary(disk_layout_stream_));
+        bs.Set(DISKANN_TAG_FILE, convertStreamToBinary(tag_stream_));
         if (preload_) {
-            std::string graph = graph_stream_.str();
-
-            std::shared_ptr<int8_t[]> graph_content(new int8_t[graph.size()]);
-            std::copy(graph.begin(), graph.end(), graph_content.get());
-
-            Binary graph_binary{
-                .data = graph_content,
-                .size = graph.size(),
-            };
-            bs.Set(DISKANN_GRAPH, graph_binary);
+            bs.Set(DISKANN_GRAPH, convertStreamToBinary(graph_stream_));
         }
-
         return bs;
     } catch (const std::bad_alloc& e) {
         return tl::unexpected(index_error::no_enough_memory);
@@ -481,12 +461,15 @@ DiskANN::Deserialize(const BinarySet& binary_set) {
         auto disk_layout = binary_set.Get(DISKANN_LAYOUT_FILE);
         disk_layout_stream_.write((char*)disk_layout.data.get(), disk_layout.size);
 
+        auto tag_file = binary_set.Get(DISKANN_TAG_FILE);
+        tag_stream_.write((char*)tag_file.data.get(), tag_file.size);
+
         disk_layout_reader_ = std::make_shared<LocalMemoryReader>(disk_layout_stream_);
 
         reader_.reset(new LocalFileReader(batch_read_));
-        index_.reset(new diskann::PQFlashIndex<float>(reader_, metric_));
+        index_.reset(new diskann::PQFlashIndex<float, int64_t>(reader_, metric_));
         index_->load_from_separate_paths(
-            omp_get_num_procs(), pq_pivots_stream_, disk_pq_compressed_vectors_);
+            omp_get_num_procs(), pq_pivots_stream_, disk_pq_compressed_vectors_, tag_stream_);
 
         auto graph = binary_set.Get(DISKANN_GRAPH);
         if (preload_) {
@@ -520,7 +503,7 @@ DiskANN::Deserialize(const ReaderSet& reader_set) {
         return tl::unexpected(index_error::index_not_empty);
     }
     try {
-        std::stringstream pq_pivots_stream, disk_pq_compressed_vectors, graph;
+        std::stringstream pq_pivots_stream, disk_pq_compressed_vectors, graph, tag_stream;
 
         {
             auto pq_reader = reader_set.Get(DISKANN_PQ);
@@ -541,11 +524,19 @@ DiskANN::Deserialize(const ReaderSet& reader_set) {
             disk_pq_compressed_vectors.seekg(0);
         }
 
+        {
+            auto tag_reader = reader_set.Get(DISKANN_TAG_FILE);
+            auto tag_data = std::make_unique<char[]>(tag_reader->Size());
+            tag_reader->Read(0, tag_reader->Size(), tag_data.get());
+            tag_stream.write(tag_data.get(), tag_reader->Size());
+            tag_stream.seekg(0);
+        }
+
         disk_layout_reader_ = reader_set.Get(DISKANN_LAYOUT_FILE);
         reader_.reset(new LocalFileReader(batch_read_));
-        index_.reset(new diskann::PQFlashIndex<float>(reader_, metric_));
+        index_.reset(new diskann::PQFlashIndex<float, int64_t>(reader_, metric_));
         index_->load_from_separate_paths(
-            omp_get_num_procs(), pq_pivots_stream, disk_pq_compressed_vectors);
+            omp_get_num_procs(), pq_pivots_stream, disk_pq_compressed_vectors, tag_stream);
 
         auto graph_reader = reader_set.Get(DISKANN_GRAPH);
         if (preload_) {

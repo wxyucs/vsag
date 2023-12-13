@@ -93,6 +93,11 @@ TEST_CASE("DiskAnn Float Recall", "[diskann]") {
         compressed.write((const char*)compressed_vector_b.data.get(), compressed_vector_b.size);
         compressed.close();
 
+        vsag::Binary tag_b = bs->Get(vsag::DISKANN_TAG_FILE);
+        std::ofstream tag(tmp_dir + "diskann_tag.index", std::ios::binary);
+        tag.write((const char*)tag_b.data.get(), tag_b.size);
+        tag.close();
+
         vsag::Binary layout_file_b = bs->Get(vsag::DISKANN_LAYOUT_FILE);
         std::ofstream layout(tmp_dir + disk_layout_file, std::ios::binary);
         layout.write((const char*)layout_file_b.data.get(), layout_file_b.size);
@@ -101,6 +106,7 @@ TEST_CASE("DiskAnn Float Recall", "[diskann]") {
 
     size_t pq_len = 0;
     size_t compressed_len = 0;
+    size_t tag_len = 0;
     size_t disk_layout_len = 0;
 
     // Deserialize
@@ -132,6 +138,19 @@ TEST_CASE("DiskAnn Float Recall", "[diskann]") {
             .size = size,
         };
         bs.Set(vsag::DISKANN_COMPRESSED_VECTOR, compressed_vector_b);
+
+        std::ifstream tag(tmp_dir + "diskann_tag.index", std::ios::binary);
+        tag.seekg(0, std::ios::end);
+        size = tag.tellg();
+        tag.seekg(0, std::ios::beg);
+        buff.reset(new int8_t[size]);
+        tag.read(reinterpret_cast<char*>(buff.get()), size);
+        tag_len = size;
+        vsag::Binary tag_b{
+            .data = buff,
+            .size = size,
+        };
+        bs.Set(vsag::DISKANN_TAG_FILE, tag_b);
 
         std::ifstream disk_layout(tmp_dir + disk_layout_file, std::ios::binary);
         disk_layout.seekg(0, std::ios::end);
@@ -185,11 +204,14 @@ TEST_CASE("DiskAnn Float Recall", "[diskann]") {
             vsag::Factory::CreateLocalFileReader(tmp_dir + "diskann_pq.index", 0, pq_len);
         auto compressed_vector_reader = vsag::Factory::CreateLocalFileReader(
             tmp_dir + "diskann_compressed_vector.index", 0, compressed_len);
+        auto tag_reader =
+            vsag::Factory::CreateLocalFileReader(tmp_dir + "diskann_tag.index", 0, tag_len);
         auto disk_layout_reader =
             vsag::Factory::CreateLocalFileReader(tmp_dir + disk_layout_file, 0, disk_layout_len);
         rs.Set(vsag::DISKANN_PQ, pq_reader);
         rs.Set(vsag::DISKANN_COMPRESSED_VECTOR, compressed_vector_reader);
         rs.Set(vsag::DISKANN_LAYOUT_FILE, disk_layout_reader);
+        rs.Set(vsag::DISKANN_TAG_FILE, tag_reader);
 
         diskann = nullptr;
         index = vsag::Factory::CreateIndex("diskann", index_parameters.dump());
@@ -477,13 +499,18 @@ TEST_CASE("DiskAnn Filter Test", "[diskann]") {
     std::mt19937 rng;
     rng.seed(47);
     std::uniform_real_distribution<> distrib_real;
-    for (int i = 0; i < max_elements; i++) ids[i] = i;
+    std::uniform_int_distribution<> ids_random(0, max_elements - 1);
+    for (int i = 0; i < max_elements; i++) {
+        ids[i] = max_elements - i - 1;
+    }
     for (int i = 0; i < dim * max_elements; i++) data[i] = distrib_real(rng);
 
     // Build index
     vsag::Dataset dataset;
     dataset.Dim(dim).NumElements(max_elements).Ids(ids).Float32Vectors(data);
     diskann->Build(dataset);
+
+    REQUIRE(max_elements == diskann->GetNumElements());
 
     float correct_knn = 0.0f;
     float recall_knn = 0.0f;
@@ -500,8 +527,8 @@ TEST_CASE("DiskAnn Filter Test", "[diskann]") {
         if (auto result = diskann->KnnSearch(query, k, parameters.dump(), invalid);
             result.has_value()) {
             if (result->GetNumElements() == 1) {
-                for (int64_t j = 0; j < result->GetDim(); j++) {
-                    REQUIRE(invalid->Get(result->GetIds()[j]) == false);
+                if (result->GetDim() != 0 && result->GetNumElements() == 1) {
+                    REQUIRE(invalid->Get(ids[i]) ^ (ids[i] == result->GetIds()[0]));
                 }
             }
         } else if (result.error() == vsag::index_error::internal_error) {
@@ -511,10 +538,8 @@ TEST_CASE("DiskAnn Filter Test", "[diskann]") {
 
         if (auto result = diskann->RangeSearch(query, threshold, parameters.dump(), invalid);
             result.has_value()) {
-            if (result->GetNumElements() == 1) {
-                for (int64_t j = 0; j < result->GetDim(); j++) {
-                    REQUIRE(invalid->Get(result->GetIds()[j]) == false);
-                }
+            if (result->GetDim() != 0 && result->GetNumElements() == 1) {
+                REQUIRE(invalid->Get(ids[i]) ^ (ids[i] == result->GetIds()[0]));
             }
         } else if (result.error() == vsag::index_error::internal_error) {
             std::cerr << "failed to range search on index: internal error" << std::endl;
@@ -552,7 +577,7 @@ TEST_CASE("DiskAnn Filter Test", "[diskann]") {
             result.has_value()) {
             if (result->GetNumElements() == 1) {
                 REQUIRE(!std::isinf(result->GetDistances()[0]));
-                if (result->GetDim() != 0 && result->GetIds()[0] == i) {
+                if (result->GetDim() != 0 && result->GetIds()[0] == ids[i]) {
                     correct_knn++;
                 }
             }
@@ -564,7 +589,7 @@ TEST_CASE("DiskAnn Filter Test", "[diskann]") {
         if (auto result = diskann->RangeSearch(query, threshold, parameters.dump(), zeros);
             result.has_value()) {
             if (result->GetNumElements() == 1) {
-                if (result->GetDim() != 0 && result->GetIds()[0] == i) {
+                if (result->GetDim() != 0 && result->GetIds()[0] == ids[i]) {
                     correct_range++;
                 }
             }

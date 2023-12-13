@@ -89,12 +89,12 @@ public:
 
 private:
     std::shared_ptr<AlignedFileReader> reader_;
-    std::shared_ptr<diskann::PQFlashIndex<float>> index_;
+    std::shared_ptr<diskann::PQFlashIndex<float, int64_t>> index_;
     std::shared_ptr<diskann::Index<float, int64_t, int64_t>> build_index_;
     std::stringstream pq_pivots_stream_;
     std::stringstream disk_pq_compressed_vectors_;
     std::stringstream disk_layout_stream_;
-
+    std::stringstream tag_stream_;
     std::stringstream graph_stream_;
 
     std::function<void(const std::vector<read_request>&)> batch_read_;
