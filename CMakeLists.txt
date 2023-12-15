@@ -61,6 +61,8 @@ if (ENABLE_TSAN)
     set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -fsanitize=thread")
 endif()
 
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fPIC")
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fPIC")
 include(ExternalProject)
 include(extern/boost/boost.cmake)
 include(extern/openblas/openblas.cmake)
