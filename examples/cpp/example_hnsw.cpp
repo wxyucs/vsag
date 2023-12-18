@@ -115,6 +115,7 @@ float_hnsw() {
             int64_t k = 10;
             if (auto result = hnsw->KnnSearch(query, k, parameters.dump()); result.has_value()) {
                 correct += vsag::knn_search_recall(data.get(),
+                                                   ids.get(),
                                                    max_elements,
                                                    data.get() + i * dim,
                                                    dim,
@@ -142,6 +143,7 @@ float_hnsw() {
             if (auto result = hnsw->RangeSearch(query, threshold, parameters.dump());
                 result.has_value()) {
                 correct += vsag::range_search_recall(data.get(),
+                                                     ids.get(),
                                                      max_elements,
                                                      data.get() + i * dim,
                                                      dim,
@@ -221,6 +223,7 @@ float_hnsw() {
         int64_t k = 10;
         if (auto result = hnsw->KnnSearch(query, k, parameters.dump()); result.has_value()) {
             correct += vsag::knn_search_recall(data.get(),
+                                               ids.get(),
                                                max_elements,
                                                data.get() + i * dim,
                                                dim,
@@ -276,6 +279,7 @@ float_hnsw() {
         int64_t k = 10;
         if (auto result = hnsw->KnnSearch(query, k, parameters.dump()); result.has_value()) {
             correct += vsag::knn_search_recall(data.get(),
+                                               ids.get(),
                                                max_elements,
                                                data.get() + i * dim,
                                                dim,
@@ -439,6 +443,7 @@ float_hnsw() {
         int64_t k = 10;
         if (auto result = hnsw->KnnSearch(query, k, parameters.dump()); result.has_value()) {
             correct += vsag::knn_search_recall(data.get(),
+                                               ids.get(),
                                                max_elements,
                                                data.get() + i * dim,
                                                dim,

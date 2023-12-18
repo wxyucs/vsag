@@ -241,7 +241,7 @@ std::vector<SimpleFlat::rs>
 SimpleFlat::knn_search(const float* query, int64_t k, BitsetPtr invalid) const {
     std::priority_queue<SimpleFlat::rs> q;
     for (int64_t i = 0; i < this->num_elements_; ++i) {
-        if (invalid && invalid->Get(i)) {
+        if (invalid && invalid->Get(this->ids_[i])) {
             continue;
         }
         const float* base = data_.data() + i * this->dim_;
@@ -274,7 +274,7 @@ std::vector<SimpleFlat::rs>
 SimpleFlat::range_search(const float* query, float radius, BitsetPtr invalid) const {
     std::priority_queue<SimpleFlat::rs> q;
     for (int64_t i = 0; i < this->num_elements_; ++i) {
-        if (invalid && invalid->Get(i)) {
+        if (invalid && invalid->Get(this->ids_[i])) {
             continue;
         }
         const float* base = data_.data() + i * this->dim_;

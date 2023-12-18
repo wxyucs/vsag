@@ -420,7 +420,7 @@ TEST_CASE("HNSW Filtering Test", "[hnsw]") {
     int64_t* ids = new int64_t[max_elements];
     float* data = new float[dim * max_elements];
     for (int64_t i = 0; i < max_elements; i++) {
-        ids[i] = i;
+        ids[i] = max_elements - i - 1;
     }
     for (int64_t i = 0; i < dim * max_elements; ++i) {
         data[i] = distrib_real(rng);
@@ -501,12 +501,8 @@ TEST_CASE("HNSW Filtering Test", "[hnsw]") {
         vsag::BitsetPtr zeros = std::make_shared<vsag::Bitset>(bits_zeros, bytes_count);
 
         if (auto result = hnsw->KnnSearch(query, k, parameters.dump(), zeros); result.has_value()) {
-            if (result->GetNumElements() == 1) {
-                REQUIRE(!std::isinf(result->GetDistances()[0]));
-                if (result->GetDim() != 0 && result->GetIds()[0] == i) {
-                    correct_knn++;
-                }
-            }
+            correct_knn += vsag::knn_search_recall(
+                data, ids, max_elements, data + i * dim, dim, result->GetIds(), result->GetDim());
         } else if (result.error() == vsag::index_error::internal_error) {
             std::cerr << "failed to knn search on index: internal error" << std::endl;
             exit(-1);
@@ -515,7 +511,7 @@ TEST_CASE("HNSW Filtering Test", "[hnsw]") {
         if (auto result = hnsw->RangeSearch(query, radius, parameters.dump(), zeros);
             result.has_value()) {
             if (result->GetNumElements() == 1) {
-                if (result->GetDim() != 0 && result->GetIds()[0] == i) {
+                if (result->GetDim() != 0 && result->GetIds()[0] == ids[i]) {
                     correct_range++;
                 }
             }

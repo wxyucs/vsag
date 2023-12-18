@@ -40,6 +40,7 @@ l2_and_filtering(int64_t dim, int64_t nb, const float* base, const float* query,
 
 float
 range_search_recall(const float* base,
+                    const int64_t* id_map,
                     int64_t base_num,
                     const float* query,
                     int64_t data_dim,
@@ -47,9 +48,6 @@ range_search_recall(const float* base,
                     int64_t result_size,
                     float threshold) {
     BitsetPtr groundtruth = l2_and_filtering(data_dim, base_num, base, query, threshold);
-    for (int64_t i = 0; i < result_size; ++i) {
-        assert(groundtruth->Get(result_ids[i]));
-    }
     if (groundtruth->CountOnes() == 0) {
         return 1;
     }
@@ -58,22 +56,23 @@ range_search_recall(const float* base,
 
 float
 knn_search_recall(const float* base,
+                  const int64_t* id_map,
                   int64_t base_num,
                   const float* query,
                   int64_t data_dim,
                   const int64_t* result_ids,
                   int64_t result_size) {
-    int64_t nearest_id = 0;
+    int64_t nearest_index = 0;
     float nearest_dis = std::numeric_limits<float>::max();
     for (int64_t i = 0; i < base_num; ++i) {
         float dis = l2sqr(base + i * data_dim, query, data_dim);
         if (nearest_dis > dis) {
-            nearest_id = i;
+            nearest_index = i;
             nearest_dis = dis;
         }
     }
     for (int64_t i = 0; i < result_size; ++i) {
-        if (result_ids[i] == nearest_id) {
+        if (result_ids[i] == id_map[nearest_index]) {
             return 1;
         }
     }

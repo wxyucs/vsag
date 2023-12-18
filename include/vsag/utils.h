@@ -18,6 +18,7 @@ l2_and_filtering(int64_t dim, int64_t nb, const float* base, const float* query,
 
 float
 range_search_recall(const float* base,
+                    const int64_t* id_map,
                     int64_t base_num,
                     const float* query,
                     int64_t data_dim,
@@ -27,6 +28,7 @@ range_search_recall(const float* base,
 
 float
 knn_search_recall(const float* base,
+                  const int64_t* id_map,
                   int64_t base_num,
                   const float* query,
                   int64_t data_dim,
