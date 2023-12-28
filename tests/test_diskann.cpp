@@ -607,3 +607,72 @@ TEST_CASE("DiskAnn Filter Test", "[diskann]") {
     REQUIRE(recall_range == 1);
     REQUIRE(recall_knn == 1);
 }
+
+TEST_CASE("DiskANN small dimension", "[hnsw]") {
+    int dim = 3;
+    int max_elements = 1000;
+    int M = 16;
+    int ef_construction = 100;
+    int ef_runtime = 100;
+    float p_val = 0.5;
+    int chunks_num = 8;
+    // Initing index
+    nlohmann::json diskann_parameters{
+        {"R", M},
+        {"L", ef_construction},
+        {"p_val", p_val},
+        {"disk_pq_dims", chunks_num},
+    };
+    nlohmann::json index_parameters{
+        {"dtype", "float32"},
+        {"metric_type", "l2"},
+        {"dim", dim},
+        {"diskann", diskann_parameters},
+    };
+    std::shared_ptr<vsag::Index> diskann;
+    auto index = vsag::Factory::CreateIndex("diskann", index_parameters.dump());
+    REQUIRE(index.has_value());
+    diskann = index.value();
+
+    // Generate random data
+    std::mt19937 rng;
+    rng.seed(47);
+    std::uniform_real_distribution<> distrib_real;
+    int64_t* ids = new int64_t[max_elements];
+    float* data = new float[dim * max_elements];
+    for (int i = 0; i < max_elements; i++) {
+        ids[i] = i;
+    }
+    for (int i = 0; i < dim * max_elements; i++) {
+        data[i] = distrib_real(rng);
+    }
+
+    // Build index
+    vsag::Dataset dataset;
+    dataset.Dim(dim).NumElements(max_elements).Ids(ids).Float32Vectors(data);
+    diskann->Build(dataset);
+
+    float correct = 0;
+    for (int i = 0; i < max_elements; i++) {
+        vsag::Dataset query;
+        query.NumElements(1).Dim(dim).Float32Vectors(data + i * dim).Owner(false);
+        nlohmann::json parameters{
+            {"diskann", {{"ef_search", ef_runtime}, {"beam_search", 4}, {"io_limit", 200}}}};
+        int64_t k = 2;
+        if (auto result = diskann->KnnSearch(query, k, parameters.dump()); result.has_value()) {
+            if (result->GetNumElements() == 1) {
+                REQUIRE(!std::isinf(result->GetDistances()[0]));
+                if (result->GetIds()[0] == i) {
+                    correct++;
+                }
+            }
+        } else if (result.error() == vsag::index_error::internal_error) {
+            std::cerr << "failed to search on index: internal error" << std::endl;
+            exit(-1);
+        }
+    }
+    float recall = correct / max_elements;
+    std::cout << "Stard Recall: " << recall << std::endl;
+
+    REQUIRE(recall > 0.85);
+}

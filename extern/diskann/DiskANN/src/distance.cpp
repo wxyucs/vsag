@@ -27,6 +27,25 @@
 #include "logger.h"
 #include "ann_exception.h"
 
+#include <iostream>
+
+namespace vsag {
+
+extern float L2Sqr(const void* pVect1v, const void* pVect2v, const void* qty_ptr);
+extern float(*L2SqrSIMD16Ext)(const void *, const void *, const void *);
+extern float(*L2SqrSIMD16ExtResiduals)(const void *, const void *, const void *);
+extern float(*L2SqrSIMD4Ext)(const void *, const void *, const void *);
+extern float(*L2SqrSIMD4ExtResiduals)(const void *, const void *, const void *);
+
+
+extern float InnerProductDistance(const void* pVect1, const void* pVect2, const void* qty_ptr);
+extern float(*InnerProductDistanceSIMD16Ext)(const void *, const void *, const void *);
+extern float(*InnerProductDistanceSIMD16ExtResiduals)(const void *, const void *, const void *);
+extern float(*InnerProductDistanceSIMD4Ext)(const void *, const void *, const void *);
+extern float(*InnerProductDistanceSIMD4ExtResiduals)(const void *, const void *, const void *);
+
+}  // namespace vsag
+
 namespace diskann
 {
 
@@ -614,6 +633,54 @@ void AVXNormalizedCosineDistanceFloat::normalize_and_copy(const float *query_vec
     {
         query_target[i] = query_vec[i] / norm;
     }
+}
+
+VsagDistanceL2Float::VsagDistanceL2Float(size_t dim) : Distance<float>(diskann::Metric::L2)
+{
+    if (dim % 16 == 0) {
+        dist_func_ = vsag::L2SqrSIMD16Ext;
+    }
+    else if (dim % 4 == 0) {
+        dist_func_ = vsag::L2SqrSIMD4Ext;
+    }
+    else if (dim > 16) {
+        dist_func_ = vsag::L2SqrSIMD16ExtResiduals;
+    }
+    else if (dim > 4) {
+        dist_func_ = vsag::L2SqrSIMD4ExtResiduals;
+    } else {
+        dist_func_ = vsag::L2Sqr;
+    }
+}
+
+float VsagDistanceL2Float::compare(const float *a, const float *b, uint32_t size) const
+{
+    size_t dim = size;
+    return dist_func_(a, b, &dim);
+}
+
+VsagDistanceInnerProductFloat::VsagDistanceInnerProductFloat(size_t dim) : Distance<float>(diskann::Metric::INNER_PRODUCT)
+{
+    if (dim % 16 == 0) {
+        dist_func_ = vsag::InnerProductDistanceSIMD16Ext;
+    }
+    else if (dim % 4 == 0) {
+        dist_func_ = vsag::InnerProductDistanceSIMD4Ext;
+    }
+    else if (dim > 16) {
+        dist_func_ = vsag::InnerProductDistanceSIMD16ExtResiduals;
+    }
+    else if (dim > 4) {
+        dist_func_ = vsag::InnerProductDistanceSIMD4ExtResiduals;
+    } else {
+        dist_func_ = vsag::InnerProductDistance;
+    }
+}
+
+float VsagDistanceInnerProductFloat::compare(const float *a, const float *b, uint32_t size) const
+{
+    size_t dim = size;
+    return dist_func_(a, b, &dim);
 }
 
 // Get the right distance function for the given metric.

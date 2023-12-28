@@ -13,6 +13,8 @@ set(NUM_BUILDING_JOBS 4)
 
 set(CMAKE_CXX_STANDARD 17)
 
+include (cmake/CheckSIMDCompilerFlag.cmake)
+
 option(ENABLE_JEMALLOC "Whether to link jemalloc to all executables" OFF)
 option(ENABLE_ASAN "Whether to turn AddressSanitizer ON or OFF" OFF)
 option(ENABLE_COVERAGE "Whether to turn unit test coverage ON or OFF" OFF)
@@ -78,11 +80,13 @@ include_directories(extern/faiss)
 include_directories(${CMAKE_CURRENT_BINARY_DIR}/spdlog/install/include)
 include_directories(include)
 
+add_subdirectory (src/simd)
+
 file (GLOB CPP_SRCS "src/*.cpp")
 file (GLOB CPP_INDEX_SRCS "src/index/*.cpp")
 # set_source_files_properties(src/index/hnsw.cpp PROPERTIES COMPILE_FLAGS "-mavx512f -mavx512dq -mavx512bw -mavx512vl -mavx2 -mavx -msse")
 add_library (vsag SHARED ${CPP_SRCS} ${CPP_INDEX_SRCS})
-target_link_libraries (vsag diskann pthread m dl cpuinfo)
+target_link_libraries (vsag diskann pthread m dl cpuinfo simd)
 add_dependencies(vsag spdlog)
 
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++17 -fPIC -Werror=suggest-override")
@@ -119,9 +123,10 @@ if (ENABLE_TESTS)
 	tests/test_bitset.cpp
 	tests/test_random_index.cpp
 	tests/test_cpuinfo.cpp
+	tests/test_simd.cpp
     )
     target_include_directories(tests PRIVATE ${CMAKE_CURRENT_BINARY_DIR}/spdlog/install/include)
-    target_link_libraries (tests PRIVATE Catch2::Catch2WithMain vsag)
+    target_link_libraries (tests PRIVATE Catch2::Catch2WithMain vsag simd)
     add_dependencies(tests spdlog Catch2)
 endif ()
 

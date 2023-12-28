@@ -230,6 +230,26 @@ class AVXNormalizedCosineDistanceFloat : public Distance<float>
                                                     float *scratch_query_vector) override;
 };
 
+class VsagDistanceL2Float : public Distance<float>
+{
+  public:
+    VsagDistanceL2Float(size_t dimension);
+
+    DISKANN_DLLEXPORT virtual float compare(const float *a, const float *b, uint32_t size) const override;
+  private:
+    float(*dist_func_)(const void *, const void *, const void *);
+};
+
+class VsagDistanceInnerProductFloat : public Distance<float>
+{
+  public:
+    VsagDistanceInnerProductFloat(size_t dimension);
+
+    DISKANN_DLLEXPORT virtual float compare(const float *a, const float *b, uint32_t size) const override;
+  private:
+    float(*dist_func_)(const void *, const void *, const void *);
+};
+
 template <typename T> Distance<T> *get_distance_function(Metric m);
 
 } // namespace diskann

@@ -107,7 +107,15 @@ Index<T, TagT, LabelT>::Index(Metric m, const size_t dim, const size_t max_point
     {
         // Issue #374: data_store is injected from index factory. Keeping this for backward compatibility.
         // distance is owned by data_store
-        if (m == diskann::Metric::COSINE && std::is_floating_point<T>::value)
+        if (m == diskann::Metric::L2 && std::is_same<T, float>::value)
+        {
+            this->_distance.reset((Distance<T> *)new VsagDistanceL2Float(dim));
+        }
+        else if (m == diskann::Metric::INNER_PRODUCT && std::is_same<T, float>::value)
+        {
+            this->_distance.reset((Distance<T> *)new VsagDistanceInnerProductFloat(dim));
+        }
+        else if (m == diskann::Metric::COSINE && std::is_floating_point<T>::value)
         {
             // This is safe because T is float inside the if block.
             this->_distance.reset((Distance<T> *)new AVXNormalizedCosineDistanceFloat());
