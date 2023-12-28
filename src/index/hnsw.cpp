@@ -17,8 +17,8 @@ namespace vsag {
 
 const static int64_t EXPANSION_NUM = 1000000;
 const static int64_t DEFAULT_MAX_ELEMENT = 10000;
-const static int64_t MINIMAL_M = 2;
-const static int64_t MAXIMAL_M = 500;
+const static int MINIMAL_M = 8;
+const static int MAXIMAL_M = 64;
 
 class Filter : public hnswlib::BaseFilterFunctor {
 public:
@@ -46,9 +46,7 @@ HNSW::HNSW(std::shared_ptr<hnswlib::SpaceInterface> space_interface, int M, int 
     : space(std::move(space_interface)) {
     dim_ = *((size_t*)space->get_dist_func_param());
 
-    if (M < MINIMAL_M || M > MAXIMAL_M) {
-        throw std::runtime_error(MESSAGE_PARAMETER);
-    }
+    M = std::min(std::max(M, MINIMAL_M), MAXIMAL_M);
 
     if (ef_construction <= 0) {
         throw std::runtime_error(MESSAGE_PARAMETER);

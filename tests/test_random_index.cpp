@@ -49,7 +49,7 @@ TEST_CASE("Random Index Test", "[random]") {
 
     spdlog::info(
         "seed: {}, dim: {}, max_elements: {}, M: {}, ef_construction: {}, ef_runtime: {}, k: {}, "
-        "io_limit: {}, threshold: {}, chunks_num: {}, preload: {}",
+        "io_limit: {}, threshold: {}, chunks_num: {}, preload: {}, mold: {}",
         seed,
         dim,
         max_elements,
@@ -60,7 +60,8 @@ TEST_CASE("Random Index Test", "[random]") {
         io_limit,
         threshold,
         chunks_num,
-        preload);
+        preload,
+        mold);
     float p_val = 0.5;
     // Initing index
     nlohmann::json hnsw_parameters{

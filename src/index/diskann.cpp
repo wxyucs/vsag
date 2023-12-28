@@ -26,6 +26,8 @@ const static float MACRO_TO_MILLI = 1000;
 const static int64_t DATA_LIMIT = 2;
 const static size_t MAXIMAL_BEAM_SEARCH = 64;
 const static size_t MINIMAL_BEAM_SEARCH = 1;
+const static int MINIMAL_R = 8;
+const static int MAXIMAL_R = 64;
 
 class LocalMemoryReader : public Reader {
 public:
@@ -102,6 +104,8 @@ DiskANN::DiskANN(diskann::Metric metric,
             futures[i].wait();
         }
     };
+
+    R_ = std::min(MAXIMAL_R, std::max(MINIMAL_R, R_));
 }
 
 tl::expected<std::vector<int64_t>, index_error>
