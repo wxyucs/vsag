@@ -58,9 +58,10 @@ HNSW::HNSW(std::shared_ptr<hnswlib::SpaceInterface> space_interface, int M, int 
         space.get(), DEFAULT_MAX_ELEMENT, M, ef_construction);
 }
 
-tl::expected<int64_t, index_error>
+tl::expected<std::vector<int64_t>, index_error>
 HNSW::Build(const Dataset& base) {
     SlowTaskTimer t("hnsw build");
+    std::vector<int64_t> failed_ids;
     if (base.GetDim() != dim_) {
         return tl::unexpected(index_error::dimension_not_equal);
     }
@@ -80,19 +81,23 @@ HNSW::Build(const Dataset& base) {
     auto vectors = base.GetFloat32Vectors();
     for (int64_t i = 0; i < num_elements; ++i) {
         try {
-            alg_hnsw->addPoint((const void*)(vectors + i * dim_), ids[i]);
+            if (!alg_hnsw->addPoint((const void*)(vectors + i * dim_), ids[i])) {
+                spdlog::error("duplicate point: {}", ids[i]);
+                failed_ids.push_back(ids[i]);
+            }
         } catch (std::runtime_error e) {
             spdlog::error(std::string("failed to add points: ") + e.what());
             return tl::unexpected(index_error::internal_error);
         }
     }
 
-    return this->GetNumElements();
+    return std::move(failed_ids);
 }
 
-tl::expected<int64_t, index_error>
+tl::expected<std::vector<int64_t>, index_error>
 HNSW::Add(const Dataset& base) {
     SlowTaskTimer t("hnsw add", 10);
+    std::vector<int64_t> failed_ids;
     int64_t num_elements = base.GetNumElements();
 
     if (base.GetDim() != dim_) {
@@ -120,14 +125,17 @@ HNSW::Add(const Dataset& base) {
 
     for (int64_t i = 0; i < num_elements; ++i) {
         try {
-            alg_hnsw->addPoint((const void*)(vectors + i * dim_), ids[i]);
+            if (!alg_hnsw->addPoint((const void*)(vectors + i * dim_), ids[i])) {
+                spdlog::error("duplicate point: {}", i);
+                failed_ids.push_back(ids[i]);
+            }
         } catch (std::runtime_error e) {
             spdlog::error(std::string("failed to add points: ") + e.what());
             return tl::unexpected(index_error::internal_error);
         }
     }
 
-    return base.GetNumElements();
+    return std::move(failed_ids);
 }
 
 tl::expected<Dataset, index_error>

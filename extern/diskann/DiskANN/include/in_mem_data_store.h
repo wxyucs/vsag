@@ -34,6 +34,7 @@ template <typename data_t> class InMemDataStore : public AbstractDataStore<data_
     // Populate internal data from unaligned data while doing alignment and any
     // normalization that is required.
     virtual void populate_data(const data_t *vectors, const location_t num_pts) override;
+    virtual void populate_data(const data_t *vectors, const location_t num_pts, boost::dynamic_bitset<>& mask) override;
     virtual void populate_data(const std::string &filename, const size_t offset) override;
 
     virtual void extract_data_to_bin(const std::string &filename, const location_t num_pts) override;

@@ -11,10 +11,10 @@ class SimpleFlat : public Index {
 public:
     explicit SimpleFlat(const std::string& metric_type, int64_t dim);
 
-    tl::expected<int64_t, index_error>
+    tl::expected<std::vector<int64_t>, index_error>
     Build(const Dataset& base) override;
 
-    virtual tl::expected<int64_t, index_error>
+    virtual tl::expected<std::vector<int64_t>, index_error>
     Add(const Dataset& base) override;
 
     tl::expected<Dataset, index_error>

@@ -104,10 +104,11 @@ DiskANN::DiskANN(diskann::Metric metric,
     };
 }
 
-tl::expected<int64_t, index_error>
+tl::expected<std::vector<int64_t>, index_error>
 DiskANN::Build(const Dataset& base) {
     SlowTaskTimer t("diskann build");
 
+    std::vector<int64_t> failed_ids;
     if (base.GetNumElements() < DATA_LIMIT) {
         return tl::unexpected(index_error::no_enough_data);
     }
@@ -135,7 +136,7 @@ DiskANN::Build(const Dataset& base) {
                 metric_, data_dim, data_num, false, true, false, false, 0, false);
             std::vector<int64_t> tags(ids, ids + data_num);
             auto index_build_params = diskann::IndexWriteParametersBuilder(L_, R_).build();
-            build_index_->build(vectors, data_num, index_build_params, tags);
+            failed_ids = build_index_->build(vectors, data_num, index_build_params, tags);
             build_index_->save(graph_stream_, tag_stream_, data_stream);
         }
 
@@ -163,7 +164,7 @@ DiskANN::Build(const Dataset& base) {
         return tl::unexpected(index_error::internal_error);
     }
 
-    return this->GetNumElements();
+    return std::move(failed_ids);
 }
 
 tl::expected<Dataset, index_error>

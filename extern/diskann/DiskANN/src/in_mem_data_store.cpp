@@ -159,6 +159,25 @@ template <typename data_t> void InMemDataStore<data_t>::populate_data(const data
     }
 }
 
+template <typename data_t> void InMemDataStore<data_t>::populate_data(const data_t *vectors, const location_t num_pts,
+                                                                      boost::dynamic_bitset<>& mask)
+{
+    memset(_data, 0, _aligned_dim * sizeof(data_t) * num_pts);
+    int64_t cur = 0;
+    for (location_t i = 0; i < mask.size(); i++)
+    {
+        if (!mask.test(i)) continue;
+        std::memmove(_data + cur * _aligned_dim, vectors + i * this->_dim, this->_dim * sizeof(data_t));
+        cur ++;
+    }
+    assert(cur == num_pts);
+    if (_distance_fn->preprocessing_required())
+    {
+        _distance_fn->preprocess_base_points(_data, this->_aligned_dim, num_pts);
+    }
+}
+
+
 template <typename data_t> void InMemDataStore<data_t>::populate_data(const std::string &filename, const size_t offset)
 {
     size_t npts, ndim;

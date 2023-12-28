@@ -8,6 +8,7 @@
 #include <iterator>
 #include <random>
 #include <stdlib.h>
+#include <iostream>
 #include <assert.h>
 #include <stdexcept>
 #include <unordered_set>
@@ -1207,7 +1208,7 @@ class HierarchicalNSW : public AlgorithmInterface<float> {
     * Adds point. Updates the point if it is already in the index.
     * If replacement of deleted elements is enabled: replaces previously deleted point if any, updating it with new point
     */
-    void addPoint(const void *data_point, labeltype label, bool replace_deleted = false) override {
+    bool addPoint(const void *data_point, labeltype label, bool replace_deleted = false) override {
         if ((allow_replace_deleted_ == false) && (replace_deleted == true)) {
             throw std::runtime_error("Replacement of deleted elements is disabled in constructor");
         }
@@ -1215,8 +1216,10 @@ class HierarchicalNSW : public AlgorithmInterface<float> {
         // lock all operations with element by label
         std::unique_lock <std::mutex> lock_label(getLabelOpMutex(label));
         if (!replace_deleted) {
-            addPoint(data_point, label, -1);
-            return;
+            if(addPoint(data_point, label, -1) == -1) {
+                return false;
+            }
+            return true;
         }
         // check if there is vacant place
         tableint internal_id_replaced;
@@ -1231,7 +1234,9 @@ class HierarchicalNSW : public AlgorithmInterface<float> {
         // if there is no vacant place then add or update point
         // else add point to vacant place
         if (!is_vacant_place) {
-            addPoint(data_point, label, -1);
+            if(addPoint(data_point, label, -1) == -1) {
+                return false;
+            }
         } else {
             // we assume that there are no concurrent operations on deleted element
             labeltype label_replaced = getExternalLabel(internal_id_replaced);
@@ -1245,6 +1250,7 @@ class HierarchicalNSW : public AlgorithmInterface<float> {
             unmarkDeletedInternal(internal_id_replaced);
             updatePoint(data_point, internal_id_replaced, 1.0);
         }
+        return true;
     }
 
 
@@ -1414,20 +1420,7 @@ class HierarchicalNSW : public AlgorithmInterface<float> {
             std::unique_lock <std::mutex> lock_table(label_lookup_lock);
             auto search = label_lookup_.find(label);
             if (search != label_lookup_.end()) {
-                tableint existingInternalId = search->second;
-                if (allow_replace_deleted_) {
-                    if (isMarkedDeleted(existingInternalId)) {
-                        throw std::runtime_error("Can't use addPoint to update deleted elements if replacement of deleted elements is enabled.");
-                    }
-                }
-                lock_table.unlock();
-
-                if (isMarkedDeleted(existingInternalId)) {
-                    unmarkDeletedInternal(existingInternalId);
-                }
-                updatePoint(data_point, existingInternalId, 1.0);
-
-                return existingInternalId;
+                return -1;
             }
 
             if (cur_element_count >= max_elements_) {

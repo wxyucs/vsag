@@ -21,18 +21,18 @@ public:
       * Building index with all vectors
       * 
       * @param base should contains dim, num_elements, ids and vectors
-      * @return number of elements in the index
+      * @return IDs that failed to insert into the index
       */
-    virtual tl::expected<int64_t, index_error>
+    virtual tl::expected<std::vector<int64_t>, index_error>
     Build(const Dataset& base) = 0;
 
     /**
       * Adding vectors into a built index, only HNSW supported now, called on other index will cause exception
       * 
       * @param base should contains dim, num_elements, ids and vectors
-      * @return number of elements have been added into the index
+      * @return IDs that failed to insert into the index
       */
-    virtual tl::expected<int64_t, index_error>
+    virtual tl::expected<std::vector<int64_t>, index_error>
     Add(const Dataset& base) {
         throw std::runtime_error("Index not support addding vectors");
     }

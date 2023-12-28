@@ -163,7 +163,7 @@ TEST_CASE("Two HNSW", "[hnsw]") {
     REQUIRE(index.has_value());
     REQUIRE(index2.has_value());
     hnsw = index.value();
-    hnsw2 = index.value();
+    hnsw2 = index2.value();
     // Generate random data
     std::mt19937 rng;
     rng.seed(47);
@@ -587,5 +587,87 @@ TEST_CASE("HNSW small dimension", "[hnsw]") {
     }
     float recall = correct / max_elements;
 
+    REQUIRE(recall == 1);
+}
+
+TEST_CASE("HNSW Random Id", "[hnsw]") {
+    int dim = 128;
+    int max_elements = 1000;
+    int M = 64;
+    int ef_construction = 200;
+    int ef_runtime = 200;
+    // Initing index
+    nlohmann::json hnsw_parameters{
+        {"max_elements", max_elements},
+        {"M", M},
+        {"ef_construction", ef_construction},
+        {"ef_runtime", ef_runtime},
+    };
+    nlohmann::json index_parameters{
+        {"dtype", "float32"}, {"metric_type", "l2"}, {"dim", dim}, {"hnsw", hnsw_parameters}};
+
+    std::shared_ptr<vsag::Index> hnsw;
+    auto index = vsag::Factory::CreateIndex("hnsw", index_parameters.dump());
+    REQUIRE(index.has_value());
+    hnsw = index.value();
+
+    // Generate random data
+    std::mt19937 rng;
+    std::uniform_real_distribution<> distrib_real;
+    std::uniform_int_distribution<> ids_random(0, max_elements - 1);
+    int64_t* ids = new int64_t[max_elements];
+    float* data = new float[dim * max_elements];
+    for (int i = 0; i < max_elements; i++) {
+        ids[i] = ids_random(rng);
+        if (i == 1 || i == 2) {
+            ids[i] = std::numeric_limits<int64_t>::max();
+        } else if (i == 3 || i == 4) {
+            ids[i] = std::numeric_limits<int64_t>::min();
+        } else if (i == 5 || i == 6) {
+            ids[i] = 1;
+        } else if (i == 7 || i == 8) {
+            ids[i] = -1;
+        } else if (i == 9 || i == 10) {
+            ids[i] = 0;
+        }
+    }
+    for (int i = 0; i < dim * max_elements; i++) {
+        data[i] = distrib_real(rng);
+    }
+
+    vsag::Dataset dataset;
+    dataset.Dim(dim).NumElements(max_elements).Ids(ids).Float32Vectors(data);
+    auto failed_ids = hnsw->Build(dataset);
+
+    float rate = hnsw->GetNumElements() / (float)max_elements;
+    // 1 - 1 / e
+    REQUIRE((rate > 0.60 && rate < 0.65));
+
+    REQUIRE(failed_ids->size() + hnsw->GetNumElements() == max_elements);
+
+    // Query the elements for themselves and measure recall 1@1
+    float correct = 0;
+    std::set<int64_t> unique_ids;
+    for (int i = 0; i < max_elements; i++) {
+        if (unique_ids.find(ids[i]) != unique_ids.end()) {
+            continue;
+        }
+        unique_ids.insert(ids[i]);
+        vsag::Dataset query;
+        query.NumElements(1).Dim(dim).Float32Vectors(data + i * dim).Owner(false);
+        nlohmann::json parameters{
+            {"hnsw", {{"ef_runtime", ef_runtime}}},
+        };
+        int64_t k = 10;
+        if (auto result = hnsw->KnnSearch(query, k, parameters.dump()); result.has_value()) {
+            if (result->GetIds()[0] == ids[i]) {
+                correct++;
+            }
+            REQUIRE(result->GetDim() == k);
+        } else if (result.error() == vsag::index_error::internal_error) {
+            std::cerr << "failed to perform knn search on index" << std::endl;
+        }
+    }
+    float recall = correct / hnsw->GetNumElements();
     REQUIRE(recall == 1);
 }

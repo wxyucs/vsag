@@ -6,6 +6,8 @@
 #include <vector>
 #include <string>
 
+#include <boost/dynamic_bitset.hpp>
+
 #include "types.h"
 #include "windows_customizations.h"
 #include "distance.h"
@@ -51,6 +53,7 @@ template <typename data_t> class AbstractDataStore
     // useful for bulk or static index building.
     virtual void populate_data(const data_t *vectors, const location_t num_pts) = 0;
     virtual void populate_data(const std::string &filename, const size_t offset) = 0;
+    virtual void populate_data(const data_t *vectors, const location_t num_pts,  boost::dynamic_bitset<>& mask) = 0;
 
     // save the first num_pts many vectors back to bin file
     // note: cannot undo the pre-processing done in populate data

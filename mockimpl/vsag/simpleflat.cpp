@@ -14,8 +14,9 @@ SimpleFlat::SimpleFlat(const std::string& metric_type, int64_t dim)
     : metric_type_(metric_type), dim_(dim) {
 }
 
-tl::expected<int64_t, index_error>
+tl::expected<std::vector<int64_t>, index_error>
 SimpleFlat::Build(const Dataset& base) {
+    std::vector<int64_t> failed_ids;
     if (not this->data_.empty()) {
         return tl::unexpected(index_error::build_twice);
     }
@@ -24,21 +25,35 @@ SimpleFlat::Build(const Dataset& base) {
         return tl::unexpected(index_error::dimension_not_equal);
     }
 
-    this->num_elements_ = base.GetNumElements();
+    int64_t raw_length = base.GetNumElements();
+
+    this->ids_.resize(raw_length);
+    this->data_.resize(raw_length * this->dim_);
+    int64_t actual_add_size = 0;
+    for (int i = 0; i < raw_length; ++i) {
+        auto end = ids_.begin() + actual_add_size;
+        if (actual_add_size == 0 || std::find(ids_.begin(), end, base.GetIds()[i]) == end) {
+            std::memcpy(this->ids_.data() + actual_add_size, base.GetIds() + i, sizeof(int64_t));
+
+            std::memcpy(this->data_.data() + actual_add_size * this->dim_,
+                        base.GetFloat32Vectors() + i * this->dim_,
+                        this->dim_ * sizeof(float));
+            actual_add_size++;
+        } else {
+            failed_ids.push_back(ids_[i]);
+        }
+    }
+    this->num_elements_ += actual_add_size;
 
     this->ids_.resize(this->num_elements_);
-    std::memcpy(this->ids_.data(), base.GetIds(), base.GetNumElements() * sizeof(int64_t));
-
     this->data_.resize(this->num_elements_ * this->dim_);
-    std::memcpy(this->data_.data(),
-                base.GetFloat32Vectors(),
-                base.GetNumElements() * this->dim_ * sizeof(float));
 
-    return this->GetNumElements();
+    return std::move(failed_ids);
 }
 
-tl::expected<int64_t, index_error>
+tl::expected<std::vector<int64_t>, index_error>
 SimpleFlat::Add(const Dataset& base) {
+    std::vector<int64_t> failed_ids;
     if (not this->data_.empty()) {
         if (this->dim_ != base.GetDim()) {
             return tl::unexpected(index_error::dimension_not_equal);
@@ -46,19 +61,32 @@ SimpleFlat::Add(const Dataset& base) {
     }
 
     int64_t num_elements_existed = this->num_elements_;
-    this->num_elements_ += base.GetNumElements();
+
+    this->ids_.resize(num_elements_existed + base.GetNumElements());
+    this->data_.resize((num_elements_existed + base.GetNumElements()) * this->dim_);
+
+    int64_t actual_add_size = 0;
+    for (int i = 0; i < base.GetNumElements(); ++i) {
+        int64_t cur_size = num_elements_existed + actual_add_size;
+        if (num_elements_existed + actual_add_size == 0 ||
+            std::find(ids_.begin(), ids_.begin() + cur_size, base.GetIds()[i]) ==
+                ids_.begin() + cur_size) {
+            std::memcpy(this->ids_.data() + cur_size, base.GetIds() + i, sizeof(int64_t));
+
+            std::memcpy(this->data_.data() + cur_size * this->dim_,
+                        base.GetFloat32Vectors() + i * this->dim_,
+                        this->dim_ * sizeof(float));
+            actual_add_size++;
+        } else {
+            failed_ids.push_back(ids_[i]);
+        }
+    }
+    this->num_elements_ += actual_add_size;
 
     this->ids_.resize(this->num_elements_);
-    std::memcpy(this->ids_.data() + num_elements_existed,
-                base.GetIds(),
-                base.GetNumElements() * sizeof(int64_t));
-
     this->data_.resize(this->num_elements_ * this->dim_);
-    std::memcpy(this->data_.data() + num_elements_existed * this->dim_,
-                base.GetFloat32Vectors(),
-                base.GetNumElements() * this->dim_ * sizeof(float));
 
-    return base.GetNumElements();
+    return std::move(failed_ids);
 }
 
 tl::expected<Dataset, index_error>

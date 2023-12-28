@@ -18,10 +18,10 @@ class HNSW : public Index {
 public:
     HNSW(std::shared_ptr<hnswlib::SpaceInterface> space_interface, int M, int ef_construction);
 
-    tl::expected<int64_t, index_error>
+    tl::expected<std::vector<int64_t>, index_error>
     Build(const Dataset& base) override;
 
-    tl::expected<int64_t, index_error>
+    tl::expected<std::vector<int64_t>, index_error>
     Add(const Dataset& base) override;
 
     tl::expected<Dataset, index_error>

@@ -2,6 +2,8 @@
 // Licensed under the MIT license.
 
 #include <type_traits>
+#include <boost/dynamic_bitset.hpp>
+#include <unordered_set>
 #include <omp.h>
 
 #include "tsl/robin_set.h"
@@ -2114,7 +2116,7 @@ void Index<T, TagT, LabelT>::_build(const DataType &data, const size_t num_point
     }
 }
 template <typename T, typename TagT, typename LabelT>
-void Index<T, TagT, LabelT>::build(const T *data, const size_t num_points_to_load,
+std::vector<TagT> Index<T, TagT, LabelT>::build(const T *data, const size_t num_points_to_load,
                                    const IndexWriteParameters &parameters, const std::vector<TagT> &tags)
 {
     if (num_points_to_load == 0)
@@ -2128,12 +2130,26 @@ void Index<T, TagT, LabelT>::build(const T *data, const size_t num_points_to_loa
     }
 
     std::unique_lock<std::shared_timed_mutex> ul(_update_lock);
-
+    std::vector<TagT> fail_ids;
+    std::vector<TagT> unique_tags;
+    std::unordered_set<TagT> unique_tags_set;
     {
         std::unique_lock<std::shared_timed_mutex> tl(_tag_lock);
-        _nd = num_points_to_load;
+        boost::dynamic_bitset<> mask(tags.size());
+        for (size_t i = 0; i < tags.size(); i ++) {
+            auto tag = tags[i];
+            if (unique_tags_set.find(tag) != unique_tags_set.end()) {
+                fail_ids.push_back(tag);
+                mask.reset(i);
+            } else {
+                unique_tags.push_back(tag);
+                unique_tags_set.insert(tag);
+                mask.set(i);
+            }
+        }
 
-        _data_store->populate_data(data, (location_t)num_points_to_load);
+        _nd = unique_tags.size();
+        _data_store->populate_data(data, (location_t)_nd, mask);
 
         // REFACTOR
         // memcpy((char *)_data, (char *)data, _aligned_dim * _nd * sizeof(T));
@@ -2146,7 +2162,8 @@ void Index<T, TagT, LabelT>::build(const T *data, const size_t num_points_to_loa
         // }
     }
 
-    build_with_data_populated(parameters, tags);
+    build_with_data_populated(parameters, unique_tags);
+    return std::move(fail_ids);
 }
 
 template <typename T, typename TagT, typename LabelT>

@@ -62,7 +62,7 @@ class BruteforceSearch : public AlgorithmInterface<dist_t> {
     }
 
 
-    void addPoint(const void *datapoint, labeltype label, bool replace_deleted = false) {
+    bool addPoint(const void *datapoint, labeltype label, bool replace_deleted = false) {
         int idx;
         {
             std::unique_lock<std::mutex> lock(index_lock);
@@ -81,6 +81,7 @@ class BruteforceSearch : public AlgorithmInterface<dist_t> {
         }
         memcpy(data_ + size_per_element_ * idx + data_size_, &label, sizeof(labeltype));
         memcpy(data_ + size_per_element_ * idx, datapoint, data_size_);
+        return true;
     }
 
 

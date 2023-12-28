@@ -42,7 +42,7 @@ public:
 
     ~DiskANN() = default;
 
-    tl::expected<int64_t, index_error>
+    tl::expected<std::vector<int64_t>, index_error>
     Build(const Dataset& base) override;
 
     tl::expected<Dataset, index_error>
