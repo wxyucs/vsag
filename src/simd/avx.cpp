@@ -91,11 +91,6 @@ InnerProductSIMD4ExtAVX(const void* pVect1v, const void* pVect2v, const void* qt
 }
 
 float
-InnerProductDistanceSIMD4ExtAVX(const void* pVect1v, const void* pVect2v, const void* qty_ptr) {
-    return 1.0f - InnerProductSIMD4ExtAVX(pVect1v, pVect2v, qty_ptr);
-}
-
-float
 InnerProductSIMD16ExtAVX(const void* pVect1v, const void* pVect2v, const void* qty_ptr) {
     float PORTABLE_ALIGN32 TmpRes[8];
     float* pVect1 = (float*)pVect1v;
@@ -129,11 +124,6 @@ InnerProductSIMD16ExtAVX(const void* pVect1v, const void* pVect2v, const void* q
                 TmpRes[7];
 
     return sum;
-}
-
-float
-InnerProductDistanceSIMD16ExtAVX(const void* pVect1v, const void* pVect2v, const void* qty_ptr) {
-    return 1.0f - InnerProductSIMD16ExtAVX(pVect1v, pVect2v, qty_ptr);
 }
 
 }  // namespace vsag

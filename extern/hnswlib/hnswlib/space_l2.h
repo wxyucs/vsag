@@ -3,11 +3,7 @@
 
 namespace vsag {
 
-extern float L2Sqr(const void* pVect1v, const void* pVect2v, const void* qty_ptr);
-extern float(*L2SqrSIMD16Ext)(const void *, const void *, const void *);
-extern float(*L2SqrSIMD16ExtResiduals)(const void *, const void *, const void *);
-extern float(*L2SqrSIMD4Ext)(const void *, const void *, const void *);
-extern float(*L2SqrSIMD4ExtResiduals)(const void *, const void *, const void *);
+extern hnswlib::DISTFUNC  GetL2DistanceFunc(size_t dim);
 
 }  // namespace vsag
 
@@ -20,16 +16,7 @@ class L2Space : public SpaceInterface {
 
  public:
     L2Space(size_t dim) {
-        if (dim % 16 == 0)
-            fstdistfunc_ = vsag::L2SqrSIMD16Ext;
-        else if (dim % 4 == 0)
-            fstdistfunc_ = vsag::L2SqrSIMD4Ext;
-        else if (dim > 16)
-            fstdistfunc_ = vsag::L2SqrSIMD16ExtResiduals;
-        else if (dim > 4)
-            fstdistfunc_ = vsag::L2SqrSIMD4ExtResiduals;
-        else
-            fstdistfunc_ = vsag::L2Sqr;
+        fstdistfunc_ = vsag::GetL2DistanceFunc(dim);
         dim_ = dim;
         data_size_ = dim * sizeof(float);
     }

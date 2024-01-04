@@ -177,28 +177,6 @@ InnerProductSIMD4ExtSSE(const void* pVect1v, const void* pVect2v, const void* qt
 }
 
 float
-InnerProductDistanceSIMD4ExtSSE(const void* pVect1v, const void* pVect2v, const void* qty_ptr) {
-    return 1.0f - InnerProductSIMD4ExtSSE(pVect1v, pVect2v, qty_ptr);
-}
-
-float
-InnerProductDistanceSIMD4ExtResiduals(const void* pVect1v,
-                                      const void* pVect2v,
-                                      const void* qty_ptr) {
-    size_t qty = *((size_t*)qty_ptr);
-    size_t qty4 = qty >> 2 << 2;
-
-    float res = InnerProductSIMD4ExtSSE(pVect1v, pVect2v, &qty4);
-    size_t qty_left = qty - qty4;
-
-    float* pVect1 = (float*)pVect1v + qty4;
-    float* pVect2 = (float*)pVect2v + qty4;
-    float res_tail = InnerProduct(pVect1, pVect2, &qty_left);
-
-    return 1.0f - (res + res_tail);
-}
-
-float
 InnerProductSIMD16ExtSSE(const void* pVect1v, const void* pVect2v, const void* qty_ptr) {
     float PORTABLE_ALIGN32 TmpRes[8];
     float* pVect1 = (float*)pVect1v;
@@ -243,17 +221,13 @@ InnerProductSIMD16ExtSSE(const void* pVect1v, const void* pVect2v, const void* q
     return sum;
 }
 
-float
-InnerProductDistanceSIMD16ExtSSE(const void* pVect1v, const void* pVect2v, const void* qty_ptr) {
-    return 1.0f - InnerProductSIMD16ExtSSE(pVect1v, pVect2v, qty_ptr);
-}
-
 extern float (*InnerProductSIMD16Ext)(const void*, const void*, const void*);
+extern float (*InnerProductSIMD4Ext)(const void*, const void*, const void*);
 
 float
-InnerProductDistanceSIMD16ExtResiduals(const void* pVect1v,
-                                       const void* pVect2v,
-                                       const void* qty_ptr) {
+InnerProductDistanceSIMD16ExtResidualsSSE(const void* pVect1v,
+                                          const void* pVect2v,
+                                          const void* qty_ptr) {
     size_t qty = *((size_t*)qty_ptr);
     size_t qty16 = qty >> 4 << 4;
     float res = InnerProductSIMD16Ext(pVect1v, pVect2v, &qty16);
@@ -262,6 +236,33 @@ InnerProductDistanceSIMD16ExtResiduals(const void* pVect1v,
 
     size_t qty_left = qty - qty16;
     float res_tail = InnerProduct(pVect1, pVect2, &qty_left);
+    return 1.0f - (res + res_tail);
+}
+
+float
+InnerProductDistanceSIMD16ExtSSE(const void* pVect1v, const void* pVect2v, const void* qty_ptr) {
+    return 1.0f - InnerProductSIMD16Ext(pVect1v, pVect2v, qty_ptr);
+}
+
+float
+InnerProductDistanceSIMD4ExtSSE(const void* pVect1v, const void* pVect2v, const void* qty_ptr) {
+    return 1.0f - InnerProductSIMD4Ext(pVect1v, pVect2v, qty_ptr);
+}
+
+float
+InnerProductDistanceSIMD4ExtResidualsSSE(const void* pVect1v,
+                                         const void* pVect2v,
+                                         const void* qty_ptr) {
+    size_t qty = *((size_t*)qty_ptr);
+    size_t qty4 = qty >> 2 << 2;
+
+    float res = InnerProductSIMD4Ext(pVect1v, pVect2v, &qty4);
+    size_t qty_left = qty - qty4;
+
+    float* pVect1 = (float*)pVect1v + qty4;
+    float* pVect2 = (float*)pVect2v + qty4;
+    float res_tail = InnerProduct(pVect1, pVect2, &qty_left);
+
     return 1.0f - (res + res_tail);
 }
 

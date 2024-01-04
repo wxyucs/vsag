@@ -86,7 +86,7 @@ file (GLOB CPP_SRCS "src/*.cpp")
 file (GLOB CPP_INDEX_SRCS "src/index/*.cpp")
 # set_source_files_properties(src/index/hnsw.cpp PROPERTIES COMPILE_FLAGS "-mavx512f -mavx512dq -mavx512bw -mavx512vl -mavx2 -mavx -msse")
 add_library (vsag SHARED ${CPP_SRCS} ${CPP_INDEX_SRCS})
-target_link_libraries (vsag diskann pthread m dl cpuinfo simd)
+target_link_libraries (vsag diskann pthread m dl simd)
 add_dependencies(vsag spdlog)
 
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++17 -fPIC -Werror=suggest-override")
@@ -99,15 +99,6 @@ endif()
 add_subdirectory (mockimpl)
 
 message("CPU ARCH: ${CMAKE_HOST_SYSTEM_PROCESSOR}")
-if(CMAKE_HOST_SYSTEM_PROCESSOR MATCHES "(x86_64)|(AMD64|amd64)|(^i.86$)")
-# FIXME: only work on machine with AVX512 support
-#    add_compile_options(-mavx512f)
-#    add_compile_options(-mavx512dq)
-#    add_compile_options(-mavx512bw)
-#    add_compile_options(-mavx512vl)
-#    add_compile_options(-mavx)
-#    add_compile_options(-msse)
-endif()
 
 add_subdirectory (examples/cpp)
 

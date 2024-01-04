@@ -70,9 +70,4 @@ InnerProductSIMD16ExtAVX512(const void* pVect1v, const void* pVect2v, const void
     return sum;
 }
 
-float
-InnerProductDistanceSIMD16ExtAVX512(const void* pVect1v, const void* pVect2v, const void* qty_ptr) {
-    return 1.0f - InnerProductSIMD16ExtAVX512(pVect1v, pVect2v, qty_ptr);
-}
-
 }  // namespace vsag

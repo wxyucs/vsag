@@ -29,7 +29,7 @@ if (RUNTIME_AVX512_SUPPORTED)
 endif()
 message (${RUNTIME_SUPPORTED})
 
-set (SIMD_SRCS generic.cpp)
+set (SIMD_SRCS generic.cpp simd.cpp)
 if (COMPILER_SSE_SUPPORTED)
   set (SIMD_SRCS ${SIMD_SRCS} sse.cpp)
   set_source_files_properties (sse.cpp PROPERTIES COMPILE_FLAGS "-msse -msse2 -msse3 -mssse3 -msse4 -msse4a -msse4.1 -msse4.2")
@@ -58,3 +58,5 @@ set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fopenmp -fopenmp-simd")
 set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -funroll-loops")
 
 add_library (simd ${SIMD_SRCS})
+
+target_link_libraries(simd PUBLIC cpuinfo)

@@ -1,6 +1,10 @@
 #pragma once
 
+#include <stdlib.h>
 namespace vsag {
+
+void
+setup_simd();
 
 float
 L2Sqr(const void* pVect1v, const void* pVect2v, const void* qty_ptr);
@@ -21,6 +25,8 @@ float
 L2SqrSIMD16ExtResidualsSSE(const void* pVect1v, const void* pVect2v, const void* qty_ptr);
 
 float
+InnerProductSIMD4ExtSSE(const void* pVect1v, const void* pVect2v, const void* qty_ptr);
+float
 InnerProductSIMD16ExtSSE(const void* pVect1v, const void* pVect2v, const void* qty_ptr);
 float
 InnerProductDistanceSIMD16ExtSSE(const void* pVect1v, const void* pVect2v, const void* qty_ptr);
@@ -40,14 +46,21 @@ InnerProductDistanceSIMD16ExtResidualsSSE(const void* pVect1v,
 float
 L2SqrSIMD16ExtAVX(const void* pVect1v, const void* pVect2v, const void* qty_ptr);
 float
-InnerProductDistanceSIMD16ExtAVX(const void* pVect1v, const void* pVect2v, const void* qty_ptr);
+InnerProductSIMD4ExtAVX(const void* pVect1v, const void* pVect2v, const void* qty_ptr);
+float
+InnerProductSIMD16ExtAVX(const void* pVect1v, const void* pVect2v, const void* qty_ptr);
 #endif
 
 #if defined(ENABLE_AVX512)
 float
 L2SqrSIMD16ExtAVX512(const void* pVect1v, const void* pVect2v, const void* qty_ptr);
 float
-InnerProductDistanceSIMD16ExtAVX512(const void* pVect1v, const void* pVect2v, const void* qty_ptr);
+InnerProductSIMD16ExtAVX512(const void* pVect1v, const void* pVect2v, const void* qty_ptr);
 #endif
 
+typedef float (*DistanceFunc)(const void* pVect1, const void* pVect2, const void* qty_ptr);
+DistanceFunc
+GetL2DistanceFunc(size_t dim);
+DistanceFunc
+GetInnerProductDistanceFunc(size_t dim);
 }  // namespace vsag

@@ -3,11 +3,7 @@
 
 namespace vsag {
 
-extern float InnerProductDistance(const void* pVect1, const void* pVect2, const void* qty_ptr);
-extern float(*InnerProductDistanceSIMD16Ext)(const void *, const void *, const void *);
-extern float(*InnerProductDistanceSIMD16ExtResiduals)(const void *, const void *, const void *);
-extern float(*InnerProductDistanceSIMD4Ext)(const void *, const void *, const void *);
-extern float(*InnerProductDistanceSIMD4ExtResiduals)(const void *, const void *, const void *);
+extern hnswlib::DISTFUNC GetInnerProductDistanceFunc(size_t dim);
 
 } // namespace vsag
 
@@ -19,16 +15,7 @@ class InnerProductSpace : public SpaceInterface {
 
  public:
     InnerProductSpace(size_t dim) {
-        if (dim % 16 == 0)
-            fstdistfunc_ = vsag::InnerProductDistanceSIMD16Ext;
-        else if (dim % 4 == 0)
-            fstdistfunc_ = vsag::InnerProductDistanceSIMD4Ext;
-        else if (dim > 16)
-            fstdistfunc_ = vsag::InnerProductDistanceSIMD16ExtResiduals;
-        else if (dim > 4)
-            fstdistfunc_ = vsag::InnerProductDistanceSIMD4ExtResiduals;
-        else
-            fstdistfunc_ = vsag::InnerProductDistance;
+        fstdistfunc_ = vsag::GetInnerProductDistanceFunc(dim);
         dim_ = dim;
         data_size_ = dim * sizeof(float);
     }
