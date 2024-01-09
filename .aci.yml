@@ -36,6 +36,8 @@ format-pre-check:
 
 vsag_build_ut_cov:
   stage: BUILD_UT
+  checkRule:
+    - (CHANGE_LINE_NUMBER <= 10 && diffCoverage > 80) || (CHANGE_LINE_NUMBER > 10 && diffCoverage > 90)
   agent:
     #resourceClass: S #2C4G
     resourceClass: M #4C8G
@@ -61,8 +63,19 @@ vsag_build_ut_cov:
           #
           # compile
           export PATH=/usr/lib/ccache:$PATH
+          export GTEST_OUTPUT="xml:$(pwd)/vsag/testresult/gtest/"
           make test_cov
-          #
+          bash scripts/aci/collect_cpp_coverage.sh
+    - plugin: coverage-client-upload-compass
+      inputs:
+        filePath: vsag/testresult/coverage/cobertura.xml
+  publisher:
+    archiveArtifacts:
+      artifacts: 'vsag/testresult/'
+      allowEmptyArchive: true
+    junit:
+      testResults: 'vsag/testresult/gtest/TEST-*.xml'
+      allowEmptyResults: true
   timeout: 60
   allowFailure: false
 
@@ -93,6 +106,7 @@ vsag_build_asan_ut:
           #
           # compile
           export PATH=/usr/lib/ccache:$PATH
+          export GTEST_OUTPUT="xml:$(pwd)/vsag/testresult/gtest/"
           make test_asan
           #
     - plugin: memcheck-log-parser
@@ -102,5 +116,12 @@ vsag_build_asan_ut:
         upload: "true"
       outputs:
         - memory_check_error
+  publisher:
+    archiveArtifacts:
+      artifacts: 'vsag/testresult/'
+      allowEmptyArchive: true
+    junit:
+      testResults: 'vsag/testresult/gtest/TEST-*.xml'
+      allowEmptyResults: true
   timeout: 60
   allowFailure: false
