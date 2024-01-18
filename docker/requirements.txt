@@ -7,3 +7,6 @@ h5py
 py-cpuinfo
 oss2
 scipy
+scikit-learn
+PyYAML
+pandas

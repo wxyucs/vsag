@@ -1,6 +1,10 @@
 #!/usr/bin/env python3
+import yaml
+from benchmark import bench_index
 
-from benchmark.bench_hnsw import run
 
 if __name__ == '__main__':
-    run()
+    with open('benchs/run.yaml', 'r') as f:
+        config = yaml.safe_load(f)
+
+    bench_index.run(config)

@@ -43,6 +43,7 @@ test_cov: cov
 benchmark:
 	cmake ${VSAG_CMAKE_ARGS} -DCMAKE_BUILD_TYPE=Release
 	cmake --build build --parallel ${COMPILE_JOBS}
+	pip3 install -r docker/requirements.txt
 	python3 benchs/run.py
 
 clean:

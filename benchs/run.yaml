@@ -1,0 +1,31 @@
+index_test:
+  # - dataset_name: redvector-600k-1024-euclidean.hdf5
+  #   index:
+  #     - index_name: hnsw
+  #       params:
+  #         dtype: float32
+  #         metric_type: l2
+  #         build:
+  #           M: 64
+  #           ef_construction: 500
+  #         search:
+  #           ef_runtime: 300
+  #   query:
+  #     query_size: 100000
+  #     knn:
+  #       k: 1
+  - dataset_name: random-100k-128-euclidean.hdf5
+    index:
+      - index_name: hnsw
+        params:
+          dtype: float32
+          metric_type: l2
+          build:
+            M: 32
+            ef_construction: 500
+          search:
+            ef_runtime: 300
+    query:
+      query_size: 1000
+      knn:
+        k: 1
