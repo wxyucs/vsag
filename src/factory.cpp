@@ -88,6 +88,10 @@ Factory::CreateIndex(const std::string& name, const std::string& parameters) {
         if (params[INDEX_DISKANN].contains(DISKANN_PARAMETER_PRELOAD)) {
             preload = params[INDEX_DISKANN][DISKANN_PARAMETER_PRELOAD];
         }
+        bool use_reference = true;
+        if (params[INDEX_DISKANN].contains(DISKANN_PARAMETER_USE_REFERENCE)) {
+            use_reference = params[INDEX_DISKANN][DISKANN_PARAMETER_USE_REFERENCE];
+        }
         std::shared_ptr<DiskANN> index;
         try {
             index = std::make_shared<DiskANN>(metric,
@@ -97,7 +101,8 @@ Factory::CreateIndex(const std::string& name, const std::string& parameters) {
                                               params[INDEX_DISKANN][DISKANN_PARAMETER_P_VAL],
                                               params[INDEX_DISKANN][DISKANN_PARAMETER_DISK_PQ_DIMS],
                                               params[PARAMETER_DIM],
-                                              preload);
+                                              preload,
+                                              use_reference);
         } catch (std::runtime_error e) {
             spdlog::error("create {} index faild: {}", INDEX_DISKANN, e.what());
             return tl::unexpected(convert_index_error(e.what()));

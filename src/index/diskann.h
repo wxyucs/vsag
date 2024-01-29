@@ -38,7 +38,8 @@ public:
             float p_val,
             size_t disk_pq_dims,
             int64_t dim,
-            bool preload);
+            bool preload,
+            bool use_reference);
 
     ~DiskANN() = default;
 
@@ -107,6 +108,7 @@ private:
     float p_val_ = 0.5;
     size_t disk_pq_dims_ = 8;
     int64_t dim_;
+    bool use_reference_ = true;
     bool preload_;
     IndexStatus status_;
 

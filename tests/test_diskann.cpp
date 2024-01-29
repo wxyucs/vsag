@@ -27,6 +27,7 @@ TEST_CASE("DiskAnn Float Recall", "[diskann]") {
         {"L", ef_construction},
         {"p_val", p_val},
         {"disk_pq_dims", chunks_num},
+        {"use_reference", false},
     };
     nlohmann::json index_parameters{
         {"dtype", "float32"},
@@ -411,6 +412,7 @@ TEST_CASE("DiskAnn Preload Graph", "[diskann]") {
                                       {"L", ef_construction},
                                       {"p_val", p_val},
                                       {"disk_pq_dims", chunks_num},
+                                      {"use_reference", false},
                                       {"preload", true}};
     nlohmann::json index_parameters{
         {"dtype", "float32"},

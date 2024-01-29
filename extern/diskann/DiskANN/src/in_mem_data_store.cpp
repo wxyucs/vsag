@@ -21,7 +21,7 @@ InMemDataStore<data_t>::InMemDataStore(const location_t num_points, const size_t
 
 template <typename data_t> InMemDataStore<data_t>::~InMemDataStore()
 {
-    if (_data != nullptr)
+    if (_data != nullptr && !_use_data_reference)
     {
         aligned_free(this->_data);
     }
@@ -141,6 +141,18 @@ template <typename data_t> size_t InMemDataStore<data_t>::save(const std::string
 
 template <typename data_t> size_t InMemDataStore<data_t>::save(std::stringstream &out, const location_t num_points)
 {
+    if (_use_data_reference) {
+        int npts_i32 = (int)num_points, ndims_i32 = (int)this->_dim;
+        size_t bytes_written = 2 * sizeof(uint32_t) + num_points * this->_dim * sizeof(data_t);
+        out.seekp(0, out.beg);
+        out.write((char *)&npts_i32, sizeof(int));
+        out.write((char *)&ndims_i32, sizeof(int));
+        for (size_t i = 0; i < num_points; i++)
+        {
+            out.write((char *)(_data + _loc_to_memory_index[i] * this->_dim), this->_dim * sizeof(data_t));
+        }
+        return bytes_written;
+    }
     return save_data_in_base_dimensions(out, _data, num_points, this->get_dims(), this->get_aligned_dim(), 0U);
 }
 
@@ -160,8 +172,12 @@ template <typename data_t> void InMemDataStore<data_t>::populate_data(const data
 }
 
 template <typename data_t> void InMemDataStore<data_t>::populate_data(const data_t *vectors, const location_t num_pts,
-                                                                      boost::dynamic_bitset<>& mask)
+                                           const boost::dynamic_bitset<>& mask)
 {
+    if (mask.empty()) {
+        throw ANNException("ERROR: mask is empty.", -1);
+    }
+    this->_capacity = num_pts;
     memset(_data, 0, _aligned_dim * sizeof(data_t) * num_pts);
     int64_t cur = 0;
     for (location_t i = 0; i < mask.size(); i++)
@@ -174,6 +190,31 @@ template <typename data_t> void InMemDataStore<data_t>::populate_data(const data
     if (_distance_fn->preprocessing_required())
     {
         _distance_fn->preprocess_base_points(_data, this->_aligned_dim, num_pts);
+    }
+}
+
+
+template <typename data_t> void InMemDataStore<data_t>::link_data(const data_t *vectors, const location_t num_pts,
+                                       const boost::dynamic_bitset<>& mask)
+{
+    if (mask.empty()) {
+        throw ANNException("ERROR: mask is empty.", -1);
+    }
+    _data = const_cast<data_t *>(vectors);
+    _loc_to_memory_index.resize(num_pts);
+    _use_data_reference = true;
+    this->_capacity = num_pts;
+    int64_t cur = 0;
+    for (location_t i = 0; i < mask.size(); i++)
+    {
+        if (!mask.test(i)) continue;
+        _loc_to_memory_index[cur] = i;
+        cur ++;
+    }
+    assert(num_pts == cur);
+    if (_distance_fn->preprocessing_required())
+    {
+        throw ANNException("ERROR: when using data references, the data cannot be processed.", -1);
     }
 }
 
@@ -212,9 +253,15 @@ void InMemDataStore<data_t>::extract_data_to_bin(const std::string &filename, co
     save_data_in_base_dimensions(filename, _data, num_points, this->get_dims(), this->get_aligned_dim(), 0U);
 }
 
-template <typename data_t> void InMemDataStore<data_t>::get_vector(const location_t i, data_t *dest) const
+template <typename data_t> void InMemDataStore<data_t>::get_vector(location_t loc, data_t *dest) const
 {
-    memcpy(dest, _data + i * _aligned_dim, this->_dim * sizeof(data_t));
+    if (_use_data_reference)
+    {
+        loc = _loc_to_memory_index[loc];
+        memcpy(dest, _data + loc * this->_dim, this->_dim * sizeof(data_t));
+        return;
+    }
+    memcpy(dest, _data + loc * _aligned_dim, this->_dim * sizeof(data_t));
 }
 
 template <typename data_t> void InMemDataStore<data_t>::set_vector(const location_t loc, const data_t *const vector)
@@ -228,29 +275,38 @@ template <typename data_t> void InMemDataStore<data_t>::set_vector(const locatio
     }
 }
 
-template <typename data_t> void InMemDataStore<data_t>::prefetch_vector(const location_t loc)
+template <typename data_t> void InMemDataStore<data_t>::prefetch_vector(location_t loc)
 {
+    if (_use_data_reference)
+    {
+        loc = _loc_to_memory_index[loc];
+        diskann::prefetch_vector((const char *)_data + this->_dim * (size_t)loc, sizeof(data_t) * this->_dim);
+        return;
+    }
     diskann::prefetch_vector((const char *)_data + _aligned_dim * (size_t)loc, sizeof(data_t) * _aligned_dim);
 }
 
-template <typename data_t> float InMemDataStore<data_t>::get_distance(const data_t *query, const location_t loc) const
+template <typename data_t> float InMemDataStore<data_t>::get_distance(const data_t *query, location_t loc) const
 {
+    if (_use_data_reference)
+    {
+        loc = _loc_to_memory_index[loc];
+        return _distance_fn->compare(query, _data + this->_dim * loc, (uint32_t)this->_dim);
+    }
     return _distance_fn->compare(query, _data + _aligned_dim * loc, (uint32_t)_aligned_dim);
 }
 
-template <typename data_t>
-void InMemDataStore<data_t>::get_distance(const data_t *query, const location_t *locations,
-                                          const uint32_t location_count, float *distances) const
-{
-    for (location_t i = 0; i < location_count; i++)
-    {
-        distances[i] = _distance_fn->compare(query, _data + locations[i] * _aligned_dim, (uint32_t)this->_aligned_dim);
-    }
-}
 
 template <typename data_t>
-float InMemDataStore<data_t>::get_distance(const location_t loc1, const location_t loc2) const
+float InMemDataStore<data_t>::get_distance(location_t loc1, location_t loc2) const
 {
+    if (_use_data_reference)
+    {
+        loc1 = _loc_to_memory_index[loc1];
+        loc2 = _loc_to_memory_index[loc2];
+        return _distance_fn->compare(_data + loc1 * this->_dim, _data + loc2 * this->_dim,
+                                     (uint32_t)this->_dim);
+    }
     return _distance_fn->compare(_data + loc1 * _aligned_dim, _data + loc2 * _aligned_dim,
                                  (uint32_t)this->_aligned_dim);
 }
@@ -367,15 +423,25 @@ void InMemDataStore<data_t>::copy_vectors(const location_t from_loc, const locat
 template <typename data_t> location_t InMemDataStore<data_t>::calculate_medoid() const
 {
     // allocate and init centroid
-    float *center = new float[_aligned_dim];
-    for (size_t j = 0; j < _aligned_dim; j++)
+    float *center = new float[this->_dim];
+    for (size_t j = 0; j < this->_dim; j++)
         center[j] = 0;
 
-    for (size_t i = 0; i < this->capacity(); i++)
-        for (size_t j = 0; j < _aligned_dim; j++)
-            center[j] += (float)_data[i * _aligned_dim + j];
+    for (size_t i = 0; i < this->capacity(); i++) {
+        location_t loc = i;
+        if (_use_data_reference) {
+            loc = _loc_to_memory_index[loc];
+            for (size_t j = 0; j < this->_dim; j++) {
+                center[j] += (float)_data[loc * this->_dim + j];
+            }
+        } else {
+            for (size_t j = 0; j < this->_dim; j++) {
+                center[j] += (float)_data[loc * _aligned_dim + j];
+            }
+        }
+    }
 
-    for (size_t j = 0; j < _aligned_dim; j++)
+    for (size_t j = 0; j < this->_dim; j++)
         center[j] /= (float)this->capacity();
 
     // compute all to one distance
@@ -389,10 +455,17 @@ template <typename data_t> location_t InMemDataStore<data_t>::calculate_medoid()
     {
         // extract point and distance reference
         float &dist = distances[i];
-        const data_t *cur_vec = _data + (i * (size_t)_aligned_dim);
+        location_t loc = i;
+        data_t *cur_vec;
+        if (_use_data_reference) {
+            loc = _loc_to_memory_index[loc];
+            cur_vec = _data + (loc * (size_t)this->_dim);
+        } else {
+            cur_vec = _data + (loc * (size_t)_aligned_dim);
+        }
         dist = 0;
         float diff = 0;
-        for (size_t j = 0; j < _aligned_dim; j++)
+        for (size_t j = 0; j < this->_dim; j++)
         {
             diff = (center[j] - (float)cur_vec[j]) * (center[j] - (float)cur_vec[j]);
             dist += diff;

@@ -106,7 +106,7 @@ template <typename T, typename TagT = uint32_t, typename LabelT = uint32_t> clas
 
     // Batch build from a data array, which must pad vectors to aligned_dim
     DISKANN_DLLEXPORT std::vector<TagT> build(const T *data, const size_t num_points_to_load, const IndexWriteParameters &parameters,
-                                 const std::vector<TagT> &tags);
+                                 const std::vector<TagT> &tags, bool use_reference);
 
     DISKANN_DLLEXPORT void build(const std::string &data_file, const size_t num_points_to_load,
                                  IndexBuildParams &build_params) override;

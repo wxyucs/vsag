@@ -53,7 +53,8 @@ template <typename data_t> class AbstractDataStore
     // useful for bulk or static index building.
     virtual void populate_data(const data_t *vectors, const location_t num_pts) = 0;
     virtual void populate_data(const std::string &filename, const size_t offset) = 0;
-    virtual void populate_data(const data_t *vectors, const location_t num_pts,  boost::dynamic_bitset<>& mask) = 0;
+    virtual void populate_data(const data_t *vectors, const location_t num_pts, const boost::dynamic_bitset<>& mask) = 0;
+    virtual void link_data(const data_t *vectors, const location_t num_pts,  const boost::dynamic_bitset<>& mask) = 0;
 
     // save the first num_pts many vectors back to bin file
     // note: cannot undo the pre-processing done in populate data
@@ -72,9 +73,9 @@ template <typename data_t> class AbstractDataStore
     // operations on vectors
     // like populate_data function, but over one vector at a time useful for
     // streaming setting
-    virtual void get_vector(const location_t i, data_t *dest) const = 0;
-    virtual void set_vector(const location_t i, const data_t *const vector) = 0;
-    virtual void prefetch_vector(const location_t loc) = 0;
+    virtual void get_vector(location_t loc, data_t *dest) const = 0;
+    virtual void set_vector(const location_t loc, const data_t *const vector) = 0;
+    virtual void prefetch_vector(location_t loc) = 0;
 
     // internal shuffle operations to move around vectors
     // will bulk-move all the vectors in [old_start_loc, old_start_loc +
@@ -89,10 +90,8 @@ template <typename data_t> class AbstractDataStore
 
     // metric specific operations
 
-    virtual float get_distance(const data_t *query, const location_t loc) const = 0;
-    virtual void get_distance(const data_t *query, const location_t *locations, const uint32_t location_count,
-                              float *distances) const = 0;
-    virtual float get_distance(const location_t loc1, const location_t loc2) const = 0;
+    virtual float get_distance(const data_t *query, location_t loc) const = 0;
+    virtual float get_distance(location_t loc1, location_t loc2) const = 0;
 
     // stats of the data stored in store
     // Returns the point in the dataset that is closest to the mean of all points

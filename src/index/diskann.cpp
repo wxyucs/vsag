@@ -78,7 +78,8 @@ DiskANN::DiskANN(diskann::Metric metric,
                  float p_val,
                  size_t disk_pq_dims,
                  int64_t dim,
-                 bool preload)
+                 bool preload,
+                 bool use_reference)
     : metric_(metric),
       L_(L),
       R_(R),
@@ -86,7 +87,8 @@ DiskANN::DiskANN(diskann::Metric metric,
       data_type_(data_type),
       disk_pq_dims_(disk_pq_dims),
       dim_(dim),
-      preload_(preload) {
+      preload_(preload),
+      use_reference_(use_reference) {
     status_ = IndexStatus::EMPTY;
     batch_read_ = [&](const std::vector<read_request>& requests) -> void {
         std::vector<std::future<void>> futures;
@@ -140,8 +142,10 @@ DiskANN::Build(const Dataset& base) {
                 metric_, data_dim, data_num, false, true, false, false, 0, false);
             std::vector<int64_t> tags(ids, ids + data_num);
             auto index_build_params = diskann::IndexWriteParametersBuilder(L_, R_).build();
-            failed_ids = build_index_->build(vectors, data_num, index_build_params, tags);
+            failed_ids =
+                build_index_->build(vectors, data_num, index_build_params, tags, use_reference_);
             build_index_->save(graph_stream_, tag_stream_, data_stream);
+            build_index_.reset();
         }
 
         diskann::generate_disk_quantized_data<float>(data_stream,

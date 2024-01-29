@@ -32,6 +32,7 @@ constexpr const char* DISKANN_PARAMETER_R = "R";
 constexpr const char* DISKANN_PARAMETER_P_VAL = "p_val";
 constexpr const char* DISKANN_PARAMETER_DISK_PQ_DIMS = "disk_pq_dims";
 constexpr const char* DISKANN_PARAMETER_PRELOAD = "preload";
+constexpr const char* DISKANN_PARAMETER_USE_REFERENCE = "use_reference";
 
 constexpr const char* DISKANN_PARAMETER_BEAM_SEARCH = "beam_search";
 constexpr const char* DISKANN_PARAMETER_IO_LIMIT = "io_limit";

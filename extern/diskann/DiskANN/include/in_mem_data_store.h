@@ -3,6 +3,7 @@
 
 #include <shared_mutex>
 #include <memory>
+#include <map>
 
 #include "tsl/robin_map.h"
 #include "tsl/robin_set.h"
@@ -34,23 +35,22 @@ template <typename data_t> class InMemDataStore : public AbstractDataStore<data_
     // Populate internal data from unaligned data while doing alignment and any
     // normalization that is required.
     virtual void populate_data(const data_t *vectors, const location_t num_pts) override;
-    virtual void populate_data(const data_t *vectors, const location_t num_pts, boost::dynamic_bitset<>& mask) override;
+    virtual void populate_data(const data_t *vectors, const location_t num_pts, const boost::dynamic_bitset<>& mask) override;
     virtual void populate_data(const std::string &filename, const size_t offset) override;
+    virtual void link_data(const data_t *vectors, const location_t num_pts, const boost::dynamic_bitset<>& mask) override;
 
     virtual void extract_data_to_bin(const std::string &filename, const location_t num_pts) override;
 
-    virtual void get_vector(const location_t i, data_t *target) const override;
-    virtual void set_vector(const location_t i, const data_t *const vector) override;
-    virtual void prefetch_vector(const location_t loc) override;
+    virtual void get_vector(location_t loc, data_t *target) const override;
+    virtual void set_vector(const location_t loc, const data_t *const vector) override;
+    virtual void prefetch_vector(location_t loc) override;
 
     virtual void move_vectors(const location_t old_location_start, const location_t new_location_start,
                               const location_t num_points) override;
     virtual void copy_vectors(const location_t from_loc, const location_t to_loc, const location_t num_points) override;
 
-    virtual float get_distance(const data_t *query, const location_t loc) const override;
-    virtual float get_distance(const location_t loc1, const location_t loc2) const override;
-    virtual void get_distance(const data_t *query, const location_t *locations, const uint32_t location_count,
-                              float *distances) const override;
+    virtual float get_distance(const data_t *query, location_t loc) const override;
+    virtual float get_distance(location_t loc1, location_t loc2) const override;
 
     virtual location_t calculate_medoid() const override;
 
@@ -81,6 +81,9 @@ template <typename data_t> class InMemDataStore : public AbstractDataStore<data_
 
     // in case we need to save vector norms for optimization
     std::shared_ptr<float[]> _pre_computed_norms;
+
+    bool _use_data_reference = false;
+    std::vector<size_t> _loc_to_memory_index;
 };
 
 } // namespace diskann

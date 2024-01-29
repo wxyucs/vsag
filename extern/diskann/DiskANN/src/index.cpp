@@ -2104,7 +2104,7 @@ void Index<T, TagT, LabelT>::_build(const DataType &data, const size_t num_point
     try
     {
         this->build(std::any_cast<const T *>(data), num_points_to_load, parameters,
-                    tags.get<const std::vector<TagT>>());
+                    tags.get<const std::vector<TagT>>(), true);
     }
     catch (const std::bad_any_cast &e)
     {
@@ -2117,7 +2117,7 @@ void Index<T, TagT, LabelT>::_build(const DataType &data, const size_t num_point
 }
 template <typename T, typename TagT, typename LabelT>
 std::vector<TagT> Index<T, TagT, LabelT>::build(const T *data, const size_t num_points_to_load,
-                                   const IndexWriteParameters &parameters, const std::vector<TagT> &tags)
+                                   const IndexWriteParameters &parameters, const std::vector<TagT> &tags, bool use_reference)
 {
     if (num_points_to_load == 0)
     {
@@ -2149,7 +2149,11 @@ std::vector<TagT> Index<T, TagT, LabelT>::build(const T *data, const size_t num_
         }
 
         _nd = unique_tags.size();
-        _data_store->populate_data(data, (location_t)_nd, mask);
+        if (use_reference) {
+            _data_store->link_data(data, (location_t)_nd, mask);
+        } else {
+            _data_store->populate_data(data, (location_t)_nd, mask);
+        }
 
         // REFACTOR
         // memcpy((char *)_data, (char *)data, _aligned_dim * _nd * sizeof(T));
