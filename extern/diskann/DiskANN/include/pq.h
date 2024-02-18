@@ -133,14 +133,20 @@ int generate_pq_data_from_pivots(const std::string &data_file, unsigned num_cent
 template <typename T>
 void generate_disk_quantized_data(const std::string &data_file_to_use, const std::string &disk_pq_pivots_path,
                                   const std::string &disk_pq_compressed_vectors_path,
-                                  const diskann::Metric compareMetric, const double p_val, size_t &disk_pq_dims);
+                                  const diskann::Metric compare_metric, const double p_val, size_t &disk_pq_dims);
 template <typename T>
 void generate_disk_quantized_data(std::stringstream &data_stream, std::stringstream &disk_pq_pivots,
-                                  std::stringstream &disk_pq_compressed_vectors, diskann::Metric compareMetric,
+                                  std::stringstream &disk_pq_compressed_vectors, diskann::Metric compare_metric,
                                   const double p_val, size_t &disk_pq_dims);
+
+template <typename T>
+void generate_disk_quantized_data(const T* train_data, size_t train_size, size_t train_dim, const std::vector<size_t>& skip_locs,
+                                  std::stringstream &disk_pq_pivots, std::stringstream &disk_pq_compressed_vectors,
+                                  diskann::Metric compare_metric, const double p_val, size_t &disk_pq_dims);
+
 template <typename T>
 void generate_quantized_data(const std::string &data_file_to_use, const std::string &pq_pivots_path,
-                             const std::string &pq_compressed_vectors_path, const diskann::Metric compareMetric,
+                             const std::string &pq_compressed_vectors_path, const diskann::Metric compare_metric,
                              const double p_val, const uint64_t num_pq_chunks, const bool use_opq,
                              const std::string &codebook_prefix = "");
 } // namespace diskann

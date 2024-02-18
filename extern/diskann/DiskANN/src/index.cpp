@@ -2116,7 +2116,7 @@ void Index<T, TagT, LabelT>::_build(const DataType &data, const size_t num_point
     }
 }
 template <typename T, typename TagT, typename LabelT>
-std::vector<TagT> Index<T, TagT, LabelT>::build(const T *data, const size_t num_points_to_load,
+std::vector<size_t> Index<T, TagT, LabelT>::build(const T *data, const size_t num_points_to_load,
                                    const IndexWriteParameters &parameters, const std::vector<TagT> &tags, bool use_reference)
 {
     if (num_points_to_load == 0)
@@ -2130,7 +2130,7 @@ std::vector<TagT> Index<T, TagT, LabelT>::build(const T *data, const size_t num_
     }
 
     std::unique_lock<std::shared_timed_mutex> ul(_update_lock);
-    std::vector<TagT> fail_ids;
+    std::vector<size_t> fail_idx;
     std::vector<TagT> unique_tags;
     std::unordered_set<TagT> unique_tags_set;
     {
@@ -2139,7 +2139,7 @@ std::vector<TagT> Index<T, TagT, LabelT>::build(const T *data, const size_t num_
         for (size_t i = 0; i < tags.size(); i ++) {
             auto tag = tags[i];
             if (unique_tags_set.find(tag) != unique_tags_set.end()) {
-                fail_ids.push_back(tag);
+                fail_idx.push_back(i);
                 mask.reset(i);
             } else {
                 unique_tags.push_back(tag);
@@ -2167,7 +2167,7 @@ std::vector<TagT> Index<T, TagT, LabelT>::build(const T *data, const size_t num_
     }
 
     build_with_data_populated(parameters, unique_tags);
-    return std::move(fail_ids);
+    return std::move(fail_idx);
 }
 
 template <typename T, typename TagT, typename LabelT>

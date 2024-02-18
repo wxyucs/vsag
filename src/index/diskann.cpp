@@ -7,9 +7,11 @@
 #include <local_file_reader.h>
 #include <spdlog/spdlog.h>
 
+#include <algorithm>
 #include <exception>
 #include <functional>
 #include <future>
+#include <iterator>
 #include <nlohmann/json.hpp>
 #include <stdexcept>
 #include <utility>
@@ -137,18 +139,22 @@ DiskANN::Build(const Dataset& base) {
     std::stringstream data_stream;
 
     try {
+        std::vector<size_t> failed_indexs;
         {  // build graph
             build_index_ = std::make_shared<diskann::Index<float, int64_t, int64_t>>(
                 metric_, data_dim, data_num, false, true, false, false, 0, false);
             std::vector<int64_t> tags(ids, ids + data_num);
             auto index_build_params = diskann::IndexWriteParametersBuilder(L_, R_).build();
-            failed_ids =
+            failed_indexs =
                 build_index_->build(vectors, data_num, index_build_params, tags, use_reference_);
             build_index_->save(graph_stream_, tag_stream_, data_stream);
             build_index_.reset();
         }
 
-        diskann::generate_disk_quantized_data<float>(data_stream,
+        diskann::generate_disk_quantized_data<float>(vectors,
+                                                     data_num,
+                                                     data_dim,
+                                                     failed_indexs,
                                                      pq_pivots_stream_,
                                                      disk_pq_compressed_vectors_,
                                                      metric_,
@@ -156,6 +162,11 @@ DiskANN::Build(const Dataset& base) {
                                                      disk_pq_dims_);
 
         diskann::create_disk_layout<float>(data_stream, graph_stream_, disk_layout_stream_, "");
+
+        std::transform(failed_indexs.begin(),
+                       failed_indexs.end(),
+                       std::back_inserter(failed_ids),
+                       [&ids](const auto& index) { return ids[index]; });
 
         disk_layout_reader_ = std::make_shared<LocalMemoryReader>(disk_layout_stream_);
         reader_.reset(new LocalFileReader(batch_read_));
