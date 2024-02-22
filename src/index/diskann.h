@@ -19,6 +19,7 @@
 
 #include "../utils.h"
 #include "vsag/index.h"
+#include "vsag/option.h"
 
 namespace vsag {
 
@@ -103,6 +104,7 @@ private:
     diskann::Metric metric_;
     std::shared_ptr<Reader> disk_layout_reader_;
     std::string data_type_;
+
     int L_ = 200;
     int R_ = 64;
     float p_val_ = 0.5;

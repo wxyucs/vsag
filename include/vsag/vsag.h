@@ -19,5 +19,6 @@ version();
 #include "errors.h"
 #include "factory.h"
 #include "index.h"
+#include "option.h"
 #include "readerset.h"
 #include "utils.h"

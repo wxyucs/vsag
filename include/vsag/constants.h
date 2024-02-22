@@ -37,6 +37,7 @@ constexpr const char* DISKANN_PARAMETER_USE_REFERENCE = "use_reference";
 constexpr const char* DISKANN_PARAMETER_BEAM_SEARCH = "beam_search";
 constexpr const char* DISKANN_PARAMETER_IO_LIMIT = "io_limit";
 constexpr const char* DISKANN_PARAMETER_EF_SEARCH = "ef_search";
+constexpr const char* DISKANN_PARAMETER_REORDER = "reorder";
 
 constexpr const char* HNSW_PARAMETER_EF_RUNTIME = "ef_runtime";
 constexpr const char* HNSW_PARAMETER_M = "M";

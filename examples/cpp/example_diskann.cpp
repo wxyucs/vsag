@@ -50,11 +50,7 @@ float_diskann() {
     // 	}
     // }
     nlohmann::json diskann_parameters{
-        {"R", M},
-        {"L", ef_construction},
-        {"p_val", p_val},
-        {"disk_pq_dims", chunks_num},
-    };
+        {"R", M}, {"L", ef_construction}, {"p_val", p_val}, {"disk_pq_dims", chunks_num}};
     nlohmann::json index_parameters{
         {"dtype", "float32"},
         {"metric_type", "l2"},

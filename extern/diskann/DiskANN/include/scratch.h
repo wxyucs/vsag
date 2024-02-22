@@ -22,7 +22,7 @@
 // SSD Index related limits
 #define MAX_GRAPH_DEGREE 512
 #define SECTOR_LEN (size_t)4096
-#define MAX_N_SECTOR_READS 128
+#define MAX_N_SECTOR_READS 512
 
 namespace diskann
 {
@@ -166,6 +166,7 @@ template <typename T> class SSDQueryScratch
     std::vector<Neighbor> full_retset;
 
     SSDQueryScratch(size_t aligned_dim, size_t visited_reserve);
+    SSDQueryScratch(size_t aligned_dim, size_t visited_reserve, size_t sector_size);
     ~SSDQueryScratch();
 
     void reset();
@@ -178,6 +179,7 @@ template <typename T> class SSDThreadData
     IOContext ctx;
 
     SSDThreadData(size_t aligned_dim, size_t visited_reserve);
+    SSDThreadData(size_t aligned_dim, size_t visited_reserve, size_t sector_size);
     void clear();
 };
 

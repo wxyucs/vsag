@@ -461,6 +461,60 @@ TEST_CASE("DiskAnn Preload Graph", "[diskann]") {
         }
     }
     float recall = correct / max_elements;
+
+    REQUIRE(recall >= 0.99);
+
+    correct = 0;
+    for (int i = 0; i < max_elements; i++) {
+        vsag::Dataset query;
+        query.NumElements(1).Dim(dim).Float32Vectors(data + i * dim).Owner(false);
+        nlohmann::json parameters{{"diskann",
+                                   {{"ef_search", ef_runtime},
+                                    {"beam_search", 4},
+                                    {"io_limit", 200},
+                                    {"reorder", true}}}};
+        int64_t k = 2;
+        if (auto result = diskann->KnnSearch(query, k, parameters.dump()); result.has_value()) {
+            if (result->GetNumElements() == 1) {
+                REQUIRE(!std::isinf(result->GetDistances()[0]));
+                if (result->GetDim() != 0 && result->GetIds()[0] == i) {
+                    correct++;
+                }
+            }
+        } else if (result.error() == vsag::index_error::internal_error) {
+            std::cerr << "failed to search on index: internal error" << std::endl;
+            exit(-1);
+        }
+    }
+    recall = correct / max_elements;
+
+    REQUIRE(recall >= 0.99);
+
+    correct = 0;
+    for (int i = 0; i < max_elements; i++) {
+        vsag::Dataset query;
+        query.NumElements(1).Dim(dim).Float32Vectors(data + i * dim).Owner(false);
+        nlohmann::json parameters{{"diskann",
+                                   {{"ef_search", ef_runtime},
+                                    {"beam_search", 4},
+                                    {"io_limit", 200},
+                                    {"reorder", true}}}};
+        float threshold = 0.1;
+        if (auto result = diskann->RangeSearch(query, threshold, parameters.dump());
+            result.has_value()) {
+            if (result->GetNumElements() == 1) {
+                REQUIRE(!std::isinf(result->GetDistances()[0]));
+                if (result->GetDim() != 0 && result->GetIds()[0] == i) {
+                    correct++;
+                }
+            }
+        } else if (result.error() == vsag::index_error::internal_error) {
+            std::cerr << "failed to search on index: internal error" << std::endl;
+            exit(-1);
+        }
+    }
+    recall = correct / max_elements;
+
     REQUIRE(recall >= 0.99);
 }
 

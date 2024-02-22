@@ -30,6 +30,7 @@ const static size_t MAXIMAL_BEAM_SEARCH = 64;
 const static size_t MINIMAL_BEAM_SEARCH = 1;
 const static int MINIMAL_R = 8;
 const static int MAXIMAL_R = 64;
+const static int64_t MAX_IO_LIMIT = 512;
 
 class LocalMemoryReader : public Reader {
 public:
@@ -171,6 +172,7 @@ DiskANN::Build(const Dataset& base) {
         disk_layout_reader_ = std::make_shared<LocalMemoryReader>(disk_layout_stream_);
         reader_.reset(new LocalFileReader(batch_read_));
         index_.reset(new diskann::PQFlashIndex<float, int64_t>(reader_, metric_));
+        index_->set_sector_size(Option::Instance().GetSectorSize());
         index_->load_from_separate_paths(
             omp_get_num_procs(), pq_pivots_stream_, disk_pq_compressed_vectors_, tag_stream_);
         if (preload_) {
@@ -245,10 +247,15 @@ DiskANN::KnnSearch(const Dataset& query,
     size_t beam_search = param[INDEX_DISKANN][DISKANN_PARAMETER_BEAM_SEARCH];
     int64_t io_limit = param[INDEX_DISKANN][DISKANN_PARAMETER_IO_LIMIT];
     int64_t ef_search = param[INDEX_DISKANN][DISKANN_PARAMETER_EF_SEARCH];
+    bool reorder = param[INDEX_DISKANN].contains(DISKANN_PARAMETER_REORDER) &&
+                   param[INDEX_DISKANN][DISKANN_PARAMETER_REORDER];
 
     // ensure that in the topK scenario, ef_search > k and io_limit > k.
     ef_search = std::max(ef_search, k);
-    io_limit = std::max(io_limit, k);
+    io_limit = std::min(MAX_IO_LIMIT, std::max(io_limit, k));
+    if (reorder && preload_) {
+        io_limit = std::min((int64_t)Option::Instance().GetSectorSize(), io_limit);
+    }
     beam_search = std::min(beam_search, MAXIMAL_BEAM_SEARCH);
     beam_search = std::max(beam_search, MINIMAL_BEAM_SEARCH);
 
@@ -270,7 +277,7 @@ DiskANN::KnnSearch(const Dataset& query,
                                                           beam_search,
                                                           filter_,
                                                           io_limit,
-                                                          false,
+                                                          reorder,
                                                           query_stats + i);
                 } else {
                     k = index_->cached_beam_search(query.GetFloat32Vectors() + i * dim_,
@@ -348,13 +355,13 @@ DiskANN::RangeSearch(const Dataset& query,
         return tl::unexpected(index_error::internal_error);
     }
 
-    std::function<bool(uint32_t)> filter_ = nullptr;
+    std::function<bool(uint32_t)> filter = nullptr;
     if (invalid) {
         if (invalid->Capcity() < GetNumElements()) {
             spdlog::error("number of invalid is less than the size of index");
             return tl::unexpected(index_error::internal_error);
         }
-        filter_ = [&](uint32_t offset) -> bool { return invalid->Get(offset); };
+        filter = [&](uint32_t offset) -> bool { return invalid->Get(offset); };
     }
 
     if (!param.contains(INDEX_DISKANN)) {
@@ -385,6 +392,15 @@ DiskANN::RangeSearch(const Dataset& query,
         return tl::unexpected(index_error::invalid_parameter);
     }
 
+    bool reorder = param[INDEX_DISKANN].contains(DISKANN_PARAMETER_REORDER) &&
+                   param[INDEX_DISKANN][DISKANN_PARAMETER_REORDER];
+
+    int64_t io_limit = param[INDEX_DISKANN][DISKANN_PARAMETER_IO_LIMIT];
+    io_limit = std::min(MAX_IO_LIMIT, io_limit);
+    if (reorder && preload_) {
+        io_limit = std::min((int64_t)Option::Instance().GetSectorSize(), io_limit);
+    }
+
     beam_search = std::min(beam_search, MAXIMAL_BEAM_SEARCH);
     beam_search = std::max(beam_search, MINIMAL_BEAM_SEARCH);
 
@@ -402,7 +418,9 @@ DiskANN::RangeSearch(const Dataset& query,
                                  labels,
                                  range_distances,
                                  beam_search,
-                                 filter_,
+                                 io_limit,
+                                 reorder,
+                                 filter,
                                  preload_,
                                  &query_stats);
         }
@@ -488,6 +506,7 @@ DiskANN::Deserialize(const BinarySet& binary_set) {
 
         reader_.reset(new LocalFileReader(batch_read_));
         index_.reset(new diskann::PQFlashIndex<float, int64_t>(reader_, metric_));
+        index_->set_sector_size(Option::Instance().GetSectorSize());
         index_->load_from_separate_paths(
             omp_get_num_procs(), pq_pivots_stream_, disk_pq_compressed_vectors_, tag_stream_);
 
@@ -555,6 +574,7 @@ DiskANN::Deserialize(const ReaderSet& reader_set) {
         disk_layout_reader_ = reader_set.Get(DISKANN_LAYOUT_FILE);
         reader_.reset(new LocalFileReader(batch_read_));
         index_.reset(new diskann::PQFlashIndex<float, int64_t>(reader_, metric_));
+        index_->set_sector_size(Option::Instance().GetSectorSize());
         index_->load_from_separate_paths(
             omp_get_num_procs(), pq_pivots_stream, disk_pq_compressed_vectors, tag_stream);
 
