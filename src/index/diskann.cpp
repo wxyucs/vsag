@@ -117,28 +117,28 @@ tl::expected<std::vector<int64_t>, index_error>
 DiskANN::Build(const Dataset& base) {
     SlowTaskTimer t("diskann build");
 
+    auto data_dim = base.GetDim();
+    if (data_dim != dim_) {
+        LOG_ERROR_AND_RETURNS(
+            index_error_type::dimension_not_equal,
+            fmt::format("dimension not equal: base({}) index({})", data_dim, dim_));
+    }
+
     std::vector<int64_t> failed_ids;
     if (base.GetNumElements() < DATA_LIMIT) {
-        return tl::unexpected(index_error::no_enough_data);
+        LOG_ERROR_AND_RETURNS(index_error_type::no_enough_data,
+                              "failed to build index: number of elements is less than 2");
     }
 
     if (this->index_) {
-        return tl::unexpected(index_error::build_twice);
+        LOG_ERROR_AND_RETURNS(index_error_type::build_twice, "failed to build index: build twice");
     }
 
     auto vectors = base.GetFloat32Vectors();
     auto ids = base.GetIds();
     auto data_num = base.GetNumElements();
-    auto data_dim = base.GetDim();
-
-    if (data_dim != dim_) {
-        spdlog::error("dimension not equal: base(" + std::to_string(data_dim) + ") index(" +
-                      std::to_string(dim_) + ")");
-        return tl::unexpected(index_error::dimension_not_equal);
-    }
 
     std::stringstream data_stream;
-
     try {
         std::vector<size_t> failed_indexs;
         {  // build graph
@@ -181,8 +181,8 @@ DiskANN::Build(const Dataset& base) {
             graph_stream_.clear();
         }
         status_ = IndexStatus::MEMORY;
-    } catch (std::runtime_error e) {
-        return tl::unexpected(index_error::internal_error);
+    } catch (std::runtime_error& e) {
+        LOG_ERROR_AND_RETURNS(index_error_type::internal_error, "unknown error");
     }
 
     return std::move(failed_ids);
@@ -196,13 +196,13 @@ DiskANN::KnnSearch(const Dataset& query,
     SlowTaskTimer t("diskann search", 100);
     nlohmann::json param = nlohmann::json::parse(parameters);
     if (!index_) {
-        spdlog::error("failed to search: diskann index is empty");
-        return tl::unexpected(index_error::index_empty);
+        LOG_ERROR_AND_RETURNS(index_error_type::index_empty,
+                              "failed to search: diskann index is empty");
     }
 
     if (k <= 0) {
-        spdlog::error("invalid parameter: k (" + std::to_string(k) + ")");
-        return tl::unexpected(index_error::invalid_parameter);
+        LOG_ERROR_AND_RETURNS(index_error_type::invalid_parameter,
+                              fmt::format("invalid parameter: k ({})", k));
     }
 
     k = std::min(k, GetNumElements());
@@ -210,38 +210,40 @@ DiskANN::KnnSearch(const Dataset& query,
     auto query_dim = query.GetDim();
 
     if (query_dim != dim_) {
-        spdlog::error("dimension not equal: query(" + std::to_string(query_dim) + ") index(" +
-                      std::to_string(dim_) + ")");
-        return tl::unexpected(index_error::dimension_not_equal);
+        LOG_ERROR_AND_RETURNS(
+            index_error_type::dimension_not_equal,
+            fmt::format("dimension not equal: query({}) index({})", query_dim, dim_));
     }
 
     std::function<bool(uint32_t)> filter_ = nullptr;
     if (invalid) {
         if (invalid->Capcity() < GetNumElements()) {
-            spdlog::error("number of invalid is less than the size of index");
-            return tl::unexpected(index_error::internal_error);
+            LOG_ERROR_AND_RETURNS(index_error_type::internal_error,
+                                  "number of invalid is less than the size of index");
         }
         filter_ = [&](uint32_t offset) -> bool { return invalid->Get(offset); };
     }
 
     if (!param.contains(INDEX_DISKANN)) {
-        spdlog::error("missing parameter: {}", INDEX_DISKANN);
-        return tl::unexpected(index_error::invalid_parameter);
+        LOG_ERROR_AND_RETURNS(
+            index_error_type::invalid_parameter, "missing parameter: ", INDEX_DISKANN);
     }
 
     if (!param[INDEX_DISKANN].contains(DISKANN_PARAMETER_BEAM_SEARCH)) {
-        spdlog::error("missing parameter: {}", DISKANN_PARAMETER_BEAM_SEARCH);
-        return tl::unexpected(index_error::invalid_parameter);
+        LOG_ERROR_AND_RETURNS(index_error_type::invalid_parameter,
+                              "missing parameter: ",
+                              DISKANN_PARAMETER_BEAM_SEARCH);
     }
 
     if (!param[INDEX_DISKANN].contains(DISKANN_PARAMETER_IO_LIMIT)) {
-        spdlog::error("missing parameter: {}", DISKANN_PARAMETER_IO_LIMIT);
-        return tl::unexpected(index_error::invalid_parameter);
+        LOG_ERROR_AND_RETURNS(
+            index_error_type::invalid_parameter, "missing parameter: ", DISKANN_PARAMETER_IO_LIMIT);
     }
 
     if (!param[INDEX_DISKANN].contains(DISKANN_PARAMETER_EF_SEARCH)) {
-        spdlog::error("missing parameter: {}", DISKANN_PARAMETER_EF_SEARCH);
-        return tl::unexpected(index_error::invalid_parameter);
+        LOG_ERROR_AND_RETURNS(index_error_type::invalid_parameter,
+                              "missing parameter: ",
+                              DISKANN_PARAMETER_EF_SEARCH);
     }
 
     size_t beam_search = param[INDEX_DISKANN][DISKANN_PARAMETER_BEAM_SEARCH];
@@ -302,7 +304,7 @@ DiskANN::KnnSearch(const Dataset& query,
                     (query_stats[i].io_us / query_stats[i].n_ios) / MACRO_TO_MILLI);
             }
 
-        } catch (std::runtime_error e) {
+        } catch (const std::runtime_error& e) {
             spdlog::error(std::string("failed to perform knn search on diskann: ") + e.what());
         }
         //        distances[i * k] = static_cast<float>(stats->n_ios);
@@ -331,65 +333,67 @@ DiskANN::RangeSearch(const Dataset& query,
                      BitsetPtr invalid) const {
     nlohmann::json param = nlohmann::json::parse(parameters);
 
-    if (radius <= 0) {
-        spdlog::error("invalid parameter: radius (" + std::to_string(radius) + ")");
-        return tl::unexpected(index_error::invalid_parameter);
+    if (radius < 0) {
+        LOG_ERROR_AND_RETURNS(index_error_type::invalid_parameter,
+                              fmt::format("invalid parameter: radius ({})", radius));
     }
 
     int64_t query_num = query.GetNumElements();
     int64_t query_dim = query.GetDim();
 
     if (!index_) {
-        spdlog::error("failed to search: {} index is empty", INDEX_DISKANN);
-        return tl::unexpected(index_error::index_empty);
+        LOG_ERROR_AND_RETURNS(index_error_type::index_empty,
+                              fmt::format("failed to search: {} index is empty", INDEX_DISKANN));
     }
 
     if (query_dim != dim_) {
-        spdlog::error("dimension not equal: query(" + std::to_string(query_dim) + ") index(" +
-                      std::to_string(dim_) + ")");
-        return tl::unexpected(index_error::dimension_not_equal);
+        LOG_ERROR_AND_RETURNS(
+            index_error_type::dimension_not_equal,
+            fmt::format("dimension not equal: query({}) index({})", query_dim, dim_));
     }
 
     if (query_num != 1) {
-        spdlog::error("number of elements is NOT 1 in query database");
-        return tl::unexpected(index_error::internal_error);
+        LOG_ERROR_AND_RETURNS(index_error_type::internal_error,
+                              "number of elements is NOT 1 in query database");
     }
 
     std::function<bool(uint32_t)> filter = nullptr;
     if (invalid) {
         if (invalid->Capcity() < GetNumElements()) {
-            spdlog::error("number of invalid is less than the size of index");
-            return tl::unexpected(index_error::internal_error);
+            LOG_ERROR_AND_RETURNS(index_error_type::internal_error,
+                                  "number of invalid is less than the size of index");
         }
         filter = [&](uint32_t offset) -> bool { return invalid->Get(offset); };
     }
 
     if (!param.contains(INDEX_DISKANN)) {
-        spdlog::error("missing parameter: {}", INDEX_DISKANN);
-        return tl::unexpected(index_error::invalid_parameter);
+        LOG_ERROR_AND_RETURNS(
+            index_error_type::invalid_parameter, "missing parameter: ", INDEX_DISKANN);
     }
 
     if (!param[INDEX_DISKANN].contains(DISKANN_PARAMETER_BEAM_SEARCH)) {
-        spdlog::error("missing parameter: {}", DISKANN_PARAMETER_BEAM_SEARCH);
-        return tl::unexpected(index_error::invalid_parameter);
+        LOG_ERROR_AND_RETURNS(index_error_type::invalid_parameter,
+                              "missing parameter: ",
+                              DISKANN_PARAMETER_BEAM_SEARCH);
     }
 
     if (!param[INDEX_DISKANN].contains(DISKANN_PARAMETER_IO_LIMIT)) {
-        spdlog::error("missing parameter: {}", DISKANN_PARAMETER_IO_LIMIT);
-        return tl::unexpected(index_error::invalid_parameter);
+        LOG_ERROR_AND_RETURNS(
+            index_error_type::invalid_parameter, "missing parameter: ", DISKANN_PARAMETER_IO_LIMIT);
     }
 
     if (!param[INDEX_DISKANN].contains(DISKANN_PARAMETER_EF_SEARCH)) {
-        spdlog::error("missing parameter: {}", DISKANN_PARAMETER_EF_SEARCH);
-        return tl::unexpected(index_error::invalid_parameter);
+        LOG_ERROR_AND_RETURNS(index_error_type::invalid_parameter,
+                              "missing parameter: ",
+                              DISKANN_PARAMETER_EF_SEARCH);
     }
 
     size_t beam_search = param[INDEX_DISKANN][DISKANN_PARAMETER_BEAM_SEARCH];
     int64_t ef_search = param[INDEX_DISKANN][DISKANN_PARAMETER_EF_SEARCH];
 
     if (ef_search <= 0) {
-        spdlog::error("invalid parameter: {} (" + std::to_string(ef_search) + ")", ef_search);
-        return tl::unexpected(index_error::invalid_parameter);
+        LOG_ERROR_AND_RETURNS(index_error_type::invalid_parameter,
+                              fmt::format("invalid parameter: ef_search ({})", ef_search));
     }
 
     bool reorder = param[INDEX_DISKANN].contains(DISKANN_PARAMETER_REORDER) &&
@@ -459,8 +463,8 @@ DiskANN::RangeSearch(const Dataset& query,
 tl::expected<BinarySet, index_error>
 DiskANN::Serialize() const {
     if (status_ == IndexStatus::EMPTY) {
-        spdlog::error("failed to serialize: {} index is empty", INDEX_DISKANN);
-        return tl::unexpected(index_error::index_empty);
+        LOG_ERROR_AND_RETURNS(index_error_type::index_empty,
+                              fmt::format("failed to serialize: {} index is empty", INDEX_DISKANN))
     }
     SlowTaskTimer t("diskann serialize");
     try {
@@ -475,7 +479,7 @@ DiskANN::Serialize() const {
         }
         return bs;
     } catch (const std::bad_alloc& e) {
-        return tl::unexpected(index_error::no_enough_memory);
+        return tl::unexpected(index_error(index_error_type::no_enough_memory, ""));
     }
 }
 
@@ -484,8 +488,8 @@ DiskANN::Deserialize(const BinarySet& binary_set) {
     SlowTaskTimer t("diskann deserialize");
 
     if (this->index_) {
-        spdlog::error("failed to deserialize: index is not empty");
-        return tl::unexpected(index_error::index_not_empty);
+        LOG_ERROR_AND_RETURNS(index_error_type::index_not_empty,
+                              "failed to deserialize: index is not empty")
     }
 
     try {
@@ -516,8 +520,9 @@ DiskANN::Deserialize(const BinarySet& binary_set) {
                 graph_stream_.write((char*)graph.data.get(), graph.size);
                 index_->load_graph(graph_stream_);
             } else {
-                spdlog::error("missing file: {} when deserialize diskann index", DISKANN_GRAPH);
-                return tl::unexpected(index_error::missing_file);
+                LOG_ERROR_AND_RETURNS(
+                    index_error_type::missing_file,
+                    fmt::format("missing file: {} when deserialize diskann index", DISKANN_GRAPH));
             }
         } else {
             if (graph.data) {
@@ -525,9 +530,9 @@ DiskANN::Deserialize(const BinarySet& binary_set) {
             }
         }
         status_ = IndexStatus::MEMORY;
-    } catch (std::runtime_error e) {
-        spdlog::error(std::string("failed to deserialize: ") + e.what());
-        return tl::unexpected(index_error::internal_error);
+    } catch (std::runtime_error& e) {
+        LOG_ERROR_AND_RETURNS(
+            index_error_type::internal_error, "failed to deserialize: ", e.what());
     }
 
     return {};
@@ -538,8 +543,8 @@ DiskANN::Deserialize(const ReaderSet& reader_set) {
     SlowTaskTimer t("diskann deserialize");
 
     if (this->index_) {
-        spdlog::error("failed to deserialize: {} is not empty", INDEX_DISKANN);
-        return tl::unexpected(index_error::index_not_empty);
+        LOG_ERROR_AND_RETURNS(index_error_type::index_not_empty,
+                              fmt::format("failed to deserialize: {} is not empty", INDEX_DISKANN));
     }
     try {
         std::stringstream pq_pivots_stream, disk_pq_compressed_vectors, graph, tag_stream;
@@ -587,8 +592,9 @@ DiskANN::Deserialize(const ReaderSet& reader_set) {
                 graph.seekg(0);
                 index_->load_graph(graph);
             } else {
-                spdlog::error("miss file: {} when deserialize diskann index", DISKANN_GRAPH);
-                return tl::unexpected(index_error::missing_file);
+                LOG_ERROR_AND_RETURNS(
+                    index_error_type::missing_file,
+                    fmt::format("miss file: {} when deserialize diskann index", DISKANN_GRAPH));
             }
         } else {
             if (graph_reader) {
@@ -596,9 +602,8 @@ DiskANN::Deserialize(const ReaderSet& reader_set) {
             }
         }
         status_ = IndexStatus::HYBRID;
-    } catch (std::exception e) {
-        spdlog::error(std::string("failed to deserialize: ") + e.what());
-        return tl::unexpected(index_error::read_error);
+    } catch (std::exception& e) {
+        LOG_ERROR_AND_RETURNS(index_error_type::read_error, "failed to deserialize: ", e.what());
     }
 
     return {};

@@ -6,6 +6,7 @@
 #include <numeric>
 #include <random>
 
+#include "vsag/errors.h"
 #include "vsag/vsag.h"
 
 using namespace std;
@@ -23,6 +24,7 @@ TEST_CASE("Factorials are computed", "[factorial]") {
 }
 
 TEST_CASE("HNSW Float Recall", "[hnsw]") {
+    spdlog::set_level(spdlog::level::debug);
     int dim = 128;
     int max_elements = 1000;
     int M = 64;
@@ -74,7 +76,7 @@ TEST_CASE("HNSW Float Recall", "[hnsw]") {
                 correct++;
             }
             REQUIRE(result->GetDim() == k);
-        } else if (result.error() == vsag::index_error::internal_error) {
+        } else if (result.error().type == vsag::index_error_type::internal_error) {
             std::cerr << "failed to perform knn search on index" << std::endl;
         }
     }
@@ -84,6 +86,7 @@ TEST_CASE("HNSW Float Recall", "[hnsw]") {
 }
 
 TEST_CASE("HNSW IP Search", "[hnsw]") {
+    spdlog::set_level(spdlog::level::debug);
     int dim = 128;
     int max_elements = 1000;
     int M = 64;
@@ -133,7 +136,7 @@ TEST_CASE("HNSW IP Search", "[hnsw]") {
             if (result->GetIds()[0] == i) {
                 correct++;
             }
-        } else if (result.error() == vsag::index_error::internal_error) {
+        } else if (result.error().type == vsag::index_error_type::internal_error) {
             std::cerr << "failed to perform knn search on index" << std::endl;
         }
     }
@@ -143,6 +146,7 @@ TEST_CASE("HNSW IP Search", "[hnsw]") {
 }
 
 TEST_CASE("Two HNSW", "[hnsw]") {
+    spdlog::set_level(spdlog::level::debug);
     int dim = 128;
     int max_elements = 1000;
     int M = 64;
@@ -206,6 +210,7 @@ TEST_CASE("Two HNSW", "[hnsw]") {
 }
 
 TEST_CASE("HNSW build test", "[hnsw build]") {
+    spdlog::set_level(spdlog::level::debug);
     int dim = 128;
     int max_elements = 1000;
     int M = 64;
@@ -259,6 +264,7 @@ TEST_CASE("HNSW build test", "[hnsw build]") {
 }
 
 TEST_CASE("HNSW range search", "[hnsw]") {
+    spdlog::set_level(spdlog::level::debug);
     int dim = 71;
     int max_elements = 10000;
     int M = 16;
@@ -329,6 +335,7 @@ TEST_CASE("HNSW range search", "[hnsw]") {
 }
 
 TEST_CASE("HNSW filtering knn search", "[hnsw]") {
+    spdlog::set_level(spdlog::level::debug);
     int dim = 17;
     int max_elements = 1000;
     int M = 16;
@@ -392,6 +399,7 @@ TEST_CASE("HNSW filtering knn search", "[hnsw]") {
 }
 
 TEST_CASE("HNSW Filtering Test", "[hnsw]") {
+    spdlog::set_level(spdlog::level::debug);
     int dim = 17;
     int max_elements = 1000;
     int M = 16;
@@ -481,7 +489,7 @@ TEST_CASE("HNSW Filtering Test", "[hnsw]") {
             REQUIRE(result->GetDim() == 0);
             REQUIRE(result->GetDistances() == nullptr);
             REQUIRE(result->GetIds() == nullptr);
-        } else if (result.error() == vsag::index_error::internal_error) {
+        } else if (result.error().type == vsag::index_error_type::internal_error) {
             std::cerr << "failed to range search on index: internal error" << std::endl;
             exit(-1);
         }
@@ -490,7 +498,7 @@ TEST_CASE("HNSW Filtering Test", "[hnsw]") {
             REQUIRE(result->GetDim() == 0);
             REQUIRE(result->GetDistances() == nullptr);
             REQUIRE(result->GetIds() == nullptr);
-        } else if (result.error() == vsag::index_error::internal_error) {
+        } else if (result.error().type == vsag::index_error_type::internal_error) {
             std::cerr << "failed to knn search on index: internal error" << std::endl;
             exit(-1);
         }
@@ -502,7 +510,7 @@ TEST_CASE("HNSW Filtering Test", "[hnsw]") {
         if (auto result = hnsw->KnnSearch(query, k, parameters.dump(), zeros); result.has_value()) {
             correct_knn += vsag::knn_search_recall(
                 data, ids, max_elements, data + i * dim, dim, result->GetIds(), result->GetDim());
-        } else if (result.error() == vsag::index_error::internal_error) {
+        } else if (result.error().type == vsag::index_error_type::internal_error) {
             std::cerr << "failed to knn search on index: internal error" << std::endl;
             exit(-1);
         }
@@ -514,7 +522,7 @@ TEST_CASE("HNSW Filtering Test", "[hnsw]") {
                     correct_range++;
                 }
             }
-        } else if (result.error() == vsag::index_error::internal_error) {
+        } else if (result.error().type == vsag::index_error_type::internal_error) {
             std::cerr << "failed to range search on index: internal error" << std::endl;
             exit(-1);
         }
@@ -529,6 +537,7 @@ TEST_CASE("HNSW Filtering Test", "[hnsw]") {
 }
 
 TEST_CASE("HNSW small dimension", "[hnsw]") {
+    spdlog::set_level(spdlog::level::debug);
     int dim = 3;
     int max_elements = 1000;
     int M = 24;
@@ -581,7 +590,7 @@ TEST_CASE("HNSW small dimension", "[hnsw]") {
                 correct++;
             }
             REQUIRE(result->GetDim() == k);
-        } else if (result.error() == vsag::index_error::internal_error) {
+        } else if (result.error().type == vsag::index_error_type::internal_error) {
             std::cerr << "failed to perform knn search on index" << std::endl;
         }
     }
@@ -591,6 +600,7 @@ TEST_CASE("HNSW small dimension", "[hnsw]") {
 }
 
 TEST_CASE("HNSW Random Id", "[hnsw]") {
+    spdlog::set_level(spdlog::level::debug);
     int dim = 128;
     int max_elements = 1000;
     int M = 64;
@@ -664,7 +674,7 @@ TEST_CASE("HNSW Random Id", "[hnsw]") {
                 correct++;
             }
             REQUIRE(result->GetDim() == k);
-        } else if (result.error() == vsag::index_error::internal_error) {
+        } else if (result.error().type == vsag::index_error_type::internal_error) {
             std::cerr << "failed to perform knn search on index" << std::endl;
         }
     }

@@ -12,12 +12,17 @@ else
     mkdir -p "${COVERAGE_DIR}"
 fi
 
-# 安装lcov
-wget http://aivolvo-dev.cn-hangzhou-alipay-b.oss-cdn.aliyun-inc.com/tbase/tools/lcov-1.15-1.noarch.rpm -O /tmp/lcov-1.15-1.noarch.rpm
-yum -y -q install /tmp/lcov-1.15-1.noarch.rpm && rm -f /tmp/lcov-1.15-1.noarch.rpm
 # 通过lcov生成coverage info文件
-lcov -q --rc lcov_branch_coverage=1 --capture --directory . --output-file  "$ROOT_DIR/coverage_ut.info"
-lcov --remove "${ROOT_DIR}"/coverage_ut.info '*/examples/*' '*/tests/*' -o "${COVERAGE_DIR}/coverage_ut.info" --rc lcov_branch_coverage=1
+lcov -q --rc lcov_branch_coverage=1 \
+     --include '*/vsag/include/*' \
+     --include '*/vsag/src/*' \
+     --capture \
+     --directory . \
+     --output-file  "$ROOT_DIR/coverage_ut.info"
+
+lcov --remove "${ROOT_DIR}"/coverage_ut.info '*/examples/*' '*/tests/*' \
+     -o "${COVERAGE_DIR}/coverage_ut.info" \
+     --rc lcov_branch_coverage=1
 
 # 合并覆盖率文件生成最终文件coverage.info
 pushd "${COVERAGE_DIR}"
@@ -36,6 +41,8 @@ popd
 
 
 # lcov_cobertura工具对coverage.info进行处理，生成cobertura.xml
-wget http://aivolvo-dev.cn-hangzhou-alipay-b.oss-cdn.aliyun-inc.com/citools/lcov_cobertura.py
-python lcov_cobertura.py  $ROOT_DIR/testresult/coverage/coverage.info --output $ROOT_DIR/testresult/coverage/cobertura.xml --demangle
+wget http://aivolvo-dev.cn-hangzhou-alipay-b.oss-cdn.aliyun-inc.com/citools/lcov_cobertura.py -O lcov_cobertura.py
+python lcov_cobertura.py  $ROOT_DIR/testresult/coverage/coverage.info \
+       --output $ROOT_DIR/testresult/coverage/cobertura.xml \
+       --demangle
 ls -al $ROOT_DIR/testresult/coverage

@@ -64,6 +64,7 @@ vsag_build_ut_cov:
           # compile
           export PATH=/usr/lib/ccache:$PATH
           export GTEST_OUTPUT="xml:$(pwd)/vsag/testresult/gtest/"
+          bash scripts/deps/install_deps_centos.sh
           make test_cov
           bash scripts/aci/collect_cpp_coverage.sh
     - plugin: coverage-client-upload-compass

@@ -3,6 +3,10 @@ CMAKE_GENERATOR ?= "Unix Makefiles"
 CMAKE_INSTALL_PRECIX ?= "/usr/local/"
 VSAG_CMAKE_ARGS = -DCMAKE_EXPORT_COMPILE_COMMANDS=1 -DCMAKE_INSTALL_PREFIX=${CMAKE_INSTALL_PREFIX} -DENABLE_TESTS=1 -DENABLE_PYBINDS=1 -G ${CMAKE_GENERATOR} -S. -Bbuild
 COMPILE_JOBS ?= 4
+UT_FILTER = ""
+ifdef CASE
+  UT_FILTER = $(CASE)
+endif
 
 .PHONY: help
 help:                   ## Show the help.
@@ -34,8 +38,8 @@ fmt:                    ## Format codes.
 test:                   ## Build and run unit tests.
 	cmake ${VSAG_CMAKE_ARGS} -DCMAKE_BUILD_TYPE=Debug -DENABLE_CCACHE=ON
 	cmake --build build --parallel ${COMPILE_JOBS}
-	./build/tests -d yes
-	./build/mockimpl/tests_mockimpl -d yes
+	./build/tests -d yes ${UT_FILTER}
+	./build/mockimpl/tests_mockimpl -d yes ${UT_FILTER}
 
 .PHONY: test_asan
 test_asan:              ## Build and run unit tests with AddressSanitizer option.
@@ -50,6 +54,8 @@ test_cov:               ## Build and run unit tests with code coverage enabled.
 	cmake --build build --parallel ${COMPILE_JOBS}
 	./build/tests -d yes
 	./build/mockimpl/tests_mockimpl -d yes
+	bash scripts/aci/collect_cpp_coverage.sh
+	genhtml --output-directory testresult/coverage/html testresult/coverage/coverage.info
 
 .PHONY: benchmark
 benchmark:              ## Run benchmarks.

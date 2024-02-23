@@ -74,6 +74,7 @@ include(extern/diskann/diskann.cmake)
 include(extern/spdlog/spdlog.cmake)
 include(extern/catch2/catch2.cmake)
 include(extern/cpuinfo/cpuinfo.cmake)
+include(extern/fmt/fmt.cmake)
 
 include_directories(extern/hnswlib)
 include_directories(extern/faiss)
@@ -84,9 +85,10 @@ add_subdirectory (src/simd)
 
 file (GLOB CPP_SRCS "src/*.cpp")
 file (GLOB CPP_INDEX_SRCS "src/index/*.cpp")
-# set_source_files_properties(src/index/hnsw.cpp PROPERTIES COMPILE_FLAGS "-mavx512f -mavx512dq -mavx512bw -mavx512vl -mavx2 -mavx -msse")
+list (FILTER CPP_SRCS EXCLUDE REGEX "_test.cpp")
+list (FILTER CPP_INDEX_SRCS EXCLUDE REGEX "_test.cpp")
 add_library (vsag SHARED ${CPP_SRCS} ${CPP_INDEX_SRCS})
-target_link_libraries (vsag diskann pthread m dl simd)
+target_link_libraries (vsag diskann pthread m dl simd fmt::fmt-header-only)
 add_dependencies(vsag spdlog)
 
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++17 -fPIC -Werror=suggest-override")
@@ -103,7 +105,9 @@ message("CPU ARCH: ${CMAKE_HOST_SYSTEM_PROCESSOR}")
 add_subdirectory (examples/cpp)
 
 if (ENABLE_TESTS)
+    file (GLOB_RECURSE SRC_TESTS "src/*_test.cpp")
     add_executable (tests
+	${SRC_TESTS}
 	tests/test_json.cpp
 	tests/test_log.cpp
 	tests/test_hnsw.cpp

@@ -17,7 +17,7 @@ tl::expected<std::shared_ptr<Index>, index_error>
 Factory::CreateIndex(const std::string& name, const std::string& parameters) {
     nlohmann::json params = nlohmann::json::parse(parameters);
     if (not params.contains(PARAMETER_METRIC_TYPE) and not params.contains(PARAMETER_DIM)) {
-        return tl::unexpected(index_error::invalid_parameter);
+        return tl::unexpected(index_error(index_error_type::invalid_parameter, ""));
     }
     return std::make_shared<SimpleFlat>(params[PARAMETER_METRIC_TYPE], params[PARAMETER_DIM]);
 }

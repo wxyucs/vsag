@@ -1,0 +1,321 @@
+#include "diskann.h"
+
+#include <catch2/catch_test_macros.hpp>
+#include <nlohmann/json.hpp>
+#include <tuple>
+#include <vector>
+
+#include "distance.h"
+#include "vsag/errors.h"
+
+namespace {
+std::tuple<std::vector<int64_t>, std::vector<float>>
+generate_ids_and_vectors(int64_t num_elements, int64_t dim) {
+    // Generate random data
+    std::mt19937 rng;
+    rng.seed(47);
+    std::uniform_real_distribution<> distrib_real;
+    std::vector<int64_t> ids(num_elements);
+    std::vector<float> vectors(dim * num_elements);
+    for (int64_t i = 0; i < num_elements; ++i) {
+        ids[i] = i;
+    }
+    for (int64_t i = 0; i < dim * num_elements; ++i) {
+        vectors[i] = distrib_real(rng);
+    }
+    return {ids, vectors};
+}
+};  // namespace
+
+TEST_CASE("build", "[diskann][ut]") {
+    spdlog::set_level(spdlog::level::debug);
+    int64_t dim = 128;
+    int64_t L = 100;
+    int64_t R = 12;
+    float p_val = 1.0f;
+    size_t disk_pq_dims = 128;
+    auto index = std::make_shared<vsag::DiskANN>(
+        diskann::Metric::L2, "float32", L, R, p_val, disk_pq_dims, dim, false, false);
+
+    int64_t num_elements = 10;
+    auto [ids, vectors] = generate_ids_and_vectors(num_elements, dim);
+
+    SECTION("build with incorrect dim") {
+        int64_t incorrect_dim = dim - 1;
+        vsag::Dataset dataset;
+        dataset.Dim(incorrect_dim)
+            .NumElements(num_elements)
+            .Ids(ids.data())
+            .Float32Vectors(vectors.data())
+            .Owner(false);
+        auto result = index->Build(dataset);
+        REQUIRE_FALSE(result.has_value());
+        REQUIRE(result.error().type == vsag::index_error_type::dimension_not_equal);
+    }
+
+    SECTION("number of elements less than 2") {
+        vsag::Dataset dataset;
+        dataset.Dim(dim).NumElements(1).Ids(ids.data()).Float32Vectors(vectors.data()).Owner(false);
+        auto result = index->Build(dataset);
+        REQUIRE_FALSE(result.has_value());
+        REQUIRE(result.error().type == vsag::index_error_type::no_enough_data);
+    }
+
+    SECTION("build twice") {
+        vsag::Dataset dataset;
+        dataset.Dim(dim)
+            .NumElements(10)
+            .Ids(ids.data())
+            .Float32Vectors(vectors.data())
+            .Owner(false);
+        REQUIRE(index->Build(dataset).has_value());
+
+        auto result = index->Build(dataset);
+        REQUIRE_FALSE(result.has_value());
+        REQUIRE(result.error().type == vsag::index_error_type::build_twice);
+    }
+}
+
+TEST_CASE("knn_search", "[diskann][ut]") {
+    spdlog::set_level(spdlog::level::debug);
+    int64_t dim = 128;
+    int64_t L = 100;
+    int64_t R = 12;
+    float p_val = 1.0f;
+    size_t disk_pq_dims = 128;
+    auto index = std::make_shared<vsag::DiskANN>(
+        diskann::Metric::L2, "float32", L, R, p_val, disk_pq_dims, dim, false, false);
+
+    int64_t num_elements = 100;
+    auto [ids, vectors] = generate_ids_and_vectors(num_elements, dim);
+
+    vsag::Dataset dataset;
+    dataset.Dim(dim)
+        .NumElements(num_elements)
+        .Ids(ids.data())
+        .Float32Vectors(vectors.data())
+        .Owner(false);
+    auto result = index->Build(dataset);
+    REQUIRE(result.has_value());
+
+    vsag::Dataset query;
+    query.Dim(dim).NumElements(1).Ids(ids.data()).Float32Vectors(vectors.data()).Owner(false);
+    int64_t k = 10;
+    nlohmann::json params{{"diskann", {{"ef_search", 100}, {"beam_search", 4}, {"io_limit", 200}}}};
+
+    SECTION("index empty") {
+        auto empty_index = std::make_shared<vsag::DiskANN>(
+            diskann::Metric::L2, "float32", L, R, p_val, disk_pq_dims, dim, false, false);
+        auto result = empty_index->KnnSearch(query, k, params.dump());
+        REQUIRE_FALSE(result.has_value());
+        REQUIRE(result.error().type == vsag::index_error_type::index_empty);
+    }
+
+    SECTION("invalid parameters k is 0") {
+        auto result = index->KnnSearch(query, 0, params.dump());
+        REQUIRE_FALSE(result.has_value());
+        REQUIRE(result.error().type == vsag::index_error_type::invalid_parameter);
+    }
+
+    SECTION("invalid parameters k less than 0") {
+        auto result = index->KnnSearch(query, -1, params.dump());
+        REQUIRE_FALSE(result.has_value());
+        REQUIRE(result.error().type == vsag::index_error_type::invalid_parameter);
+    }
+
+    SECTION("dimension not equal") {
+        vsag::Dataset query;
+        query.NumElements(1).Dim(dim - 1).Float32Vectors(vectors.data()).Owner(false);
+        auto result = index->KnnSearch(query, k, params.dump());
+        REQUIRE_FALSE(result.has_value());
+        REQUIRE(result.error().type == vsag::index_error_type::dimension_not_equal);
+    }
+
+    SECTION("invalid bitset length is less than the size of index") {
+        auto invalid_bitset = std::make_shared<vsag::Bitset>(1);
+        auto result = index->KnnSearch(query, k, params.dump(), invalid_bitset);
+        REQUIRE_FALSE(result.has_value());
+        REQUIRE(result.error().type == vsag::index_error_type::internal_error);
+    }
+
+    SECTION("invalid parameters diskann not found") {
+        nlohmann::json invalid_params{};
+        auto result = index->KnnSearch(query, k, invalid_params.dump());
+        REQUIRE_FALSE(result.has_value());
+        REQUIRE(result.error().type == vsag::index_error_type::invalid_parameter);
+    }
+
+    SECTION("invalid parameters beam_search not found") {
+        nlohmann::json invalid_params{{"diskann", {{"ef_search", 100}, {"io_limit", 200}}}};
+
+        auto result = index->KnnSearch(query, k, invalid_params.dump());
+        REQUIRE_FALSE(result.has_value());
+        REQUIRE(result.error().type == vsag::index_error_type::invalid_parameter);
+    }
+
+    SECTION("invalid parameters io_limit not found") {
+        nlohmann::json invalid_params{{"diskann", {{"ef_search", 100}, {"beam_search", 4}}}};
+
+        auto result = index->KnnSearch(query, k, invalid_params.dump());
+        REQUIRE_FALSE(result.has_value());
+        REQUIRE(result.error().type == vsag::index_error_type::invalid_parameter);
+    }
+
+    SECTION("invalid parameters ef_search not found") {
+        nlohmann::json invalid_params{{"diskann", {{"beam_search", 4}, {"io_limit", 200}}}};
+
+        auto result = index->KnnSearch(query, k, invalid_params.dump());
+        REQUIRE_FALSE(result.has_value());
+        REQUIRE(result.error().type == vsag::index_error_type::invalid_parameter);
+    }
+}
+
+TEST_CASE("range_search", "[diskann][ut]") {
+    spdlog::set_level(spdlog::level::debug);
+    int64_t dim = 128;
+    int64_t L = 100;
+    int64_t R = 12;
+    float p_val = 1.0f;
+    size_t disk_pq_dims = 128;
+    auto index = std::make_shared<vsag::DiskANN>(
+        diskann::Metric::L2, "float32", L, R, p_val, disk_pq_dims, dim, false, false);
+
+    int64_t num_elements = 100;
+    auto [ids, vectors] = generate_ids_and_vectors(num_elements, dim);
+
+    vsag::Dataset dataset;
+    dataset.Dim(dim)
+        .NumElements(num_elements)
+        .Ids(ids.data())
+        .Float32Vectors(vectors.data())
+        .Owner(false);
+    auto result = index->Build(dataset);
+    REQUIRE(result.has_value());
+
+    vsag::Dataset query;
+    query.Dim(dim).NumElements(1).Ids(ids.data()).Float32Vectors(vectors.data()).Owner(false);
+    float radius = 9.9f;
+    nlohmann::json params{{"diskann", {{"ef_search", 100}, {"beam_search", 4}, {"io_limit", 200}}}};
+
+    SECTION("index empty") {
+        auto empty_index = std::make_shared<vsag::DiskANN>(
+            diskann::Metric::L2, "float32", L, R, p_val, disk_pq_dims, dim, false, false);
+        auto result = empty_index->RangeSearch(query, radius, params.dump());
+        REQUIRE_FALSE(result.has_value());
+        REQUIRE(result.error().type == vsag::index_error_type::index_empty);
+    }
+
+    SECTION("invalid parameter radius equals to 0") {
+        vsag::Dataset query;
+        query.NumElements(1).Dim(dim).Float32Vectors(vectors.data()).Owner(false);
+        auto result = index->RangeSearch(query, 0, params.dump());
+        REQUIRE(result.has_value());
+    }
+
+    SECTION("invalid parameter radius less than 0") {
+        vsag::Dataset query;
+        query.NumElements(1).Dim(dim).Float32Vectors(vectors.data()).Owner(false);
+        auto result = index->RangeSearch(query, -1, params.dump());
+        REQUIRE_FALSE(result.has_value());
+        REQUIRE(result.error().type == vsag::index_error_type::invalid_parameter);
+    }
+
+    SECTION("dimension not equal") {
+        vsag::Dataset query;
+        query.NumElements(1).Dim(dim - 1).Float32Vectors(vectors.data()).Owner(false);
+        auto result = index->RangeSearch(query, radius, params.dump());
+        REQUIRE_FALSE(result.has_value());
+        REQUIRE(result.error().type == vsag::index_error_type::dimension_not_equal);
+    }
+
+    SECTION("query length is not 1") {
+        vsag::Dataset query;
+        query.NumElements(2).Dim(dim).Float32Vectors(vectors.data()).Owner(false);
+        auto result = index->RangeSearch(query, radius, params.dump());
+        REQUIRE_FALSE(result.has_value());
+        REQUIRE(result.error().type == vsag::index_error_type::internal_error);
+    }
+
+    SECTION("invalid bitset length is less than the size of index") {
+        auto invalid_bitset = std::make_shared<vsag::Bitset>(1);
+        auto result = index->RangeSearch(query, radius, params.dump(), invalid_bitset);
+        REQUIRE_FALSE(result.has_value());
+        REQUIRE(result.error().type == vsag::index_error_type::internal_error);
+    }
+
+    SECTION("invalid parameters diskann not found") {
+        nlohmann::json invalid_params{};
+        auto result = index->RangeSearch(query, radius, invalid_params.dump());
+        REQUIRE_FALSE(result.has_value());
+        REQUIRE(result.error().type == vsag::index_error_type::invalid_parameter);
+    }
+
+    SECTION("invalid parameters beam_search not found") {
+        nlohmann::json invalid_params{{"diskann", {{"ef_search", 100}, {"io_limit", 200}}}};
+
+        auto result = index->RangeSearch(query, radius, invalid_params.dump());
+        REQUIRE_FALSE(result.has_value());
+        REQUIRE(result.error().type == vsag::index_error_type::invalid_parameter);
+    }
+
+    SECTION("invalid parameters io_limit not found") {
+        nlohmann::json invalid_params{{"diskann", {{"ef_search", 100}, {"beam_search", 4}}}};
+
+        auto result = index->RangeSearch(query, radius, invalid_params.dump());
+        REQUIRE_FALSE(result.has_value());
+        REQUIRE(result.error().type == vsag::index_error_type::invalid_parameter);
+    }
+
+    SECTION("invalid parameters ef_search not found") {
+        nlohmann::json invalid_params{{"diskann", {{"beam_search", 4}, {"io_limit", 200}}}};
+
+        auto result = index->RangeSearch(query, radius, invalid_params.dump());
+        REQUIRE_FALSE(result.has_value());
+        REQUIRE(result.error().type == vsag::index_error_type::invalid_parameter);
+    }
+}
+
+TEST_CASE("serialize empty index", "[diskann][ut]") {
+    spdlog::set_level(spdlog::level::debug);
+    int64_t dim = 128;
+    int64_t L = 100;
+    int64_t R = 12;
+    float p_val = 1.0f;
+    size_t disk_pq_dims = 128;
+    auto index = std::make_shared<vsag::DiskANN>(
+        diskann::Metric::L2, "float32", L, R, p_val, disk_pq_dims, dim, false, false);
+
+    auto result = index->Serialize();
+    REQUIRE_FALSE(result.has_value());
+    REQUIRE(result.error().type == vsag::index_error_type::index_empty);
+}
+
+TEST_CASE("deserialize on not empty index", "[diskann][ut]") {
+    spdlog::set_level(spdlog::level::debug);
+    int64_t dim = 128;
+    int64_t L = 100;
+    int64_t R = 12;
+    float p_val = 1.0f;
+    size_t disk_pq_dims = 128;
+    auto index = std::make_shared<vsag::DiskANN>(
+        diskann::Metric::L2, "float32", L, R, p_val, disk_pq_dims, dim, false, false);
+
+    int64_t num_elements = 100;
+    auto [ids, vectors] = generate_ids_and_vectors(num_elements, dim);
+
+    vsag::Dataset dataset;
+    dataset.Dim(dim)
+        .NumElements(num_elements)
+        .Ids(ids.data())
+        .Float32Vectors(vectors.data())
+        .Owner(false);
+    auto result = index->Build(dataset);
+    REQUIRE(result.has_value());
+
+    auto binary_set = index->Serialize();
+    REQUIRE(binary_set.has_value());
+
+    auto voidresult = index->Deserialize(binary_set.value());
+    REQUIRE_FALSE(voidresult.has_value());
+    REQUIRE(voidresult.error().type == vsag::index_error_type::index_not_empty);
+}

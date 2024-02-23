@@ -2,6 +2,8 @@
 
 #include "vsag/factory.h"
 
+#include <fmt/format-inl.h>
+
 #include <cstdint>
 #include <fstream>
 #include <ios>
@@ -14,6 +16,7 @@
 
 #include "index/diskann.h"
 #include "index/hnsw.h"
+#include "vsag/errors.h"
 
 namespace vsag {
 bool
@@ -21,12 +24,12 @@ case_insensitive_char_compare(char a, char b) {
     return std::tolower(a) == std::tolower(b);
 }
 
-index_error
+index_error_type
 convert_index_error(const char* message) {
     if (std::strcmp(MESSAGE_PARAMETER, message) == 0) {
-        return index_error::invalid_parameter;
+        return index_error_type::invalid_parameter;
     } else {
-        return index_error::unexpected_error;
+        return index_error_type::unexpected_error;
     }
 }
 
@@ -35,18 +38,18 @@ Factory::CreateIndex(const std::string& name, const std::string& parameters) {
     nlohmann::json params = nlohmann::json::parse(parameters);
 
     if (params[PARAMETER_DTYPE] != DATATYPE_FLOAT32) {
-        spdlog::error("only support {}", DATATYPE_FLOAT32);
-        return tl::unexpected(index_error::invalid_parameter);
+        LOG_ERROR_AND_RETURNS(
+            index_error_type::invalid_parameter, "only support ", DATATYPE_FLOAT32);
     }
 
     if (!params.contains(PARAMETER_DIM)) {
-        spdlog::error("missing parameter: {}", PARAMETER_DIM);
-        return tl::unexpected(index_error::invalid_parameter);
+        LOG_ERROR_AND_RETURNS(
+            index_error_type::invalid_parameter, "missing parameter: ", PARAMETER_DIM);
     }
     if (std::equal(name.begin(), name.end(), INDEX_HNSW, case_insensitive_char_compare)) {
         if (not params.contains(INDEX_HNSW)) {
-            spdlog::error("{} not found in parameters", INDEX_HNSW);
-            return tl::unexpected(index_error::invalid_parameter);
+            LOG_ERROR_AND_RETURNS(index_error_type::invalid_parameter,
+                                  fmt::format("{} not found in parameters", INDEX_HNSW));
         }
         std::shared_ptr<hnswlib::SpaceInterface> space = nullptr;
         if (params[PARAMETER_METRIC_TYPE] == METRIC_L2) {
@@ -55,8 +58,9 @@ Factory::CreateIndex(const std::string& name, const std::string& parameters) {
             space = std::make_shared<hnswlib::InnerProductSpace>(params[PARAMETER_DIM]);
         } else {
             std::string metric = params[PARAMETER_METRIC_TYPE];
-            spdlog::error("{} not support this metric: {}", INDEX_HNSW, metric);
-            return tl::unexpected(index_error::invalid_parameter);
+            LOG_ERROR_AND_RETURNS(
+                index_error_type::invalid_parameter,
+                fmt::format("{} not support this metric: {}", INDEX_HNSW, metric));
         }
         std::shared_ptr<HNSW> index;
         try {
@@ -64,14 +68,14 @@ Factory::CreateIndex(const std::string& name, const std::string& parameters) {
                                            params[INDEX_HNSW][HNSW_PARAMETER_M],
                                            params[INDEX_HNSW][HNSW_PARAMETER_CONSTRUCTION]);
         } catch (std::runtime_error e) {
-            spdlog::error("create {} index faild: {}", INDEX_HNSW, e.what());
-            return tl::unexpected(convert_index_error(e.what()));
+            LOG_ERROR_AND_RETURNS(convert_index_error(e.what()),
+                                  fmt::format("create {} index faild: {}", INDEX_HNSW, e.what()));
         }
         return index;
     } else if (std::equal(name.begin(), name.end(), INDEX_DISKANN, case_insensitive_char_compare)) {
         if (not params.contains(INDEX_DISKANN)) {
-            spdlog::error("{} not found in parameters", INDEX_DISKANN);
-            return tl::unexpected(index_error::invalid_parameter);
+            LOG_ERROR_AND_RETURNS(index_error_type::invalid_parameter,
+                                  fmt::format("{} not found in parameters", INDEX_DISKANN));
         }
         diskann::Metric metric;
         if (params[PARAMETER_METRIC_TYPE] == METRIC_L2) {
@@ -80,8 +84,9 @@ Factory::CreateIndex(const std::string& name, const std::string& parameters) {
             metric = diskann::Metric::INNER_PRODUCT;
         } else {
             std::string metric = params[PARAMETER_METRIC_TYPE];
-            spdlog::error("{} not support this metric: {}", INDEX_DISKANN, metric);
-            return tl::unexpected(index_error::invalid_parameter);
+            LOG_ERROR_AND_RETURNS(
+                index_error_type::invalid_parameter,
+                fmt::format("{} not support this metric: {}", INDEX_DISKANN, metric));
         }
 
         bool preload = false;
@@ -103,14 +108,14 @@ Factory::CreateIndex(const std::string& name, const std::string& parameters) {
                                               params[PARAMETER_DIM],
                                               preload,
                                               use_reference);
-        } catch (std::runtime_error e) {
-            spdlog::error("create {} index faild: {}", INDEX_DISKANN, e.what());
-            return tl::unexpected(convert_index_error(e.what()));
+        } catch (std::runtime_error& e) {
+            LOG_ERROR_AND_RETURNS(
+                convert_index_error(e.what()),
+                fmt::format("create {} index faild: {}", INDEX_DISKANN, e.what()));
         }
         return index;
     } else {
-        spdlog::error("no support this index: {}", name);
-        return tl::unexpected(index_error::invalid_index);
+        LOG_ERROR_AND_RETURNS(index_error_type::invalid_index, "no support this index: ", name);
     }
 }
 

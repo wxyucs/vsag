@@ -55,7 +55,7 @@ TEST_CASE("index params", "[factory]") {
             if (result->GetIds()[0] == i) {
                 correct++;
             }
-        } else if (result.error() == vsag::index_error::internal_error) {
+        } else if (result.error().type == vsag::index_error_type::internal_error) {
             std::cerr << "failed to search on index: internal error" << std::endl;
         }
     }
