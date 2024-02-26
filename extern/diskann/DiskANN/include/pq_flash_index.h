@@ -24,8 +24,7 @@ namespace diskann
 template <typename T, typename LabelT = uint32_t> class PQFlashIndex
 {
   public:
-    DISKANN_DLLEXPORT PQFlashIndex(std::shared_ptr<AlignedFileReader> &fileReader,
-                                   diskann::Metric metric = diskann::Metric::L2);
+    DISKANN_DLLEXPORT PQFlashIndex(std::shared_ptr<AlignedFileReader> &fileReader, diskann::Metric m, size_t len);
     DISKANN_DLLEXPORT ~PQFlashIndex();
 
 #ifdef EXEC_ENV_OLS
@@ -120,6 +119,8 @@ template <typename T, typename LabelT = uint32_t> class PQFlashIndex
     // offset in sector: [(i % nnodes_per_sector) * max_node_len]
     // nnbrs of node `i`: *(unsigned*) (buf)
     // nbrs of node `i`: ((unsigned*)buf) + 1
+    size_t sector_len = 4096 * 8;
+
 
     uint64_t max_node_len = 0, nnodes_per_sector = 0, max_degree = 0;
 

@@ -32,10 +32,8 @@ TEST_CASE("HNSW Float Recall", "[hnsw]") {
     int ef_runtime = 200;
     // Initing index
     nlohmann::json hnsw_parameters{
-        {"max_elements", max_elements},
         {"M", M},
         {"ef_construction", ef_construction},
-        {"ef_runtime", ef_runtime},
     };
     nlohmann::json index_parameters{
         {"dtype", "float32"}, {"metric_type", "l2"}, {"dim", dim}, {"hnsw", hnsw_parameters}};
@@ -94,10 +92,8 @@ TEST_CASE("HNSW IP Search", "[hnsw]") {
     int ef_runtime = 200;
     // Initing index
     nlohmann::json hnsw_parameters{
-        {"max_elements", max_elements},
         {"M", M},
         {"ef_construction", ef_construction},
-        {"ef_runtime", ef_runtime},
     };
     nlohmann::json index_parameters{
         {"dtype", "float32"}, {"metric_type", "ip"}, {"dim", dim}, {"hnsw", hnsw_parameters}};
@@ -154,7 +150,6 @@ TEST_CASE("Two HNSW", "[hnsw]") {
     int ef_runtime = 200;
     // Initing index
     nlohmann::json hnsw_parameters{
-        {"max_elements", max_elements},
         {"M", M},
         {"ef_construction", ef_construction},
     };
@@ -218,10 +213,8 @@ TEST_CASE("HNSW build test", "[hnsw build]") {
     int ef_runtime = 200;
     // Initing index
     nlohmann::json hnsw_parameters{
-        {"max_elements", 0},
         {"M", M},
         {"ef_construction", ef_construction},
-        {"ef_runtime", ef_runtime},
     };
     nlohmann::json index_parameters{
         {"dtype", "float32"}, {"metric_type", "l2"}, {"dim", dim}, {"hnsw", hnsw_parameters}};
@@ -272,10 +265,8 @@ TEST_CASE("HNSW range search", "[hnsw]") {
     int ef_runtime = 100;
     // Initing index
     nlohmann::json hnsw_parameters{
-        {"max_elements", max_elements},
         {"M", M},
         {"ef_construction", ef_construction},
-        {"ef_runtime", ef_runtime},
     };
     nlohmann::json index_parameters{
         {"dtype", "float32"}, {"metric_type", "l2"}, {"dim", dim}, {"hnsw", hnsw_parameters}};
@@ -343,10 +334,8 @@ TEST_CASE("HNSW filtering knn search", "[hnsw]") {
     int ef_runtime = 100;
     // Initing index
     nlohmann::json hnsw_parameters{
-        {"max_elements", max_elements},
         {"M", M},
         {"ef_construction", ef_construction},
-        {"ef_runtime", ef_runtime},
     };
     nlohmann::json index_parameters{
         {"dtype", "float32"}, {"metric_type", "l2"}, {"dim", dim}, {"hnsw", hnsw_parameters}};
@@ -407,10 +396,8 @@ TEST_CASE("HNSW Filtering Test", "[hnsw]") {
     int ef_runtime = 1000;
     // Initing index
     nlohmann::json hnsw_parameters{
-        {"max_elements", max_elements},
         {"M", M},
         {"ef_construction", ef_construction},
-        {"ef_runtime", ef_runtime},
     };
     nlohmann::json index_parameters{
         {"dtype", "float32"}, {"metric_type", "l2"}, {"dim", dim}, {"hnsw", hnsw_parameters}};
@@ -545,10 +532,8 @@ TEST_CASE("HNSW small dimension", "[hnsw]") {
     int ef_runtime = 100;
     // Initing index
     nlohmann::json hnsw_parameters{
-        {"max_elements", max_elements},
         {"M", M},
         {"ef_construction", ef_construction},
-        {"ef_runtime", ef_runtime},
     };
     nlohmann::json index_parameters{
         {"dtype", "float32"}, {"metric_type", "l2"}, {"dim", dim}, {"hnsw", hnsw_parameters}};
@@ -608,10 +593,8 @@ TEST_CASE("HNSW Random Id", "[hnsw]") {
     int ef_runtime = 200;
     // Initing index
     nlohmann::json hnsw_parameters{
-        {"max_elements", max_elements},
         {"M", M},
         {"ef_construction", ef_construction},
-        {"ef_runtime", ef_runtime},
     };
     nlohmann::json index_parameters{
         {"dtype", "float32"}, {"metric_type", "l2"}, {"dim", dim}, {"hnsw", hnsw_parameters}};

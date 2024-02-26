@@ -46,10 +46,8 @@ float_hnsw() {
     //   }
     // }
     nlohmann::json hnsw_parameters{
-        {"max_elements", max_elements},
         {"M", M},
         {"ef_construction", ef_construction},
-        {"ef_runtime", ef_runtime},
     };
     nlohmann::json index_parameters{
         {"dtype", "float32"}, {"metric_type", "l2"}, {"dim", dim}, {"hnsw", hnsw_parameters}};

@@ -43,8 +43,8 @@ namespace diskann
 {
 
 template <typename T, typename LabelT>
-PQFlashIndex<T, LabelT>::PQFlashIndex(std::shared_ptr<AlignedFileReader> &fileReader, diskann::Metric m)
-    : reader(fileReader), metric(m), thread_data(nullptr)
+PQFlashIndex<T, LabelT>::PQFlashIndex(std::shared_ptr<AlignedFileReader> &fileReader, diskann::Metric m, size_t sector_len)
+    : reader(fileReader), metric(m), thread_data(nullptr), sector_len(sector_len)
 {
     if (m == diskann::Metric::COSINE || m == diskann::Metric::INNER_PRODUCT)
     {
@@ -123,7 +123,7 @@ void PQFlashIndex<T, LabelT>::setup_thread_data(uint64_t nthreads, uint64_t visi
     {
 #pragma omp critical
         {
-            SSDThreadData<T> *data = new SSDThreadData<T>(this->aligned_dim, visited_reserve, sector_size);
+            SSDThreadData<T> *data = new SSDThreadData<T>(this->aligned_dim, visited_reserve, sector_size, sector_len);
             this->reader->register_thread();
             data->ctx = this->reader->get_ctx();
             this->thread_data.push(data);
@@ -464,11 +464,11 @@ template <typename T, typename LabelT> void PQFlashIndex<T, LabelT>::use_medoids
         auto medoid = medoids[cur_m];
         // read medoid nhood
         char *medoid_buf = nullptr;
-        alloc_aligned((void **)&medoid_buf, SECTOR_LEN, SECTOR_LEN);
+        alloc_aligned((void **)&medoid_buf, sector_len, sector_len);
         std::vector<AlignedRead> medoid_read(1);
-        medoid_read[0].len = SECTOR_LEN;
+        medoid_read[0].len = sector_len;
         medoid_read[0].buf = medoid_buf;
-        medoid_read[0].offset = NODE_SECTOR_NO(medoid) * SECTOR_LEN;
+        medoid_read[0].offset = NODE_SECTOR_NO(medoid) * sector_len;
         reader->read(medoid_read, ctx);
 
         // all data about medoid
@@ -1676,10 +1676,10 @@ int64_t PQFlashIndex<T, LabelT>::cached_beam_search(const T *query1, const uint6
                 auto id = frontier[i];
                 std::pair<uint32_t, char *> fnhood;
                 fnhood.first = id;
-                fnhood.second = sector_scratch + sector_scratch_idx * SECTOR_LEN;
+                fnhood.second = sector_scratch + sector_scratch_idx * sector_len;
                 sector_scratch_idx++;
                 frontier_nhoods.push_back(fnhood);
-                frontier_read_reqs.emplace_back(NODE_SECTOR_NO(((size_t)id)) * SECTOR_LEN, SECTOR_LEN, fnhood.second);
+                frontier_read_reqs.emplace_back(NODE_SECTOR_NO(((size_t)id)) * sector_len, sector_len, fnhood.second);
                 if (stats != nullptr)
                 {
                     stats->n_4k++;
@@ -1832,54 +1832,6 @@ int64_t PQFlashIndex<T, LabelT>::cached_beam_search(const T *query1, const uint6
 
     // re-sort by distance
     std::sort(full_retset.begin(), full_retset.end());
-
-    if (use_reorder_data)
-    {
-        if (!(this->reorder_data_exists))
-        {
-            throw ANNException("Requested use of reordering data which does "
-                               "not exist in index "
-                               "file",
-                               -1, __FUNCSIG__, __FILE__, __LINE__);
-        }
-
-        std::vector<AlignedRead> vec_read_reqs;
-
-        if (full_retset.size() > k_search * FULL_PRECISION_REORDER_MULTIPLIER)
-            full_retset.erase(full_retset.begin() + k_search * FULL_PRECISION_REORDER_MULTIPLIER, full_retset.end());
-
-        for (size_t i = 0; i < full_retset.size(); ++i)
-        {
-            vec_read_reqs.emplace_back(VECTOR_SECTOR_NO(((size_t)full_retset[i].id)) * SECTOR_LEN, SECTOR_LEN,
-                                       sector_scratch + i * SECTOR_LEN);
-
-            if (stats != nullptr)
-            {
-                stats->n_4k++;
-                stats->n_ios++;
-            }
-        }
-
-        io_timer.reset();
-#ifdef USE_BING_INFRA
-        reader->read(vec_read_reqs, ctx, false); // sync reader windows.
-#else
-        reader->read(vec_read_reqs, ctx); // synchronous IO linux
-#endif
-        if (stats != nullptr)
-        {
-            stats->io_us += io_timer.elapsed();
-        }
-
-        for (size_t i = 0; i < full_retset.size(); ++i)
-        {
-            auto id = full_retset[i].id;
-            auto location = (sector_scratch + i * SECTOR_LEN) + VECTOR_SECTOR_OFFSET(id);
-            full_retset[i].distance = dist_cmp->compare(aligned_query_T, (T *)location, (uint32_t)this->data_dim);
-        }
-
-        std::sort(full_retset.begin(), full_retset.end());
-    }
 
     // copy k_search values
     int64_t result_size = 0;
@@ -2172,8 +2124,8 @@ int64_t PQFlashIndex<T, LabelT>::cached_beam_search_memory(const T *query, const
         for (int i = 0; i < io_limit; ++i) {
             auto id = full_retset[i].id;
             ids.push_back(id);
-            sorted_read_reqs.push_back({NODE_SECTOR_NO(((size_t)id)) * SECTOR_LEN, SECTOR_LEN,
-                                        sector_scratch + i * SECTOR_LEN});
+            sorted_read_reqs.push_back({NODE_SECTOR_NO(((size_t)id)) * sector_len, sector_len,
+                                        sector_scratch + i * sector_len});
         }
         full_retset.clear();
 

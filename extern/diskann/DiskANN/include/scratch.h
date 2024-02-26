@@ -166,7 +166,7 @@ template <typename T> class SSDQueryScratch
     std::vector<Neighbor> full_retset;
 
     SSDQueryScratch(size_t aligned_dim, size_t visited_reserve);
-    SSDQueryScratch(size_t aligned_dim, size_t visited_reserve, size_t sector_size);
+    SSDQueryScratch(size_t aligned_dim, size_t visited_reserve, size_t sector_size, size_t sector_len);
     ~SSDQueryScratch();
 
     void reset();
@@ -179,7 +179,7 @@ template <typename T> class SSDThreadData
     IOContext ctx;
 
     SSDThreadData(size_t aligned_dim, size_t visited_reserve);
-    SSDThreadData(size_t aligned_dim, size_t visited_reserve, size_t sector_size);
+    SSDThreadData(size_t aligned_dim, size_t visited_reserve, size_t sector_size, size_t sector_len);
     void clear();
 };
 

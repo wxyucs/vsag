@@ -109,6 +109,8 @@ private:
     int R_ = 64;
     float p_val_ = 0.5;
     size_t disk_pq_dims_ = 8;
+    size_t sector_len_ = 4096;
+
     int64_t dim_;
     bool use_reference_ = true;
     bool preload_;

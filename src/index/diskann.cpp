@@ -31,6 +31,7 @@ const static size_t MINIMAL_BEAM_SEARCH = 1;
 const static int MINIMAL_R = 8;
 const static int MAXIMAL_R = 64;
 const static int64_t MAX_IO_LIMIT = 512;
+const static int VECTOR_PER_BLOCK = 1;
 
 class LocalMemoryReader : public Reader {
 public:
@@ -111,6 +112,11 @@ DiskANN::DiskANN(diskann::Metric metric,
     };
 
     R_ = std::min(MAXIMAL_R, std::max(MINIMAL_R, R_));
+
+    // When the length of the vector is too long, set sector_len_ to the size of storing a vector along with its linkage list.
+    sector_len_ =
+        std::max(sector_len_,
+                 (size_t)((dim + 1) * sizeof(float) + R_ * sizeof(uint32_t)) * VECTOR_PER_BLOCK);
 }
 
 tl::expected<std::vector<int64_t>, index_error>
@@ -162,7 +168,8 @@ DiskANN::Build(const Dataset& base) {
                                                      p_val_,
                                                      disk_pq_dims_);
 
-        diskann::create_disk_layout<float>(data_stream, graph_stream_, disk_layout_stream_, "");
+        diskann::create_disk_layout<float>(
+            data_stream, graph_stream_, disk_layout_stream_, sector_len_, "");
 
         std::transform(failed_indexs.begin(),
                        failed_indexs.end(),
@@ -171,7 +178,7 @@ DiskANN::Build(const Dataset& base) {
 
         disk_layout_reader_ = std::make_shared<LocalMemoryReader>(disk_layout_stream_);
         reader_.reset(new LocalFileReader(batch_read_));
-        index_.reset(new diskann::PQFlashIndex<float, int64_t>(reader_, metric_));
+        index_.reset(new diskann::PQFlashIndex<float, int64_t>(reader_, metric_, sector_len_));
         index_->set_sector_size(Option::Instance().GetSectorSize());
         index_->load_from_separate_paths(
             omp_get_num_procs(), pq_pivots_stream_, disk_pq_compressed_vectors_, tag_stream_);
@@ -509,7 +516,7 @@ DiskANN::Deserialize(const BinarySet& binary_set) {
         disk_layout_reader_ = std::make_shared<LocalMemoryReader>(disk_layout_stream_);
 
         reader_.reset(new LocalFileReader(batch_read_));
-        index_.reset(new diskann::PQFlashIndex<float, int64_t>(reader_, metric_));
+        index_.reset(new diskann::PQFlashIndex<float, int64_t>(reader_, metric_, sector_len_));
         index_->set_sector_size(Option::Instance().GetSectorSize());
         index_->load_from_separate_paths(
             omp_get_num_procs(), pq_pivots_stream_, disk_pq_compressed_vectors_, tag_stream_);
@@ -578,7 +585,7 @@ DiskANN::Deserialize(const ReaderSet& reader_set) {
 
         disk_layout_reader_ = reader_set.Get(DISKANN_LAYOUT_FILE);
         reader_.reset(new LocalFileReader(batch_read_));
-        index_.reset(new diskann::PQFlashIndex<float, int64_t>(reader_, metric_));
+        index_.reset(new diskann::PQFlashIndex<float, int64_t>(reader_, metric_, sector_len_));
         index_->set_sector_size(Option::Instance().GetSectorSize());
         index_->load_from_separate_paths(
             omp_get_num_procs(), pq_pivots_stream, disk_pq_compressed_vectors, tag_stream);
