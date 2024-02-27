@@ -40,8 +40,8 @@ vsag_build_ut_cov:
     - (CHANGE_LINE_NUMBER <= 10 && diffCoverage > 80) || (CHANGE_LINE_NUMBER > 10 && diffCoverage > 90)
   agent:
     #resourceClass: S #2C4G
-    resourceClass: M #4C8G
-    #resourceClass: L #8C16G
+    #resourceClass: M #4C8G
+    resourceClass: L #8C16G
   steps:
     # - plugin: clone
     - plugin: shell
@@ -65,8 +65,11 @@ vsag_build_ut_cov:
           export PATH=/usr/lib/ccache:$PATH
           export GTEST_OUTPUT="xml:$(pwd)/vsag/testresult/gtest/"
           bash scripts/deps/install_deps_centos.sh
+          echo "install_deps finished at `date +'%Y-%m-%d %H:%M:%S'`"
           make test_cov
+          echo "test_cov finished at `date +'%Y-%m-%d %H:%M:%S'`"
           bash scripts/aci/collect_cpp_coverage.sh
+          echo "collect_coverage finished at `date +'%Y-%m-%d %H:%M:%S'`"
     - plugin: coverage-client-upload-compass
       inputs:
         filePath: vsag/testresult/coverage/cobertura.xml

@@ -91,7 +91,7 @@ template <typename T, typename LabelT> PQFlashIndex<T, LabelT>::~PQFlashIndex()
 
     if (load_flag)
     {
-        diskann::cout << "Clearing scratch" << std::endl;
+        // diskann::cout << "Clearing scratch" << std::endl;
         ScratchStoreManager<SSDThreadData<T>> manager(this->thread_data);
         manager.destroy();
         this->reader->deregister_all_threads();
@@ -116,7 +116,7 @@ template <typename T, typename LabelT> PQFlashIndex<T, LabelT>::~PQFlashIndex()
 template <typename T, typename LabelT>
 void PQFlashIndex<T, LabelT>::setup_thread_data(uint64_t nthreads, uint64_t visited_reserve)
 {
-    diskann::cout << "Setting up thread-specific contexts for nthreads: " << nthreads << std::endl;
+    // diskann::cout << "Setting up thread-specific contexts for nthreads: " << nthreads << std::endl;
 // omp parallel for to generate unique thread IDs
 #pragma omp parallel for num_threads((int)nthreads)
     for (int64_t thread = 0; thread < (int64_t)nthreads; thread++)
@@ -458,7 +458,7 @@ template <typename T, typename LabelT> void PQFlashIndex<T, LabelT>::use_medoids
     ScratchStoreManager<SSDThreadData<T>> manager(this->thread_data);
     auto data = manager.scratch_space();
     IOContext &ctx = data->ctx;
-    diskann::cout << "Loading centroid data from medoids vector data of " << num_medoids << " medoid(s)" << std::endl;
+    // diskann::cout << "Loading centroid data from medoids vector data of " << num_medoids << " medoid(s)" << std::endl;
     for (uint64_t cur_m = 0; cur_m < num_medoids; cur_m++)
     {
         auto medoid = medoids[cur_m];
@@ -859,8 +859,8 @@ int PQFlashIndex<T, LabelT>::load_from_separate_paths(uint32_t num_threads, cons
     pq_table.load_pq_centroid_bin(pq_table_bin.c_str(), nchunks_u64);
 #endif
 
-    diskann::cout << "Loaded PQ centroids and in-memory compressed vectors. #points: " << num_points
-                  << " #dim: " << data_dim << " #aligned_dim: " << aligned_dim << " #chunks: " << n_chunks << std::endl;
+    // diskann::cout << "Loaded PQ centroids and in-memory compressed vectors. #points: " << num_points
+    //               << " #dim: " << data_dim << " #aligned_dim: " << aligned_dim << " #chunks: " << n_chunks << std::endl;
 
     if (n_chunks > MAX_PQ_CHUNKS)
     {
@@ -968,10 +968,10 @@ int PQFlashIndex<T, LabelT>::load_from_separate_paths(uint32_t num_threads, cons
         READ_U64(index_metadata, this->nvecs_per_sector);
     }
 
-    diskann::cout << "Disk-Index File Meta-data: ";
-    diskann::cout << "# nodes per sector: " << nnodes_per_sector;
-    diskann::cout << ", max node len (bytes): " << max_node_len;
-    diskann::cout << ", max node degree: " << max_degree << std::endl;
+    // diskann::cout << "Disk-Index File Meta-data: ";
+    // diskann::cout << "# nodes per sector: " << nnodes_per_sector;
+    // diskann::cout << ", max node len (bytes): " << max_node_len;
+    // diskann::cout << ", max node degree: " << max_degree << std::endl;
 
 #ifdef EXEC_ENV_OLS
     delete[] bytes;
@@ -1061,7 +1061,7 @@ int PQFlashIndex<T, LabelT>::load_from_separate_paths(uint32_t num_threads, cons
         diskann::cout << "Setting re-scaling factor of base vectors to " << this->max_base_norm << std::endl;
         delete[] norm_val;
     }
-    diskann::cout << "done.." << std::endl;
+    // diskann::cout << "done.." << std::endl;
     return 0;
 }
 
@@ -1185,8 +1185,8 @@ int PQFlashIndex<T, LabelT>::load_from_separate_paths(uint32_t num_threads, cons
         }
     }
     pq_table.load_pq_centroid_bin(pivots_stream, nchunks_u64);
-    diskann::cout << "Loaded PQ centroids and in-memory compressed vectors. #points: " << num_points
-                  << " #dim: " << data_dim << " #aligned_dim: " << aligned_dim << " #chunks: " << n_chunks << std::endl;
+    // diskann::cout << "Loaded PQ centroids and in-memory compressed vectors. #points: " << num_points
+    //               << " #dim: " << data_dim << " #aligned_dim: " << aligned_dim << " #chunks: " << n_chunks << std::endl;
 
     if (n_chunks > MAX_PQ_CHUNKS)
     {
@@ -1269,10 +1269,10 @@ int PQFlashIndex<T, LabelT>::load_from_separate_paths(uint32_t num_threads, cons
         READ_U64(index_metadata, this->nvecs_per_sector);
     }
 
-    diskann::cout << "Disk-Index File Meta-data: ";
-    diskann::cout << "# nodes per sector: " << nnodes_per_sector;
-    diskann::cout << ", max node len (bytes): " << max_node_len;
-    diskann::cout << ", max node degree: " << max_degree << std::endl;
+    // diskann::cout << "Disk-Index File Meta-data: ";
+    // diskann::cout << "# nodes per sector: " << nnodes_per_sector;
+    // diskann::cout << ", max node len (bytes): " << max_node_len;
+    // diskann::cout << ", max node degree: " << max_degree << std::endl;
 #ifndef EXEC_ENV_OLS
     // open AlignedFileReader handle to index_file
     std::string index_fname(disk_index_file);
@@ -1336,7 +1336,7 @@ int PQFlashIndex<T, LabelT>::load_from_separate_paths(uint32_t num_threads, cons
         diskann::cout << "Setting re-scaling factor of base vectors to " << this->max_base_norm << std::endl;
         delete[] norm_val;
     }
-    diskann::cout << "done.." << std::endl;
+    // diskann::cout << "done.." << std::endl;
     return 0;
 }
 
@@ -1375,8 +1375,8 @@ int PQFlashIndex<T, LabelT>::load_from_separate_paths(uint32_t num_threads, std:
     diskann::load_bin<LabelT>(tag_stream, this->tags, npts_u64, tag_len);
 
     pq_table.load_pq_centroid_bin(pivots_stream, nchunks_u64);
-    diskann::cout << "Loaded PQ centroids and in-memory compressed vectors. #points: " << num_points
-                  << " #dim: " << data_dim << " #aligned_dim: " << aligned_dim << " #chunks: " << n_chunks << std::endl;
+    // diskann::cout << "Loaded PQ centroids and in-memory compressed vectors. #points: " << num_points
+    //               << " #dim: " << data_dim << " #aligned_dim: " << aligned_dim << " #chunks: " << n_chunks << std::endl;
 
     if (n_chunks > MAX_PQ_CHUNKS)
     {
@@ -1458,10 +1458,10 @@ int PQFlashIndex<T, LabelT>::load_from_separate_paths(uint32_t num_threads, std:
                       << ". Will not output it at search time." << std::endl;
     }
 
-    diskann::cout << "Disk-Index File Meta-data: ";
-    diskann::cout << "# nodes per sector: " << nnodes_per_sector;
-    diskann::cout << ", max node len (bytes): " << max_node_len;
-    diskann::cout << ", max node degree: " << max_degree << std::endl;
+    // diskann::cout << "Disk-Index File Meta-data: ";
+    // diskann::cout << "# nodes per sector: " << nnodes_per_sector;
+    // diskann::cout << ", max node len (bytes): " << max_node_len;
+    // diskann::cout << ", max node degree: " << max_degree << std::endl;
     num_medoids = 1;
     medoids = new uint32_t[1];
     medoids[0] = (uint32_t)(medoid_id_on_file);
@@ -1470,7 +1470,7 @@ int PQFlashIndex<T, LabelT>::load_from_separate_paths(uint32_t num_threads, std:
     this->max_nthreads = num_threads;
 
     use_medoids_data_as_centroids();
-    diskann::cout << "done.." << std::endl;
+    // diskann::cout << "done.." << std::endl;
     return 0;
 }
 

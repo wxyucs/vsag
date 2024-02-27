@@ -495,7 +495,7 @@ void Index<T, TagT, LabelT>::save(const char *filename, bool compact_before_save
     // _max_points.
     reposition_frozen_point_to_end();
 
-    diskann::cout << "Time taken for save: " << timer.elapsed() / 1000000.0 << "s." << std::endl;
+    // diskann::cout << "Time taken for save: " << timer.elapsed() / 1000000.0 << "s." << std::endl;
 }
 
 
@@ -545,7 +545,7 @@ void Index<T, TagT, LabelT>::save(std::stringstream &graph_stream, std::stringst
     // _max_points.
     reposition_frozen_point_to_end();
 
-    diskann::cout << "Time taken for save: " << timer.elapsed() / 1000000.0 << "s." << std::endl;
+    // diskann::cout << "Time taken for save: " << timer.elapsed() / 1000000.0 << "s." << std::endl;
 }
 
 
@@ -1862,14 +1862,14 @@ void Index<T, TagT, LabelT>::link(const IndexWriteParameters &parameters)
 
         if (node_ctr % 100000 == 0)
         {
-            diskann::cout << "\r" << (100.0 * node_ctr) / (visit_order.size()) << "% of index build completed."
-                          << std::flush;
+            // diskann::cout << "\r" << (100.0 * node_ctr) / (visit_order.size()) << "% of index build completed."
+            //               << std::flush;
         }
     }
 
     if (_nd > 0)
     {
-        diskann::cout << "Starting final cleanup.." << std::flush;
+        // diskann::cout << "Starting final cleanup.." << std::flush;
     }
 #pragma omp parallel for schedule(dynamic, 2048)
     for (int64_t node_ctr = 0; node_ctr < (int64_t)(visit_order.size()); node_ctr++)
@@ -1902,7 +1902,7 @@ void Index<T, TagT, LabelT>::link(const IndexWriteParameters &parameters)
     }
     if (_nd > 0)
     {
-        diskann::cout << "done. Link time: " << ((double)link_timer.elapsed() / (double)1000000) << "s" << std::endl;
+        // diskann::cout << "done. Link time: " << ((double)link_timer.elapsed() / (double)1000000) << "s" << std::endl;
     }
 }
 
@@ -1966,9 +1966,9 @@ void Index<T, TagT, LabelT>::prune_all_neighbors(const uint32_t max_degree, cons
         min = max;
     if (_nd > 0)
     {
-        diskann::cout << "Index built with degree: max:" << max
-                      << "  avg:" << (float)total / (float)(_nd + _num_frozen_pts) << "  min:" << min
-                      << "  count(deg<2):" << cnt << std::endl;
+        // diskann::cout << "Index built with degree: max:" << max
+        //               << "  avg:" << (float)total / (float)(_nd + _num_frozen_pts) << "  min:" << min
+        //               << "  count(deg<2):" << cnt << std::endl;
     }
 }
 
@@ -2045,7 +2045,7 @@ template <typename T, typename TagT, typename LabelT>
 void Index<T, TagT, LabelT>::build_with_data_populated(const IndexWriteParameters &parameters,
                                                        const std::vector<TagT> &tags)
 {
-    diskann::cout << "Starting index build with " << _nd << " points... " << std::endl;
+    // diskann::cout << "Starting index build with " << _nd << " points... " << std::endl;
 
     if (_nd < 1)
         throw ANNException("Error: Trying to build an index with 0 points", -1, __FUNCSIG__, __FILE__, __LINE__);
@@ -2091,8 +2091,8 @@ void Index<T, TagT, LabelT>::build_with_data_populated(const IndexWriteParameter
         if (pool.size() < 2)
             cnt++;
     }
-    diskann::cout << "Index built with degree: max:" << max << "  avg:" << (float)total / (float)(_nd + _num_frozen_pts)
-                  << "  min:" << min << "  count(deg<2):" << cnt << std::endl;
+    // diskann::cout << "Index built with degree: max:" << max << "  avg:" << (float)total / (float)(_nd + _num_frozen_pts)
+    //               << "  min:" << min << "  count(deg<2):" << cnt << std::endl;
 
     _max_observed_degree = std::max((uint32_t)max, _max_observed_degree);
     _has_built = true;

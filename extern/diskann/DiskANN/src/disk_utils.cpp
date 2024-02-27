@@ -866,7 +866,7 @@ void create_disk_layout(const std::string base_file, const std::string mem_index
 
     // create cached reader + writer
     size_t actual_file_size = get_file_size(mem_index_file);
-    diskann::cout << "Vamana index file size=" << actual_file_size << std::endl;
+    // diskann::cout << "Vamana index file size=" << actual_file_size << std::endl;
     std::ifstream vamana_reader(mem_index_file, std::ios::binary);
     cached_ofstream diskann_writer(output_file, write_blk_size);
 
@@ -1070,7 +1070,7 @@ void create_disk_layout(std::stringstream &base_reader, std::stringstream &vaman
 
         // create cached reader + writer
         size_t actual_file_size = vamana_reader.str().size();
-        diskann::cout << "Vamana index file size=" << actual_file_size << std::endl;
+        // diskann::cout << "Vamana index file size=" << actual_file_size << std::endl;
 
         // metadata: width, medoid
         uint32_t width_u32, medoid_u32;
@@ -1100,9 +1100,9 @@ void create_disk_layout(std::stringstream &base_reader, std::stringstream &vaman
         max_node_len = (((uint64_t)width_u32 + 1) * sizeof(uint32_t)) + (ndims_64 * sizeof(T));
         nnodes_per_sector = sector_len / max_node_len;
 
-        diskann::cout << "medoid: " << medoid << "B" << std::endl;
-        diskann::cout << "max_node_len: " << max_node_len << "B" << std::endl;
-        diskann::cout << "nnodes_per_sector: " << nnodes_per_sector << "B" << std::endl;
+        // diskann::cout << "medoid: " << medoid << "B" << std::endl;
+        // diskann::cout << "max_node_len: " << max_node_len << "B" << std::endl;
+        // diskann::cout << "nnodes_per_sector: " << nnodes_per_sector << "B" << std::endl;
 
         // sector_len buffer for each sector
         std::unique_ptr<char[]> sector_buf = std::make_unique<char[]>(sector_len);
@@ -1137,13 +1137,13 @@ void create_disk_layout(std::stringstream &base_reader, std::stringstream &vaman
         diskann_writer.write(sector_buf.get(), sector_len);
 
         std::unique_ptr<T[]> cur_node_coords = std::make_unique<T[]>(ndims_64);
-        diskann::cout << "# sectors: " << n_sectors << std::endl;
+        // diskann::cout << "# sectors: " << n_sectors << std::endl;
         uint64_t cur_node_id = 0;
         for (uint64_t sector = 0; sector < n_sectors; sector++)
         {
             if (sector % 100000 == 0)
             {
-                diskann::cout << "Sector #" << sector << "written" << std::endl;
+                // diskann::cout << "Sector #" << sector << "written" << std::endl;
             }
             memset(sector_buf.get(), 0, sector_len);
             for (uint64_t sector_node_id = 0; sector_node_id < nnodes_per_sector && cur_node_id < npts_64; sector_node_id++)
@@ -1186,7 +1186,7 @@ void create_disk_layout(std::stringstream &base_reader, std::stringstream &vaman
             diskann_writer.write(sector_buf.get(), sector_len);
         }
         diskann::save_bin<uint64_t>(diskann_writer, output_file_meta.data(), output_file_meta.size(), 1, 0);
-        diskann::cout << "Output disk index file written to diskann_writer" << std::endl;
+        // diskann::cout << "Output disk index file written to diskann_writer" << std::endl;
     }
 
 template <typename T, typename LabelT>

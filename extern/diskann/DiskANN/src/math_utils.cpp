@@ -44,12 +44,12 @@ void rotate_data_randomly(float *data, size_t num_points, size_t dim, float *rot
         diskann::cout << "Transposing rotation matrix.." << std::flush;
         transpose = CblasTrans;
     }
-    diskann::cout << "done Rotating data with random matrix.." << std::flush;
+    // diskann::cout << "done Rotating data with random matrix.." << std::flush;
 
     cblas_sgemm(CblasRowMajor, CblasNoTrans, transpose, (blasint)num_points, (blasint)dim, (blasint)dim, 1.0, data,
                 (blasint)dim, rot_mat, (blasint)dim, 0, new_mat, (blasint)dim);
 
-    diskann::cout << "done." << std::endl;
+    // diskann::cout << "done." << std::endl;
 }
 
 // calculate k closest centers to data of num_points * dim (row major)
@@ -341,8 +341,8 @@ float run_lloyds(float *data, size_t num_points, size_t dim, float *centers, con
         if (((i != 0) && ((old_residual - residual) / residual) < 0.00001) ||
             (residual < std::numeric_limits<float>::epsilon()))
         {
-            diskann::cout << "Residuals unchanged: " << old_residual << " becomes " << residual
-                          << ". Early termination." << std::endl;
+            // diskann::cout << "Residuals unchanged: " << old_residual << " becomes " << residual
+            //               << ". Early termination." << std::endl;
             break;
         }
     }

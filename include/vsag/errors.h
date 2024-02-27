@@ -22,7 +22,7 @@ enum class index_error_type {
 };
 
 struct index_error {
-    index_error(index_error_type t, std::string msg) : type(t), message(msg) {
+    index_error(index_error_type t, const std::string& msg) : type(t), message(msg) {
     }
 
     index_error_type type;
