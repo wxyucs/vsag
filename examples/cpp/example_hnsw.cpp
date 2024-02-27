@@ -27,10 +27,10 @@ void
 float_hnsw() {
     int dim = 16;             // Dimension of the elements
     int max_elements = 1000;  // Maximum number of elements, should be known beforehand
-    int M = 16;               // Tightly connected with internal dimensionality of the data
+    int max_degree = 16;      // Tightly connected with internal dimensionality of the data
     // strongly affects the memory consumption
     int ef_construction = 200;  // Controls index search speed/build speed tradeoff
-    int ef_runtime = 200;
+    int ef_search = 200;
     float threshold = 8.0;
 
     // Initing index
@@ -39,15 +39,16 @@ float_hnsw() {
     //   "dtype": "float32",
     //   "metric_type": "l2",
     //   "hnsw": {
-    //     "M": 16,
+    //     "max_degree": 16,
     //     "ef_construction": 200,
-    //     "ef_runtime": 200,
+    //     "ef_search": 200,
     //     "max_elements": 1000
     //   }
     // }
     nlohmann::json hnsw_parameters{
-        {"M", M},
+        {"max_degree", max_degree},
         {"ef_construction", ef_construction},
+        {"ef_search", ef_search},
     };
     nlohmann::json index_parameters{
         {"dtype", "float32"}, {"metric_type", "l2"}, {"dim", dim}, {"hnsw", hnsw_parameters}};
@@ -104,12 +105,12 @@ float_hnsw() {
             query.NumElements(1).Dim(dim).Float32Vectors(data.get() + i * dim).Owner(false);
             // {
             //   "hnsw": {
-            //     "ef_runtime": 200
+            //     "ef_search": 200
             //   }
             // }
 
             nlohmann::json parameters{
-                {"hnsw", {{"ef_runtime", ef_runtime}}},
+                {"hnsw", {{"ef_search", ef_search}}},
             };
             int64_t k = 10;
             if (auto result = hnsw->KnnSearch(query, k, parameters.dump()); result.has_value()) {
@@ -137,7 +138,7 @@ float_hnsw() {
             query.NumElements(1).Dim(dim).Float32Vectors(data.get() + i * dim).Owner(false);
 
             nlohmann::json parameters{
-                {"hnsw", {{"ef_runtime", ef_runtime}}},
+                {"hnsw", {{"ef_search", ef_search}}},
             };
             if (auto result = hnsw->RangeSearch(query, threshold, parameters.dump());
                 result.has_value()) {
@@ -217,7 +218,7 @@ float_hnsw() {
         vsag::Dataset query;
         query.NumElements(1).Dim(dim).Float32Vectors(data.get() + i * dim).Owner(false);
         nlohmann::json parameters{
-            {"hnsw", {{"ef_runtime", ef_runtime}}},
+            {"hnsw", {{"ef_search", ef_search}}},
         };
         int64_t k = 10;
         if (auto result = hnsw->KnnSearch(query, k, parameters.dump()); result.has_value()) {
@@ -273,7 +274,7 @@ float_hnsw() {
         vsag::Dataset query;
         query.NumElements(1).Dim(dim).Float32Vectors(data.get() + i * dim).Owner(false);
         nlohmann::json parameters{
-            {"hnsw", {{"ef_runtime", ef_runtime}}},
+            {"hnsw", {{"ef_search", ef_search}}},
         };
         int64_t k = 10;
         if (auto result = hnsw->KnnSearch(query, k, parameters.dump()); result.has_value()) {
@@ -437,7 +438,7 @@ float_hnsw() {
         vsag::Dataset query;
         query.NumElements(1).Dim(dim).Float32Vectors(data.get() + i * dim).Owner(false);
         nlohmann::json parameters{
-            {"hnsw", {{"ef_runtime", ef_runtime}}},
+            {"hnsw", {{"ef_search", ef_search}}},
         };
         int64_t k = 10;
         if (auto result = hnsw->KnnSearch(query, k, parameters.dump()); result.has_value()) {

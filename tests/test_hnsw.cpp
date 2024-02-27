@@ -27,13 +27,14 @@ TEST_CASE("HNSW Float Recall", "[hnsw]") {
     spdlog::set_level(spdlog::level::debug);
     int dim = 128;
     int max_elements = 1000;
-    int M = 64;
+    int max_degree = 64;
     int ef_construction = 200;
-    int ef_runtime = 200;
+    int ef_search = 200;
     // Initing index
     nlohmann::json hnsw_parameters{
-        {"M", M},
+        {"max_degree", max_degree},
         {"ef_construction", ef_construction},
+        {"ef_search", ef_search},
     };
     nlohmann::json index_parameters{
         {"dtype", "float32"}, {"metric_type", "l2"}, {"dim", dim}, {"hnsw", hnsw_parameters}};
@@ -66,7 +67,7 @@ TEST_CASE("HNSW Float Recall", "[hnsw]") {
         vsag::Dataset query;
         query.NumElements(1).Dim(dim).Float32Vectors(data + i * dim).Owner(false);
         nlohmann::json parameters{
-            {"hnsw", {{"ef_runtime", ef_runtime}}},
+            {"hnsw", {{"ef_search", ef_search}}},
         };
         int64_t k = 10;
         if (auto result = hnsw->KnnSearch(query, k, parameters.dump()); result.has_value()) {
@@ -87,13 +88,14 @@ TEST_CASE("HNSW IP Search", "[hnsw]") {
     spdlog::set_level(spdlog::level::debug);
     int dim = 128;
     int max_elements = 1000;
-    int M = 64;
+    int max_degree = 64;
     int ef_construction = 200;
-    int ef_runtime = 200;
+    int ef_search = 200;
     // Initing index
     nlohmann::json hnsw_parameters{
-        {"M", M},
+        {"max_degree", max_degree},
         {"ef_construction", ef_construction},
+        {"ef_search", ef_search},
     };
     nlohmann::json index_parameters{
         {"dtype", "float32"}, {"metric_type", "ip"}, {"dim", dim}, {"hnsw", hnsw_parameters}};
@@ -125,7 +127,7 @@ TEST_CASE("HNSW IP Search", "[hnsw]") {
         query.NumElements(1).Dim(dim).Float32Vectors(data + i * dim).Owner(false);
 
         nlohmann::json parameters{
-            {"hnsw", {{"ef_runtime", ef_runtime}}},
+            {"hnsw", {{"ef_search", ef_search}}},
         };
         int64_t k = 10;
         if (auto result = hnsw->KnnSearch(query, k, parameters.dump()); result.has_value()) {
@@ -145,12 +147,12 @@ TEST_CASE("Two HNSW", "[hnsw]") {
     spdlog::set_level(spdlog::level::debug);
     int dim = 128;
     int max_elements = 1000;
-    int M = 64;
+    int max_degree = 64;
     int ef_construction = 200;
-    int ef_runtime = 200;
+    int ef_search = 200;
     // Initing index
     nlohmann::json hnsw_parameters{
-        {"M", M},
+        {"max_degree", max_degree},
         {"ef_construction", ef_construction},
     };
     nlohmann::json index_parameters{
@@ -188,7 +190,7 @@ TEST_CASE("Two HNSW", "[hnsw]") {
         query.NumElements(1).Dim(dim).Float32Vectors(data + i * dim).Owner(false);
 
         nlohmann::json parameters{
-            {"hnsw", {{"ef_runtime", ef_runtime}}},
+            {"hnsw", {{"ef_search", ef_search}}},
         };
         int64_t k = 10;
 
@@ -208,13 +210,14 @@ TEST_CASE("HNSW build test", "[hnsw build]") {
     spdlog::set_level(spdlog::level::debug);
     int dim = 128;
     int max_elements = 1000;
-    int M = 64;
+    int max_degree = 64;
     int ef_construction = 200;
-    int ef_runtime = 200;
+    int ef_search = 200;
     // Initing index
     nlohmann::json hnsw_parameters{
-        {"M", M},
+        {"max_degree", max_degree},
         {"ef_construction", ef_construction},
+        {"ef_search", ef_search},
     };
     nlohmann::json index_parameters{
         {"dtype", "float32"}, {"metric_type", "l2"}, {"dim", dim}, {"hnsw", hnsw_parameters}};
@@ -260,13 +263,15 @@ TEST_CASE("HNSW range search", "[hnsw]") {
     spdlog::set_level(spdlog::level::debug);
     int dim = 71;
     int max_elements = 10000;
-    int M = 16;
+    int max_degree = 16;
     int ef_construction = 100;
-    int ef_runtime = 100;
+    int ef_search = 100;
     // Initing index
     nlohmann::json hnsw_parameters{
-        {"M", M},
+        {"max_elements", max_elements},
+        {"max_degree", max_degree},
         {"ef_construction", ef_construction},
+        {"ef_search", ef_search},
     };
     nlohmann::json index_parameters{
         {"dtype", "float32"}, {"metric_type", "l2"}, {"dim", dim}, {"hnsw", hnsw_parameters}};
@@ -303,7 +308,7 @@ TEST_CASE("HNSW range search", "[hnsw]") {
     vsag::Dataset query;
     query.Dim(dim).NumElements(1).Float32Vectors(query_data);
     nlohmann::json parameters{
-        {"hnsw", {{"ef_runtime", ef_runtime}}},
+        {"hnsw", {{"ef_search", ef_search}}},
     };
     auto result = hnsw->RangeSearch(query, radius, parameters.dump());
     REQUIRE(result.has_value());
@@ -329,13 +334,14 @@ TEST_CASE("HNSW filtering knn search", "[hnsw]") {
     spdlog::set_level(spdlog::level::debug);
     int dim = 17;
     int max_elements = 1000;
-    int M = 16;
+    int max_degree = 16;
     int ef_construction = 100;
-    int ef_runtime = 100;
+    int ef_search = 100;
     // Initing index
     nlohmann::json hnsw_parameters{
-        {"M", M},
+        {"max_degree", max_degree},
         {"ef_construction", ef_construction},
+        {"ef_search", ef_search},
     };
     nlohmann::json index_parameters{
         {"dtype", "float32"}, {"metric_type", "l2"}, {"dim", dim}, {"hnsw", hnsw_parameters}};
@@ -370,7 +376,7 @@ TEST_CASE("HNSW filtering knn search", "[hnsw]") {
         query.NumElements(1).Dim(dim).Float32Vectors(data + i * dim).Owner(false);
 
         nlohmann::json parameters{
-            {"hnsw", {{"ef_runtime", ef_runtime}}},
+            {"hnsw", {{"ef_search", ef_search}}},
         };
         int64_t k = max_elements;
 
@@ -391,13 +397,14 @@ TEST_CASE("HNSW Filtering Test", "[hnsw]") {
     spdlog::set_level(spdlog::level::debug);
     int dim = 17;
     int max_elements = 1000;
-    int M = 16;
+    int max_degree = 16;
     int ef_construction = 100;
-    int ef_runtime = 1000;
+    int ef_search = 1000;
     // Initing index
     nlohmann::json hnsw_parameters{
-        {"M", M},
+        {"max_degree", max_degree},
         {"ef_construction", ef_construction},
+        {"ef_search", ef_search},
     };
     nlohmann::json index_parameters{
         {"dtype", "float32"}, {"metric_type", "l2"}, {"dim", dim}, {"hnsw", hnsw_parameters}};
@@ -435,7 +442,7 @@ TEST_CASE("HNSW Filtering Test", "[hnsw]") {
         vsag::Dataset query;
         query.NumElements(1).Dim(dim).Float32Vectors(data + i * dim).Owner(false);
         nlohmann::json parameters{
-            {"hnsw", {{"ef_runtime", ef_runtime}}},
+            {"hnsw", {{"ef_search", ef_search}}},
         };
         float radius = 9.87f;
         int64_t k = 10;
@@ -527,13 +534,14 @@ TEST_CASE("HNSW small dimension", "[hnsw]") {
     spdlog::set_level(spdlog::level::debug);
     int dim = 3;
     int max_elements = 1000;
-    int M = 24;
+    int max_degree = 24;
     int ef_construction = 100;
-    int ef_runtime = 100;
+    int ef_search = 100;
     // Initing index
     nlohmann::json hnsw_parameters{
-        {"M", M},
+        {"max_degree", max_degree},
         {"ef_construction", ef_construction},
+        {"ef_search", ef_search},
     };
     nlohmann::json index_parameters{
         {"dtype", "float32"}, {"metric_type", "l2"}, {"dim", dim}, {"hnsw", hnsw_parameters}};
@@ -567,7 +575,7 @@ TEST_CASE("HNSW small dimension", "[hnsw]") {
         vsag::Dataset query;
         query.NumElements(1).Dim(dim).Float32Vectors(data + i * dim).Owner(false);
         nlohmann::json parameters{
-            {"hnsw", {{"ef_runtime", ef_runtime}}},
+            {"hnsw", {{"ef_search", ef_search}}},
         };
         int64_t k = 10;
         if (auto result = hnsw->KnnSearch(query, k, parameters.dump()); result.has_value()) {
@@ -588,13 +596,14 @@ TEST_CASE("HNSW Random Id", "[hnsw]") {
     spdlog::set_level(spdlog::level::debug);
     int dim = 128;
     int max_elements = 1000;
-    int M = 64;
+    int max_degree = 64;
     int ef_construction = 200;
-    int ef_runtime = 200;
+    int ef_search = 200;
     // Initing index
     nlohmann::json hnsw_parameters{
-        {"M", M},
+        {"max_degree", max_degree},
         {"ef_construction", ef_construction},
+        {"ef_search", ef_search},
     };
     nlohmann::json index_parameters{
         {"dtype", "float32"}, {"metric_type", "l2"}, {"dim", dim}, {"hnsw", hnsw_parameters}};
@@ -649,7 +658,7 @@ TEST_CASE("HNSW Random Id", "[hnsw]") {
         vsag::Dataset query;
         query.NumElements(1).Dim(dim).Float32Vectors(data + i * dim).Owner(false);
         nlohmann::json parameters{
-            {"hnsw", {{"ef_runtime", ef_runtime}}},
+            {"hnsw", {{"ef_search", ef_search}}},
         };
         int64_t k = 10;
         if (auto result = hnsw->KnnSearch(query, k, parameters.dump()); result.has_value()) {

@@ -16,31 +16,31 @@ TEST_CASE("Random Index Test", "[random]") {
     std::mt19937 rng(rd());
 
     std::uniform_int_distribution<int> dim_generate(1, 500);
-    std::uniform_int_distribution<int> num_generate(
+    std::uniform_int_distribution<int> max_elements_generate(
         2, 1000);  // DiskANN does not allow building a graph with fewer than 2 points.
-    std::uniform_int_distribution<int> m_generate(
+    std::uniform_int_distribution<int> max_degree_generate(
         2, 64);  // When the number of edges is less than 2, connectivity cannot be guaranteed.
     std::uniform_int_distribution<int> construct_generate(1, 500);
     std::uniform_int_distribution<int> search_generate(1, 500);
     std::uniform_int_distribution<int> k_generate(1, 200);
     std::uniform_int_distribution<int> io_limit_generate(1, 500);
     std::uniform_real_distribution<float> threshold_generate(1, 500);
-    std::uniform_real_distribution<float> chunks_num_generate(
+    std::uniform_real_distribution<float> pq_dims_generate(
         1, 512);  // DiskANN does not allow the number of PQ buckets to be greater than 512.
-    std::uniform_real_distribution<float> preload_generate;
+    std::uniform_real_distribution<float> use_pq_search_generate;
     std::uniform_real_distribution<float> mold_generate(-1000, 1000);
 
     int dim = dim_generate(rng);
-    int max_elements = num_generate(rng);
-    int M = m_generate(rng);
+    int max_elements = max_elements_generate(rng);
+    int max_degree = max_degree_generate(rng);
     int ef_construction = construct_generate(rng);
-    int ef_runtime = search_generate(rng);
+    int ef_search = search_generate(rng);
     int64_t k = k_generate(rng);
 
     int io_limit = io_limit_generate(rng);
     float threshold = threshold_generate(rng);
-    int chunks_num = chunks_num_generate(rng);
-    bool preload = preload_generate(rng) > 0.5;
+    int pq_dims = pq_dims_generate(rng);
+    bool use_pq_search = use_pq_search_generate(rng) > 0.5;
     float mold = mold_generate(rng);
 
     std::uniform_int_distribution<int> seed_random;
@@ -48,34 +48,35 @@ TEST_CASE("Random Index Test", "[random]") {
     rng.seed(seed);
 
     spdlog::info(
-        "seed: {}, dim: {}, max_elements: {}, M: {}, ef_construction: {}, ef_runtime: {}, k: {}, "
-        "io_limit: {}, threshold: {}, chunks_num: {}, preload: {}, mold: {}",
+        "seed: {}, dim: {}, max_elements: {}, max_degree: {}, ef_construction: {}, ef_search: {}, "
+        "k: {}, "
+        "io_limit: {}, threshold: {}, pq_dims: {}, use_pq_search: {}, mold: {}",
         seed,
         dim,
         max_elements,
-        M,
+        max_degree,
         ef_construction,
-        ef_runtime,
+        ef_search,
         k,
         io_limit,
         threshold,
-        chunks_num,
-        preload,
+        pq_dims,
+        use_pq_search,
         mold);
-    float p_val = 0.5;
+    float pq_sample_rate = 0.5;
     // Initing index
     nlohmann::json hnsw_parameters{
         {"max_elements", max_elements},
-        {"M", M},
+        {"max_degree", max_degree},
         {"ef_construction", ef_construction},
-        {"ef_runtime", ef_runtime},
+        {"ef_search", ef_search},
     };
 
-    nlohmann::json diskann_parameters{{"R", M},
-                                      {"L", ef_construction},
-                                      {"p_val", p_val},
-                                      {"disk_pq_dims", chunks_num},
-                                      {"preload", preload}};
+    nlohmann::json diskann_parameters{{"max_degree", max_degree},
+                                      {"ef_construction", ef_construction},
+                                      {"pq_sample_rate", pq_sample_rate},
+                                      {"pq_dims", pq_dims},
+                                      {"use_pq_search", use_pq_search}};
     nlohmann::json index_parameters{{"dtype", "float32"},
                                     {"metric_type", "l2"},
                                     {"dim", dim},
@@ -83,8 +84,8 @@ TEST_CASE("Random Index Test", "[random]") {
                                     {"hnsw", hnsw_parameters}};
 
     nlohmann::json parameters{
-        {"diskann", {{"ef_search", ef_runtime}, {"beam_search", 4}, {"io_limit", io_limit}}},
-        {"hnsw", {{"ef_runtime", ef_runtime}}}};
+        {"diskann", {{"ef_search", ef_search}, {"beam_search", 4}, {"io_limit", io_limit}}},
+        {"hnsw", {{"ef_search", ef_search}}}};
 
     // Generate random data
     std::uniform_real_distribution<> distrib_real;
@@ -113,7 +114,7 @@ TEST_CASE("Random Index Test", "[random]") {
         REQUIRE(knn_result.has_value());
 
         REQUIRE(knn_result.value().GetDim() == std::min(k, (int64_t)max_elements));
-        auto range_result = hnsw->RangeSearch(query, k, parameters.dump());
+        auto range_result = hnsw->RangeSearch(query, threshold, parameters.dump());
         REQUIRE(range_result.has_value());
     }
 
@@ -130,7 +131,7 @@ TEST_CASE("Random Index Test", "[random]") {
         auto knn_result = diskann->KnnSearch(query, k, parameters.dump());
         REQUIRE(knn_result.has_value());
         REQUIRE(knn_result.value().GetDim() == std::min(k, (int64_t)max_elements));
-        auto range_result = diskann->RangeSearch(query, k, parameters.dump());
+        auto range_result = diskann->RangeSearch(query, threshold, parameters.dump());
         REQUIRE(range_result.has_value());
     }
 }

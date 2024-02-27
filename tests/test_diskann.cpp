@@ -18,16 +18,16 @@ TEST_CASE("DiskAnn Float Recall", "[diskann]") {
     // strongly affects the memory consumption
     int ef_construction = 200;  // Controls index search speed/build speed tradeoff
     int ef_runtime = 200;
-    float p_val =
-        0.5;  // p_val represents how much original data is selected during the training of pq compressed vectors.
-    int chunks_num = 8;  // chunks_num represents the dimensionality of the compressed vector.
+    float pq_sample_rate =
+        0.5;  // pq_sample_rate represents how much original data is selected during the training of pq compressed vectors.
+    int pq_dims = 8;  // pq_dims represents the dimensionality of the compressed vector.
     std::string disk_layout_file = "index.out";
     // Initing index
     nlohmann::json diskann_parameters{
-        {"R", M},
-        {"L", ef_construction},
-        {"p_val", p_val},
-        {"disk_pq_dims", chunks_num},
+        {"max_degree", M},
+        {"ef_construction", ef_construction},
+        {"pq_sample_rate", pq_sample_rate},
+        {"pq_dims", pq_dims},
         {"use_reference", false},
     };
     nlohmann::json index_parameters{
@@ -256,16 +256,16 @@ TEST_CASE("DiskAnn IP Search", "[diskann]") {
     // strongly affects the memory consumption
     int ef_construction = 200;  // Controls index search speed/build speed tradeoff
     int ef_runtime = 200;
-    float p_val =
-        0.5;  // p_val represents how much original data is selected during the training of pq compressed vectors.
-    int chunks_num = 8;  // chunks_num represents the dimensionality of the compressed vector.
+    float pq_sample_rate =
+        0.5;  // pq_sample_rate represents how much original data is selected during the training of pq compressed vectors.
+    int pq_dims = 8;  // pq_dims represents the dimensionality of the compressed vector.
     std::string disk_layout_file = "index.out";
     // Initing index
     nlohmann::json diskann_parameters{
-        {"R", M},
-        {"L", ef_construction},
-        {"p_val", p_val},
-        {"disk_pq_dims", chunks_num},
+        {"max_degree", M},
+        {"ef_construction", ef_construction},
+        {"pq_sample_rate", pq_sample_rate},
+        {"pq_dims", pq_dims},
     };
     nlohmann::json index_parameters{
         {"dtype", "float32"},
@@ -326,16 +326,16 @@ TEST_CASE("DiskAnn Range Query", "[diskann]") {
     // strongly affects the memory consumption
     int ef_construction = 200;  // Controls index search speed/build speed tradeoff
     int ef_runtime = 200;
-    float p_val =
-        0.5;  // p_val represents how much original data is selected during the training of pq compressed vectors.
-    int chunks_num = 32;  // chunks_num represents the dimensionality of the compressed vector.
+    float pq_sample_rate =
+        0.5;  // pq_sample_rate represents how much original data is selected during the training of pq compressed vectors.
+    int pq_dims = 32;  // pq_dims represents the dimensionality of the compressed vector.
     float threshold = 8.0;
     // Initing index
     nlohmann::json diskann_parameters{
-        {"R", M},
-        {"L", ef_construction},
-        {"p_val", p_val},
-        {"disk_pq_dims", chunks_num},
+        {"max_degree", M},
+        {"ef_construction", ef_construction},
+        {"pq_sample_rate", pq_sample_rate},
+        {"pq_dims", pq_dims},
     };
     nlohmann::json index_parameters{
         {"dtype", "float32"},
@@ -404,17 +404,17 @@ TEST_CASE("DiskAnn Preload Graph", "[diskann]") {
     // strongly affects the memory consumption
     int ef_construction = 200;  // Controls index search speed/build speed tradeoff
     int ef_runtime = 200;
-    float p_val =
-        0.5;  // p_val represents how much original data is selected during the training of pq compressed vectors.
-    int chunks_num = 9;  // chunks_num represents the dimensionality of the compressed vector.
+    float pq_sample_rate =
+        0.5;  // pq_sample_rate represents how much original data is selected during the training of pq compressed vectors.
+    int pq_dims = 9;  // pq_dims represents the dimensionality of the compressed vector.
     float threshold = 8.0;
     // Initing index
-    nlohmann::json diskann_parameters{{"R", M},
-                                      {"L", ef_construction},
-                                      {"p_val", p_val},
-                                      {"disk_pq_dims", chunks_num},
+    nlohmann::json diskann_parameters{{"max_degree", M},
+                                      {"ef_construction", ef_construction},
+                                      {"pq_sample_rate", pq_sample_rate},
+                                      {"pq_dims", pq_dims},
                                       {"use_reference", false},
-                                      {"preload", true}};
+                                      {"use_pq_search", true}};
     nlohmann::json index_parameters{
         {"dtype", "float32"},
         {"metric_type", "l2"},
@@ -473,7 +473,7 @@ TEST_CASE("DiskAnn Preload Graph", "[diskann]") {
                                    {{"ef_search", ef_runtime},
                                     {"beam_search", 4},
                                     {"io_limit", 200},
-                                    {"reorder", true}}}};
+                                    {"use_reorder", true}}}};
         int64_t k = 2;
         if (auto result = diskann->KnnSearch(query, k, parameters.dump()); result.has_value()) {
             if (result->GetNumElements() == 1) {
@@ -499,7 +499,7 @@ TEST_CASE("DiskAnn Preload Graph", "[diskann]") {
                                    {{"ef_search", ef_runtime},
                                     {"beam_search", 4},
                                     {"io_limit", 200},
-                                    {"reorder", true}}}};
+                                    {"use_reorder", true}}}};
         float threshold = 0.1;
         if (auto result = diskann->RangeSearch(query, threshold, parameters.dump());
             result.has_value()) {
@@ -526,17 +526,17 @@ TEST_CASE("DiskAnn Filter Test", "[diskann]") {
     // strongly affects the memory consumption
     int ef_construction = 200;  // Controls index search speed/build speed tradeoff
     int ef_runtime = 200;
-    float p_val =
-        0.5;  // p_val represents how much original data is selected during the training of pq compressed vectors.
-    int chunks_num = 9;  // chunks_num represents the dimensionality of the compressed vector.
+    float pq_sample_rate =
+        0.5;  // pq_sample_rate represents how much original data is selected during the training of pq compressed vectors.
+    int pq_dims = 9;  // pq_dims represents the dimensionality of the compressed vector.
     float threshold = 8.0;
     int64_t k = 10;
     // Initing index
-    nlohmann::json diskann_parameters{{"R", M},
-                                      {"L", ef_construction},
-                                      {"p_val", p_val},
-                                      {"disk_pq_dims", chunks_num},
-                                      {"preload", true}};
+    nlohmann::json diskann_parameters{{"max_degree", M},
+                                      {"ef_construction", ef_construction},
+                                      {"pq_sample_rate", pq_sample_rate},
+                                      {"pq_dims", pq_dims},
+                                      {"use_pq_search", true}};
     nlohmann::json index_parameters{
         {"dtype", "float32"},
         {"metric_type", "l2"},
@@ -672,16 +672,16 @@ TEST_CASE("DiskAnn Random Id", "[diskann]") {
     // strongly affects the memory consumption
     int ef_construction = 200;  // Controls index search speed/build speed tradeoff
     int ef_runtime = 200;
-    float p_val =
-        0.5;  // p_val represents how much original data is selected during the training of pq compressed vectors.
-    int chunks_num = 9;  // chunks_num represents the dimensionality of the compressed vector.
+    float pq_sample_rate =
+        0.5;  // pq_sample_rate represents how much original data is selected during the training of pq compressed vectors.
+    int pq_dims = 9;  // pq_dims represents the dimensionality of the compressed vector.
     float threshold = 8.0;
     // Initing index
-    nlohmann::json diskann_parameters{{"R", M},
-                                      {"L", ef_construction},
-                                      {"p_val", p_val},
-                                      {"disk_pq_dims", chunks_num},
-                                      {"preload", true}};
+    nlohmann::json diskann_parameters{{"max_degree", M},
+                                      {"ef_construction", ef_construction},
+                                      {"pq_sample_rate", pq_sample_rate},
+                                      {"pq_dims", pq_dims},
+                                      {"use_pq_search", true}};
     nlohmann::json index_parameters{
         {"dtype", "float32"},
         {"metric_type", "l2"},
@@ -763,14 +763,14 @@ TEST_CASE("DiskANN small dimension", "[hnsw]") {
     int M = 16;
     int ef_construction = 100;
     int ef_runtime = 100;
-    float p_val = 0.5;
-    int chunks_num = 8;
+    float pq_sample_rate = 0.5;
+    int pq_dims = 8;
     // Initing index
     nlohmann::json diskann_parameters{
-        {"R", M},
-        {"L", ef_construction},
-        {"p_val", p_val},
-        {"disk_pq_dims", chunks_num},
+        {"max_degree", M},
+        {"ef_construction", ef_construction},
+        {"pq_sample_rate", pq_sample_rate},
+        {"pq_dims", pq_dims},
     };
     nlohmann::json index_parameters{
         {"dtype", "float32"},

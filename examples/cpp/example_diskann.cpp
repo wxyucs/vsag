@@ -28,29 +28,31 @@ void
 float_diskann() {
     int dim = 65;             // Dimension of the elements
     int max_elements = 1000;  // Maximum number of elements, should be known beforehand
-    int M = 16;               // Tightly connected with internal dimensionality of the data
+    int max_degree = 16;      // Tightly connected with internal dimensionality of the data
     // strongly affects the memory consumption
     int ef_construction = 200;  // Controls index search speed/build speed tradeoff
-    int ef_runtime = 200;
+    int ef_search = 200;
     int io_limit = 200;
     float threshold = 8.0;
-    float p_val =
-        0.5;  // p_val represents how much original data is selected during the training of pq compressed vectors.
-    int chunks_num = 9;  // chunks_num represents the dimensionality of the compressed vector.
+    float pq_sample_rate =
+        0.5;  // pq_sample_rate represents how much original data is selected during the training of pq compressed vectors.
+    int pq_dims = 9;  // pq_dims represents the dimensionality of the compressed vector.
     // Initing index
     // {
     // 	"dim": 256,
     // 	"dtype": "float32",
     // 	"metric_type": "l2",
     // 	"diskann": {
-    // 	    "L": 200,
-    // 	    "R": 16,
-    // 	    "disk_pq_dims": 32,
-    // 	    "p_val": 0.5
+    // 	    "ef_construction": 200,
+    // 	    "max_degree": 16,
+    // 	    "pq_dims": 32,
+    // 	    "pq_sample_rate": 0.5
     // 	}
     // }
-    nlohmann::json diskann_parameters{
-        {"R", M}, {"L", ef_construction}, {"p_val", p_val}, {"disk_pq_dims", chunks_num}};
+    nlohmann::json diskann_parameters{{"max_degree", max_degree},
+                                      {"ef_construction", ef_construction},
+                                      {"pq_sample_rate", pq_sample_rate},
+                                      {"pq_dims", pq_dims}};
     nlohmann::json index_parameters{
         {"dtype", "float32"},
         {"metric_type", "l2"},
@@ -99,7 +101,7 @@ float_diskann() {
         //  }
         // }
         nlohmann::json parameters{
-            {"diskann", {{"ef_search", ef_runtime}, {"beam_search", 4}, {"io_limit", io_limit}}}};
+            {"diskann", {{"ef_search", ef_search}, {"beam_search", 4}, {"io_limit", io_limit}}}};
         int64_t k = 2;
         if (auto result = diskann->KnnSearch(query, k, parameters.dump()); result.has_value()) {
             correct += vsag::knn_search_recall(
@@ -127,7 +129,7 @@ float_diskann() {
         auto range_result =
             vsag::l2_and_filtering(dim, max_elements, data, data + i * dim, threshold);
         nlohmann::json parameters{
-            {"diskann", {{"ef_search", ef_runtime}, {"beam_search", 4}, {"io_limit", io_limit}}}};
+            {"diskann", {{"ef_search", ef_search}, {"beam_search", 4}, {"io_limit", io_limit}}}};
         if (auto result = diskann->RangeSearch(query, threshold, parameters.dump());
             result.has_value()) {
             correct += vsag::range_search_recall(data,
@@ -209,7 +211,7 @@ float_diskann() {
         vsag::Dataset query;
         query.NumElements(1).Dim(dim).Float32Vectors(data + i * dim).Owner(false);
         nlohmann::json parameters{
-            {"diskann", {{"ef_search", ef_runtime}, {"beam_search", 4}, {"io_limit", io_limit}}}};
+            {"diskann", {{"ef_search", ef_search}, {"beam_search", 4}, {"io_limit", io_limit}}}};
         int64_t k = 2;
         if (auto result = diskann->KnnSearch(query, k, parameters.dump()); result.has_value()) {
             correct += vsag::knn_search_recall(
@@ -313,7 +315,7 @@ float_diskann() {
         vsag::Dataset query;
         query.NumElements(1).Dim(dim).Float32Vectors(data + i * dim).Owner(false);
         nlohmann::json parameters{
-            {"diskann", {{"ef_search", ef_runtime}, {"beam_search", 4}, {"io_limit", io_limit}}}};
+            {"diskann", {{"ef_search", ef_search}, {"beam_search", 4}, {"io_limit", io_limit}}}};
         int64_t k = 2;
         if (auto result = diskann->KnnSearch(query, k, parameters.dump()); result.has_value()) {
             correct += vsag::knn_search_recall(
@@ -388,7 +390,7 @@ float_diskann() {
         vsag::Dataset query;
         query.NumElements(1).Dim(dim).Float32Vectors(data + i * dim).Owner(false);
         nlohmann::json parameters{
-            {"diskann", {{"ef_search", ef_runtime}, {"beam_search", 4}, {"io_limit", io_limit}}}};
+            {"diskann", {{"ef_search", ef_search}, {"beam_search", 4}, {"io_limit", io_limit}}}};
         int64_t k = 2;
         if (auto result = diskann->KnnSearch(query, k, parameters.dump()); result.has_value()) {
             correct += vsag::knn_search_recall(

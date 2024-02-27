@@ -20,7 +20,7 @@ lcov -q --rc lcov_branch_coverage=1 \
      --directory . \
      --output-file  "$ROOT_DIR/coverage_ut.info"
 
-lcov --remove "${ROOT_DIR}"/coverage_ut.info '*/examples/*' '*/tests/*' \
+lcov --remove "${ROOT_DIR}"/coverage_ut.info '*/examples/*' '*/tests/*' '*_test.cpp'\
      -o "${COVERAGE_DIR}/coverage_ut.info" \
      --rc lcov_branch_coverage=1
 

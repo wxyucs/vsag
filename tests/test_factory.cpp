@@ -8,15 +8,14 @@
 TEST_CASE("index params", "[factory]") {
     int dim = 16;
     int max_elements = 1000;
-    int M = 16;
+    int max_degree = 16;
     int ef_construction = 100;
-    int ef_runtime = 100;
+    int ef_search = 100;
 
     nlohmann::json hnsw_parameters{
-        {"max_elements", max_elements},
-        {"M", M},
+        {"max_degree", max_degree},
         {"ef_construction", ef_construction},
-        {"ef_runtime", ef_runtime},
+        {"ef_search", ef_search},
     };
     nlohmann::json index_parameters{
         {"dtype", "float32"}, {"metric_type", "l2"}, {"dim", dim}, {"hnsw", hnsw_parameters}};
@@ -48,7 +47,7 @@ TEST_CASE("index params", "[factory]") {
         query.NumElements(1).Dim(dim).Float32Vectors(data + i * dim).Owner(false);
 
         nlohmann::json parameters{
-            {"hnsw", {{"ef_runtime", ef_runtime}}},
+            {"hnsw", {{"ef_search", ef_search}}},
         };
         int64_t k = 10;
         if (auto result = hnsw->KnnSearch(query, k, parameters.dump()); result.has_value()) {

@@ -31,10 +31,10 @@ generate_ids_and_vectors(int64_t num_elements, int64_t dim) {
 TEST_CASE("build & add", "[hnsw][ut]") {
     spdlog::set_level(spdlog::level::debug);
     int64_t dim = 128;
-    int64_t M = 12;
+    int64_t max_degree = 12;
     int64_t ef_construction = 100;
-    auto index =
-        std::make_shared<vsag::HNSW>(std::make_shared<hnswlib::L2Space>(dim), M, ef_construction);
+    auto index = std::make_shared<vsag::HNSW>(
+        std::make_shared<hnswlib::L2Space>(dim), max_degree, ef_construction);
 
     std::vector<int64_t> ids(1);
     int64_t incorrect_dim = 63;
@@ -63,10 +63,10 @@ TEST_CASE("build & add", "[hnsw][ut]") {
 TEST_CASE("knn_search", "[hnsw][ut]") {
     spdlog::set_level(spdlog::level::debug);
     int64_t dim = 128;
-    int64_t M = 12;
+    int64_t max_degree = 12;
     int64_t ef_construction = 100;
-    auto index =
-        std::make_shared<vsag::HNSW>(std::make_shared<hnswlib::L2Space>(dim), M, ef_construction);
+    auto index = std::make_shared<vsag::HNSW>(
+        std::make_shared<hnswlib::L2Space>(dim), max_degree, ef_construction);
 
     const int64_t num_elements = 10;
     auto [ids, vectors] = ::generate_ids_and_vectors(num_elements, dim);
@@ -80,7 +80,7 @@ TEST_CASE("knn_search", "[hnsw][ut]") {
     query.NumElements(1).Dim(dim).Float32Vectors(vectors.data()).Owner(false);
     int64_t k = 10;
     nlohmann::json params{
-        {"hnsw", {{"ef_runtime", 100}}},
+        {"hnsw", {{"ef_search", 100}}},
     };
 
     SECTION("invalid parameters k is 0") {
@@ -102,7 +102,7 @@ TEST_CASE("knn_search", "[hnsw][ut]") {
         REQUIRE(result.error().type == vsag::index_error_type::invalid_parameter);
     }
 
-    SECTION("invalid parameters ef_runtime not found") {
+    SECTION("invalid parameters ef_search not found") {
         nlohmann::json invalid_params{
             {"hnsw", {}},
         };
@@ -138,10 +138,10 @@ TEST_CASE("knn_search", "[hnsw][ut]") {
 TEST_CASE("range_search", "[hnsw][ut]") {
     spdlog::set_level(spdlog::level::debug);
     int64_t dim = 128;
-    int64_t M = 12;
+    int64_t max_degree = 12;
     int64_t ef_construction = 100;
-    auto index =
-        std::make_shared<vsag::HNSW>(std::make_shared<hnswlib::L2Space>(dim), M, ef_construction);
+    auto index = std::make_shared<vsag::HNSW>(
+        std::make_shared<hnswlib::L2Space>(dim), max_degree, ef_construction);
 
     const int64_t num_elements = 10;
     auto [ids, vectors] = ::generate_ids_and_vectors(num_elements, dim);
@@ -155,7 +155,7 @@ TEST_CASE("range_search", "[hnsw][ut]") {
     query.NumElements(1).Dim(dim).Float32Vectors(vectors.data()).Owner(false);
     float radius = 9.9f;
     nlohmann::json params{
-        {"hnsw", {{"ef_runtime", 100}}},
+        {"hnsw", {{"ef_search", 100}}},
     };
 
     SECTION("invalid parameter radius equals to 0") {
@@ -180,7 +180,7 @@ TEST_CASE("range_search", "[hnsw][ut]") {
         REQUIRE(result.error().type == vsag::index_error_type::invalid_parameter);
     }
 
-    SECTION("invalid parameters ef_runtime not found") {
+    SECTION("invalid parameters ef_search not found") {
         nlohmann::json invalid_params{
             {"hnsw", {}},
         };
@@ -201,10 +201,10 @@ TEST_CASE("range_search", "[hnsw][ut]") {
 TEST_CASE("serialize empty index", "[hnsw][ut]") {
     spdlog::set_level(spdlog::level::debug);
     int64_t dim = 128;
-    int64_t M = 12;
+    int64_t max_degree = 12;
     int64_t ef_construction = 100;
-    auto index =
-        std::make_shared<vsag::HNSW>(std::make_shared<hnswlib::L2Space>(dim), M, ef_construction);
+    auto index = std::make_shared<vsag::HNSW>(
+        std::make_shared<hnswlib::L2Space>(dim), max_degree, ef_construction);
 
     auto result = index->Serialize();
     REQUIRE_FALSE(result.has_value());
@@ -214,10 +214,10 @@ TEST_CASE("serialize empty index", "[hnsw][ut]") {
 TEST_CASE("deserialize on not empty index", "[hnsw][ut]") {
     spdlog::set_level(spdlog::level::debug);
     int64_t dim = 128;
-    int64_t M = 12;
+    int64_t max_degree = 12;
     int64_t ef_construction = 100;
-    auto index =
-        std::make_shared<vsag::HNSW>(std::make_shared<hnswlib::L2Space>(dim), M, ef_construction);
+    auto index = std::make_shared<vsag::HNSW>(
+        std::make_shared<hnswlib::L2Space>(dim), max_degree, ef_construction);
 
     const int64_t num_elements = 10;
     auto [ids, vectors] = ::generate_ids_and_vectors(num_elements, dim);

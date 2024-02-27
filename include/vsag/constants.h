@@ -27,20 +27,20 @@ constexpr const char* PARAMETER_DTYPE = "dtype";
 constexpr const char* PARAMETER_DIM = "dim";
 constexpr const char* PARAMETER_METRIC_TYPE = "metric_type";
 
-constexpr const char* DISKANN_PARAMETER_L = "L";
-constexpr const char* DISKANN_PARAMETER_R = "R";
-constexpr const char* DISKANN_PARAMETER_P_VAL = "p_val";
-constexpr const char* DISKANN_PARAMETER_DISK_PQ_DIMS = "disk_pq_dims";
-constexpr const char* DISKANN_PARAMETER_PRELOAD = "preload";
+constexpr const char* DISKANN_PARAMETER_L = "ef_construction";
+constexpr const char* DISKANN_PARAMETER_R = "max_degree";
+constexpr const char* DISKANN_PARAMETER_P_VAL = "pq_sample_rate";
+constexpr const char* DISKANN_PARAMETER_DISK_PQ_DIMS = "pq_dims";
+constexpr const char* DISKANN_PARAMETER_PRELOAD = "use_pq_search";
 constexpr const char* DISKANN_PARAMETER_USE_REFERENCE = "use_reference";
 
 constexpr const char* DISKANN_PARAMETER_BEAM_SEARCH = "beam_search";
 constexpr const char* DISKANN_PARAMETER_IO_LIMIT = "io_limit";
 constexpr const char* DISKANN_PARAMETER_EF_SEARCH = "ef_search";
-constexpr const char* DISKANN_PARAMETER_REORDER = "reorder";
+constexpr const char* DISKANN_PARAMETER_REORDER = "use_reorder";
 
-constexpr const char* HNSW_PARAMETER_EF_RUNTIME = "ef_runtime";
-constexpr const char* HNSW_PARAMETER_M = "M";
+constexpr const char* HNSW_PARAMETER_EF_RUNTIME = "ef_search";
+constexpr const char* HNSW_PARAMETER_M = "max_degree";
 constexpr const char* HNSW_PARAMETER_CONSTRUCTION = "ef_construction";
 
 // statstic key

@@ -30,12 +30,19 @@ generate_ids_and_vectors(int64_t num_elements, int64_t dim) {
 TEST_CASE("build", "[diskann][ut]") {
     spdlog::set_level(spdlog::level::debug);
     int64_t dim = 128;
-    int64_t L = 100;
-    int64_t R = 12;
-    float p_val = 1.0f;
-    size_t disk_pq_dims = 128;
-    auto index = std::make_shared<vsag::DiskANN>(
-        diskann::Metric::L2, "float32", L, R, p_val, disk_pq_dims, dim, false, false);
+    int64_t ef_construction = 100;
+    int64_t max_degree = 12;
+    float pq_sample_rate = 1.0f;
+    size_t pq_dims = 128;
+    auto index = std::make_shared<vsag::DiskANN>(diskann::Metric::L2,
+                                                 "float32",
+                                                 ef_construction,
+                                                 max_degree,
+                                                 pq_sample_rate,
+                                                 pq_dims,
+                                                 dim,
+                                                 false,
+                                                 false);
 
     int64_t num_elements = 10;
     auto [ids, vectors] = generate_ids_and_vectors(num_elements, dim);
@@ -79,12 +86,19 @@ TEST_CASE("build", "[diskann][ut]") {
 TEST_CASE("knn_search", "[diskann][ut]") {
     spdlog::set_level(spdlog::level::debug);
     int64_t dim = 128;
-    int64_t L = 100;
-    int64_t R = 12;
-    float p_val = 1.0f;
-    size_t disk_pq_dims = 128;
-    auto index = std::make_shared<vsag::DiskANN>(
-        diskann::Metric::L2, "float32", L, R, p_val, disk_pq_dims, dim, false, false);
+    int64_t ef_construction = 100;
+    int64_t max_degree = 12;
+    float pq_sample_rate = 1.0f;
+    size_t pq_dims = 128;
+    auto index = std::make_shared<vsag::DiskANN>(diskann::Metric::L2,
+                                                 "float32",
+                                                 ef_construction,
+                                                 max_degree,
+                                                 pq_sample_rate,
+                                                 pq_dims,
+                                                 dim,
+                                                 false,
+                                                 false);
 
     int64_t num_elements = 100;
     auto [ids, vectors] = generate_ids_and_vectors(num_elements, dim);
@@ -104,8 +118,15 @@ TEST_CASE("knn_search", "[diskann][ut]") {
     nlohmann::json params{{"diskann", {{"ef_search", 100}, {"beam_search", 4}, {"io_limit", 200}}}};
 
     SECTION("index empty") {
-        auto empty_index = std::make_shared<vsag::DiskANN>(
-            diskann::Metric::L2, "float32", L, R, p_val, disk_pq_dims, dim, false, false);
+        auto empty_index = std::make_shared<vsag::DiskANN>(diskann::Metric::L2,
+                                                           "float32",
+                                                           ef_construction,
+                                                           max_degree,
+                                                           pq_sample_rate,
+                                                           pq_dims,
+                                                           dim,
+                                                           false,
+                                                           false);
         auto result = empty_index->KnnSearch(query, k, params.dump());
         REQUIRE_FALSE(result.has_value());
         REQUIRE(result.error().type == vsag::index_error_type::index_empty);
@@ -173,12 +194,19 @@ TEST_CASE("knn_search", "[diskann][ut]") {
 TEST_CASE("range_search", "[diskann][ut]") {
     spdlog::set_level(spdlog::level::debug);
     int64_t dim = 128;
-    int64_t L = 100;
-    int64_t R = 12;
-    float p_val = 1.0f;
-    size_t disk_pq_dims = 128;
-    auto index = std::make_shared<vsag::DiskANN>(
-        diskann::Metric::L2, "float32", L, R, p_val, disk_pq_dims, dim, false, false);
+    int64_t ef_construction = 100;
+    int64_t max_degree = 12;
+    float pq_sample_rate = 1.0f;
+    size_t pq_dims = 128;
+    auto index = std::make_shared<vsag::DiskANN>(diskann::Metric::L2,
+                                                 "float32",
+                                                 ef_construction,
+                                                 max_degree,
+                                                 pq_sample_rate,
+                                                 pq_dims,
+                                                 dim,
+                                                 false,
+                                                 false);
 
     int64_t num_elements = 100;
     auto [ids, vectors] = generate_ids_and_vectors(num_elements, dim);
@@ -198,8 +226,15 @@ TEST_CASE("range_search", "[diskann][ut]") {
     nlohmann::json params{{"diskann", {{"ef_search", 100}, {"beam_search", 4}, {"io_limit", 200}}}};
 
     SECTION("index empty") {
-        auto empty_index = std::make_shared<vsag::DiskANN>(
-            diskann::Metric::L2, "float32", L, R, p_val, disk_pq_dims, dim, false, false);
+        auto empty_index = std::make_shared<vsag::DiskANN>(diskann::Metric::L2,
+                                                           "float32",
+                                                           ef_construction,
+                                                           max_degree,
+                                                           pq_sample_rate,
+                                                           pq_dims,
+                                                           dim,
+                                                           false,
+                                                           false);
         auto result = empty_index->RangeSearch(query, radius, params.dump());
         REQUIRE_FALSE(result.has_value());
         REQUIRE(result.error().type == vsag::index_error_type::index_empty);
@@ -278,12 +313,19 @@ TEST_CASE("range_search", "[diskann][ut]") {
 TEST_CASE("serialize empty index", "[diskann][ut]") {
     spdlog::set_level(spdlog::level::debug);
     int64_t dim = 128;
-    int64_t L = 100;
-    int64_t R = 12;
-    float p_val = 1.0f;
-    size_t disk_pq_dims = 128;
-    auto index = std::make_shared<vsag::DiskANN>(
-        diskann::Metric::L2, "float32", L, R, p_val, disk_pq_dims, dim, false, false);
+    int64_t ef_construction = 100;
+    int64_t max_degree = 12;
+    float pq_sample_rate = 1.0f;
+    size_t pq_dims = 128;
+    auto index = std::make_shared<vsag::DiskANN>(diskann::Metric::L2,
+                                                 "float32",
+                                                 ef_construction,
+                                                 max_degree,
+                                                 pq_sample_rate,
+                                                 pq_dims,
+                                                 dim,
+                                                 false,
+                                                 false);
 
     auto result = index->Serialize();
     REQUIRE_FALSE(result.has_value());
@@ -293,12 +335,19 @@ TEST_CASE("serialize empty index", "[diskann][ut]") {
 TEST_CASE("deserialize on not empty index", "[diskann][ut]") {
     spdlog::set_level(spdlog::level::debug);
     int64_t dim = 128;
-    int64_t L = 100;
-    int64_t R = 12;
-    float p_val = 1.0f;
-    size_t disk_pq_dims = 128;
-    auto index = std::make_shared<vsag::DiskANN>(
-        diskann::Metric::L2, "float32", L, R, p_val, disk_pq_dims, dim, false, false);
+    int64_t ef_construction = 100;
+    int64_t max_degree = 12;
+    float pq_sample_rate = 1.0f;
+    size_t pq_dims = 128;
+    auto index = std::make_shared<vsag::DiskANN>(diskann::Metric::L2,
+                                                 "float32",
+                                                 ef_construction,
+                                                 max_degree,
+                                                 pq_sample_rate,
+                                                 pq_dims,
+                                                 dim,
+                                                 false,
+                                                 false);
 
     int64_t num_elements = 100;
     auto [ids, vectors] = generate_ids_and_vectors(num_elements, dim);
