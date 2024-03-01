@@ -84,8 +84,8 @@ float_diskann() {
     dataset.Dim(dim).NumElements(max_elements).Ids(ids).Float32Vectors(data);
     if (const auto num = diskann->Build(dataset); num.has_value()) {
         std::cout << "After Build(), Index constains: " << diskann->GetNumElements() << std::endl;
-    } else if (num.error().type == vsag::index_error_type::internal_error) {
-        std::cerr << "Failed to build index: internal error" << std::endl;
+    } else if (num.error().type == vsag::ErrorType::INTERNAL_ERROR) {
+        std::cerr << "Failed to build index: internalError" << std::endl;
         exit(-1);
     }
 
@@ -106,7 +106,7 @@ float_diskann() {
         if (auto result = diskann->KnnSearch(query, k, parameters.dump()); result.has_value()) {
             correct += vsag::knn_search_recall(
                 data, ids, max_elements, data + i * dim, dim, result->GetIds(), result->GetDim());
-        } else if (result.error().type == vsag::index_error_type::internal_error) {
+        } else if (result.error().type == vsag::ErrorType::INTERNAL_ERROR) {
             std::cerr << "failed to perform knn search on index" << std::endl;
         }
     }
@@ -140,7 +140,7 @@ float_diskann() {
                                                  result->GetIds(),
                                                  result->GetDim(),
                                                  threshold);
-        } else if (result.error().type == vsag::index_error_type::internal_error) {
+        } else if (result.error().type == vsag::ErrorType::INTERNAL_ERROR) {
             std::cerr << "failed to perform knn search on index" << std::endl;
         }
     }
@@ -169,7 +169,7 @@ float_diskann() {
                 metafile << key << std::endl;
             }
             metafile.close();
-        } else if (bs.error().type == vsag::index_error_type::no_enough_memory) {
+        } else if (bs.error().type == vsag::ErrorType::NO_ENOUGH_MEMORY) {
             std::cerr << "no enough memory to serialize index" << std::endl;
         }
     }
@@ -216,7 +216,7 @@ float_diskann() {
         if (auto result = diskann->KnnSearch(query, k, parameters.dump()); result.has_value()) {
             correct += vsag::knn_search_recall(
                 data, ids, max_elements, data + i * dim, dim, result->GetIds(), result->GetDim());
-        } else if (result.error().type == vsag::index_error_type::internal_error) {
+        } else if (result.error().type == vsag::ErrorType::INTERNAL_ERROR) {
             std::cerr << "failed to perform knn search on index" << std::endl;
         }
     }
@@ -256,7 +256,7 @@ float_diskann() {
             writeBinaryPOD(file, keys.size());
             writeBinaryPOD(file, offset);
             file.close();
-        } else if (bs.error().type == vsag::index_error_type::no_enough_memory) {
+        } else if (bs.error().type == vsag::ErrorType::NO_ENOUGH_MEMORY) {
             std::cerr << "no enough memory to serialize index" << std::endl;
         }
     }
@@ -320,7 +320,7 @@ float_diskann() {
         if (auto result = diskann->KnnSearch(query, k, parameters.dump()); result.has_value()) {
             correct += vsag::knn_search_recall(
                 data, ids, max_elements, data + i * dim, dim, result->GetIds(), result->GetDim());
-        } else if (result.error().type == vsag::index_error_type::internal_error) {
+        } else if (result.error().type == vsag::ErrorType::INTERNAL_ERROR) {
             std::cerr << "failed to perform knn search on index" << std::endl;
         }
     }
@@ -395,7 +395,7 @@ float_diskann() {
         if (auto result = diskann->KnnSearch(query, k, parameters.dump()); result.has_value()) {
             correct += vsag::knn_search_recall(
                 data, ids, max_elements, data + i * dim, dim, result->GetIds(), result->GetDim());
-        } else if (result.error().type == vsag::index_error_type::internal_error) {
+        } else if (result.error().type == vsag::ErrorType::INTERNAL_ERROR) {
             std::cerr << "failed to perform knn search on index" << std::endl;
         }
     }

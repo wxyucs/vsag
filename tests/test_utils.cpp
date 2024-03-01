@@ -22,7 +22,7 @@ TEST_CASE("l2_and_filtering", "[utils]") {
     auto res = l2_and_filtering(dim, nb, base, query, 20.0f);
     delete[] base;
     delete[] query;
-    CHECK(res->Capcity() == 16);
+    CHECK(res->Capacity() == 16);
     CHECK(res->CountOnes() == 5);
     CHECK_FALSE(res->Get(0));
     CHECK_FALSE(res->Get(1));

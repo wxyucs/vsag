@@ -147,12 +147,12 @@ public:
 
 public:
     /**
-      * Get the capcity of this bitset
+      * Get the capacity of this bitset
       * 
       * @return the number of bits can be used
       */
     uint64_t
-    Capcity() {
+    Capacity() {
         std::lock_guard<std::mutex> lock(mutex_);
         return data_.size() * 8;
     }

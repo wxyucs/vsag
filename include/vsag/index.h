@@ -23,7 +23,7 @@ public:
       * @param base should contains dim, num_elements, ids and vectors
       * @return IDs that failed to insert into the index
       */
-    virtual tl::expected<std::vector<int64_t>, index_error>
+    virtual tl::expected<std::vector<int64_t>, Error>
     Build(const Dataset& base) = 0;
 
     /**
@@ -32,7 +32,7 @@ public:
       * @param base should contains dim, num_elements, ids and vectors
       * @return IDs that failed to insert into the index
       */
-    virtual tl::expected<std::vector<int64_t>, index_error>
+    virtual tl::expected<std::vector<int64_t>, Error>
     Add(const Dataset& base) {
         throw std::runtime_error("Index not support addding vectors");
     }
@@ -47,7 +47,7 @@ public:
       *                - num_elements: 1
       *                - ids, distances: length is (num_elements * k)
       */
-    virtual tl::expected<Dataset, index_error>
+    virtual tl::expected<Dataset, Error>
     KnnSearch(const Dataset& query,
               int64_t k,
               const std::string& parameters,
@@ -64,7 +64,7 @@ public:
       *                - dim: the size of results
       *                - ids, distances: length is dim
       */
-    virtual tl::expected<Dataset, index_error>
+    virtual tl::expected<Dataset, Error>
     RangeSearch(const Dataset& query,
                 float radius,
                 const std::string& parameters,
@@ -78,7 +78,7 @@ public:
       *
       * @return binaryset contains all parts of the index
       */
-    virtual tl::expected<BinarySet, index_error>
+    virtual tl::expected<BinarySet, Error>
     Serialize() const = 0;
 
     /**
@@ -86,7 +86,7 @@ public:
       *
       * @param binaryset contains all parts of the index
       */
-    virtual tl::expected<void, index_error>
+    virtual tl::expected<void, Error>
     Deserialize(const BinarySet& binary_set) = 0;
 
     /**
@@ -94,7 +94,7 @@ public:
       *
       * @param reader contains all parts of the index
       */
-    virtual tl::expected<void, index_error>
+    virtual tl::expected<void, Error>
     Deserialize(const ReaderSet& reader_set) = 0;
 
 public:

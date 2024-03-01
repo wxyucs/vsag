@@ -70,8 +70,8 @@ TEST_CASE("DiskAnn Float Recall", "[diskann]") {
                     correct++;
                 }
             }
-        } else if (result.error().type == vsag::index_error_type::internal_error) {
-            std::cerr << "failed to search on index: internal error" << std::endl;
+        } else if (result.error().type == vsag::ErrorType::INTERNAL_ERROR) {
+            std::cerr << "failed to search on index: internalError" << std::endl;
             exit(-1);
         }
     }
@@ -189,8 +189,8 @@ TEST_CASE("DiskAnn Float Recall", "[diskann]") {
                 if (result->GetIds()[0] == i) {
                     correct++;
                 }
-            } else if (result.error().type == vsag::index_error_type::internal_error) {
-                std::cerr << "failed to search on index: internal error" << std::endl;
+            } else if (result.error().type == vsag::ErrorType::INTERNAL_ERROR) {
+                std::cerr << "failed to search on index: internalError" << std::endl;
                 exit(-1);
             }
         }
@@ -239,8 +239,8 @@ TEST_CASE("DiskAnn Float Recall", "[diskann]") {
                     correct++;
                 }
             }
-        } else if (result.error().type == vsag::index_error_type::internal_error) {
-            std::cerr << "failed to search on index: internal error" << std::endl;
+        } else if (result.error().type == vsag::ErrorType::INTERNAL_ERROR) {
+            std::cerr << "failed to search on index: internalError" << std::endl;
             exit(-1);
         }
     }
@@ -308,8 +308,8 @@ TEST_CASE("DiskAnn IP Search", "[diskann]") {
                     correct++;
                 }
             }
-        } else if (result.error().type == vsag::index_error_type::internal_error) {
-            std::cerr << "failed to search on index: internal error" << std::endl;
+        } else if (result.error().type == vsag::ErrorType::INTERNAL_ERROR) {
+            std::cerr << "failed to search on index: internalError" << std::endl;
             exit(-1);
         }
     }
@@ -384,8 +384,8 @@ TEST_CASE("DiskAnn Range Query", "[diskann]") {
             }
             true_result += range_result->CountOnes();
             return_result += result->GetDim();
-        } else if (result.error().type == vsag::index_error_type::internal_error) {
-            std::cerr << "failed to search on index: internal error" << std::endl;
+        } else if (result.error().type == vsag::ErrorType::INTERNAL_ERROR) {
+            std::cerr << "failed to search on index: internalError" << std::endl;
             exit(-1);
         }
     }
@@ -456,8 +456,8 @@ TEST_CASE("DiskAnn Preload Graph", "[diskann]") {
                     correct++;
                 }
             }
-        } else if (result.error().type == vsag::index_error_type::internal_error) {
-            std::cerr << "failed to search on index: internal error" << std::endl;
+        } else if (result.error().type == vsag::ErrorType::INTERNAL_ERROR) {
+            std::cerr << "failed to search on index: internalError" << std::endl;
             exit(-1);
         }
     }
@@ -482,8 +482,8 @@ TEST_CASE("DiskAnn Preload Graph", "[diskann]") {
                     correct++;
                 }
             }
-        } else if (result.error().type == vsag::index_error_type::internal_error) {
-            std::cerr << "failed to search on index: internal error" << std::endl;
+        } else if (result.error().type == vsag::ErrorType::INTERNAL_ERROR) {
+            std::cerr << "failed to search on index: internalError" << std::endl;
             exit(-1);
         }
     }
@@ -509,8 +509,8 @@ TEST_CASE("DiskAnn Preload Graph", "[diskann]") {
                     correct++;
                 }
             }
-        } else if (result.error().type == vsag::index_error_type::internal_error) {
-            std::cerr << "failed to search on index: internal error" << std::endl;
+        } else if (result.error().type == vsag::ErrorType::INTERNAL_ERROR) {
+            std::cerr << "failed to search on index: internalError" << std::endl;
             exit(-1);
         }
     }
@@ -588,8 +588,8 @@ TEST_CASE("DiskAnn Filter Test", "[diskann]") {
                     REQUIRE(invalid->Get(ids[i]) ^ (ids[i] == result->GetIds()[0]));
                 }
             }
-        } else if (result.error().type == vsag::index_error_type::internal_error) {
-            std::cerr << "failed to knn search on index: internal error" << std::endl;
+        } else if (result.error().type == vsag::ErrorType::INTERNAL_ERROR) {
+            std::cerr << "failed to knn search on index: internalError" << std::endl;
             exit(-1);
         }
 
@@ -598,8 +598,8 @@ TEST_CASE("DiskAnn Filter Test", "[diskann]") {
             if (result->GetDim() != 0 && result->GetNumElements() == 1) {
                 REQUIRE(invalid->Get(ids[i]) ^ (ids[i] == result->GetIds()[0]));
             }
-        } else if (result.error().type == vsag::index_error_type::internal_error) {
-            std::cerr << "failed to range search on index: internal error" << std::endl;
+        } else if (result.error().type == vsag::ErrorType::INTERNAL_ERROR) {
+            std::cerr << "failed to range search on index: internalError" << std::endl;
             exit(-1);
         }
         size_t bytes_count = max_elements / 4 + 1;
@@ -611,8 +611,8 @@ TEST_CASE("DiskAnn Filter Test", "[diskann]") {
             REQUIRE(result->GetDim() == 0);
             REQUIRE(result->GetDistances() == nullptr);
             REQUIRE(result->GetIds() == nullptr);
-        } else if (result.error().type == vsag::index_error_type::internal_error) {
-            std::cerr << "failed to range search on index: internal error" << std::endl;
+        } else if (result.error().type == vsag::ErrorType::INTERNAL_ERROR) {
+            std::cerr << "failed to range search on index: internalError" << std::endl;
             exit(-1);
         }
 
@@ -621,8 +621,8 @@ TEST_CASE("DiskAnn Filter Test", "[diskann]") {
             REQUIRE(result->GetDim() == 0);
             REQUIRE(result->GetDistances() == nullptr);
             REQUIRE(result->GetIds() == nullptr);
-        } else if (result.error().type == vsag::index_error_type::internal_error) {
-            std::cerr << "failed to range search on index: internal error" << std::endl;
+        } else if (result.error().type == vsag::ErrorType::INTERNAL_ERROR) {
+            std::cerr << "failed to range search on index: internalError" << std::endl;
             exit(-1);
         }
 
@@ -638,8 +638,8 @@ TEST_CASE("DiskAnn Filter Test", "[diskann]") {
                     correct_knn++;
                 }
             }
-        } else if (result.error().type == vsag::index_error_type::internal_error) {
-            std::cerr << "failed to knn search on index: internal error" << std::endl;
+        } else if (result.error().type == vsag::ErrorType::INTERNAL_ERROR) {
+            std::cerr << "failed to knn search on index: internalError" << std::endl;
             exit(-1);
         }
 
@@ -650,8 +650,8 @@ TEST_CASE("DiskAnn Filter Test", "[diskann]") {
                     correct_range++;
                 }
             }
-        } else if (result.error().type == vsag::index_error_type::internal_error) {
-            std::cerr << "failed to range search on index: internal error" << std::endl;
+        } else if (result.error().type == vsag::ErrorType::INTERNAL_ERROR) {
+            std::cerr << "failed to range search on index: internalError" << std::endl;
             exit(-1);
         }
         delete[] bits_ones;
@@ -748,8 +748,8 @@ TEST_CASE("DiskAnn Random Id", "[diskann]") {
                     correct++;
                 }
             }
-        } else if (result.error().type == vsag::index_error_type::internal_error) {
-            std::cerr << "failed to search on index: internal error" << std::endl;
+        } else if (result.error().type == vsag::ErrorType::INTERNAL_ERROR) {
+            std::cerr << "failed to search on index: internalError" << std::endl;
             exit(-1);
         }
     }
@@ -815,8 +815,8 @@ TEST_CASE("DiskANN small dimension", "[hnsw]") {
                     correct++;
                 }
             }
-        } else if (result.error().type == vsag::index_error_type::internal_error) {
-            std::cerr << "failed to search on index: internal error" << std::endl;
+        } else if (result.error().type == vsag::ErrorType::INTERNAL_ERROR) {
+            std::cerr << "failed to search on index: internalError" << std::endl;
             exit(-1);
         }
     }

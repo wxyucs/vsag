@@ -50,13 +50,13 @@ TEST_CASE("build & add", "[hnsw][ut]") {
     SECTION("build with incorrect dim") {
         auto result = index->Build(dataset);
         REQUIRE_FALSE(result.has_value());
-        REQUIRE(result.error().type == vsag::index_error_type::dimension_not_equal);
+        REQUIRE(result.error().type == vsag::ErrorType::INVALID_ARGUMENT);
     }
 
     SECTION("add with incorrect dim") {
         auto result = index->Add(dataset);
         REQUIRE_FALSE(result.has_value());
-        REQUIRE(result.error().type == vsag::index_error_type::dimension_not_equal);
+        REQUIRE(result.error().type == vsag::ErrorType::INVALID_ARGUMENT);
     }
 }
 
@@ -86,20 +86,20 @@ TEST_CASE("knn_search", "[hnsw][ut]") {
     SECTION("invalid parameters k is 0") {
         auto result = index->KnnSearch(query, 0, params.dump());
         REQUIRE_FALSE(result.has_value());
-        REQUIRE(result.error().type == vsag::index_error_type::invalid_parameter);
+        REQUIRE(result.error().type == vsag::ErrorType::INVALID_ARGUMENT);
     }
 
     SECTION("invalid parameters k less than 0") {
         auto result = index->KnnSearch(query, -1, params.dump());
         REQUIRE_FALSE(result.has_value());
-        REQUIRE(result.error().type == vsag::index_error_type::invalid_parameter);
+        REQUIRE(result.error().type == vsag::ErrorType::INVALID_ARGUMENT);
     }
 
     SECTION("invalid parameters hnsw not found") {
         nlohmann::json invalid_params{};
         auto result = index->KnnSearch(query, k, invalid_params.dump());
         REQUIRE_FALSE(result.has_value());
-        REQUIRE(result.error().type == vsag::index_error_type::invalid_parameter);
+        REQUIRE(result.error().type == vsag::ErrorType::INVALID_ARGUMENT);
     }
 
     SECTION("invalid parameters ef_search not found") {
@@ -108,14 +108,14 @@ TEST_CASE("knn_search", "[hnsw][ut]") {
         };
         auto result = index->KnnSearch(query, k, invalid_params.dump());
         REQUIRE_FALSE(result.has_value());
-        REQUIRE(result.error().type == vsag::index_error_type::invalid_parameter);
+        REQUIRE(result.error().type == vsag::ErrorType::INVALID_ARGUMENT);
     }
 
     SECTION("invalid bitset length is less than the size of index") {
         auto invalid_bitset = std::make_shared<vsag::Bitset>(1);
         auto result = index->KnnSearch(query, k, params.dump(), invalid_bitset);
         REQUIRE_FALSE(result.has_value());
-        REQUIRE(result.error().type == vsag::index_error_type::internal_error);
+        REQUIRE(result.error().type == vsag::ErrorType::INVALID_ARGUMENT);
     }
 
     SECTION("query length is not 1") {
@@ -123,7 +123,7 @@ TEST_CASE("knn_search", "[hnsw][ut]") {
         query.NumElements(2).Dim(dim).Float32Vectors(vectors.data()).Owner(false);
         auto result = index->KnnSearch(query, k, params.dump());
         REQUIRE_FALSE(result.has_value());
-        REQUIRE(result.error().type == vsag::index_error_type::internal_error);
+        REQUIRE(result.error().type == vsag::ErrorType::INVALID_ARGUMENT);
     }
 
     SECTION("dimension not equal") {
@@ -131,7 +131,7 @@ TEST_CASE("knn_search", "[hnsw][ut]") {
         query.NumElements(1).Dim(dim - 1).Float32Vectors(vectors.data()).Owner(false);
         auto result = index->KnnSearch(query, k, params.dump());
         REQUIRE_FALSE(result.has_value());
-        REQUIRE(result.error().type == vsag::index_error_type::dimension_not_equal);
+        REQUIRE(result.error().type == vsag::ErrorType::INVALID_ARGUMENT);
     }
 }
 
@@ -170,14 +170,14 @@ TEST_CASE("range_search", "[hnsw][ut]") {
         query.NumElements(1).Dim(dim).Float32Vectors(vectors.data()).Owner(false);
         auto result = index->RangeSearch(query, -1, params.dump());
         REQUIRE_FALSE(result.has_value());
-        REQUIRE(result.error().type == vsag::index_error_type::invalid_parameter);
+        REQUIRE(result.error().type == vsag::ErrorType::INVALID_ARGUMENT);
     }
 
     SECTION("invalid parameters hnsw not found") {
         nlohmann::json invalid_params{};
         auto result = index->RangeSearch(query, radius, invalid_params.dump());
         REQUIRE_FALSE(result.has_value());
-        REQUIRE(result.error().type == vsag::index_error_type::invalid_parameter);
+        REQUIRE(result.error().type == vsag::ErrorType::INVALID_ARGUMENT);
     }
 
     SECTION("invalid parameters ef_search not found") {
@@ -186,7 +186,7 @@ TEST_CASE("range_search", "[hnsw][ut]") {
         };
         auto result = index->RangeSearch(query, radius, invalid_params.dump());
         REQUIRE_FALSE(result.has_value());
-        REQUIRE(result.error().type == vsag::index_error_type::invalid_parameter);
+        REQUIRE(result.error().type == vsag::ErrorType::INVALID_ARGUMENT);
     }
 
     SECTION("query length is not 1") {
@@ -194,7 +194,7 @@ TEST_CASE("range_search", "[hnsw][ut]") {
         query.NumElements(2).Dim(dim).Float32Vectors(vectors.data()).Owner(false);
         auto result = index->RangeSearch(query, radius, params.dump());
         REQUIRE_FALSE(result.has_value());
-        REQUIRE(result.error().type == vsag::index_error_type::internal_error);
+        REQUIRE(result.error().type == vsag::ErrorType::INVALID_ARGUMENT);
     }
 }
 
@@ -208,7 +208,7 @@ TEST_CASE("serialize empty index", "[hnsw][ut]") {
 
     auto result = index->Serialize();
     REQUIRE_FALSE(result.has_value());
-    REQUIRE(result.error().type == vsag::index_error_type::index_empty);
+    REQUIRE(result.error().type == vsag::ErrorType::INDEX_EMPTY);
 }
 
 TEST_CASE("deserialize on not empty index", "[hnsw][ut]") {
@@ -232,5 +232,5 @@ TEST_CASE("deserialize on not empty index", "[hnsw][ut]") {
 
     auto voidresult = index->Deserialize(binary_set.value());
     REQUIRE_FALSE(voidresult.has_value());
-    REQUIRE(voidresult.error().type == vsag::index_error_type::index_not_empty);
+    REQUIRE(voidresult.error().type == vsag::ErrorType::INDEX_NOT_EMPTY);
 }

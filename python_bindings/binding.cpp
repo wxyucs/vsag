@@ -30,13 +30,13 @@ public:
         if (auto index = vsag::Factory::CreateIndex(name, parameters)) {
             index_ = index.value();
         } else {
-            vsag::index_error error_code = index.error();
-            if (error_code.type == vsag::index_error_type::invalid_index) {
-                throw std::runtime_error("error type: invalid_index");
-            } else if (error_code.type == vsag::index_error_type::invalid_parameter) {
+            vsag::Error error_code = index.error();
+            if (error_code.type == vsag::ErrorType::UNSUPPORTED_INDEX) {
+                throw std::runtime_error("error type: UNSUPPORTED_INDEX");
+            } else if (error_code.type == vsag::ErrorType::INVALID_ARGUMENT) {
                 throw std::runtime_error("error type: invalid_parameter");
             } else {
-                throw std::runtime_error("error type: unexpected error");
+                throw std::runtime_error("error type: unexpectedError");
             }
         }
     }

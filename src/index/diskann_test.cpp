@@ -57,7 +57,7 @@ TEST_CASE("build", "[diskann][ut]") {
             .Owner(false);
         auto result = index->Build(dataset);
         REQUIRE_FALSE(result.has_value());
-        REQUIRE(result.error().type == vsag::index_error_type::dimension_not_equal);
+        REQUIRE(result.error().type == vsag::ErrorType::INVALID_ARGUMENT);
     }
 
     SECTION("number of elements less than 2") {
@@ -65,7 +65,7 @@ TEST_CASE("build", "[diskann][ut]") {
         dataset.Dim(dim).NumElements(1).Ids(ids.data()).Float32Vectors(vectors.data()).Owner(false);
         auto result = index->Build(dataset);
         REQUIRE_FALSE(result.has_value());
-        REQUIRE(result.error().type == vsag::index_error_type::no_enough_data);
+        REQUIRE(result.error().type == vsag::ErrorType::INVALID_ARGUMENT);
     }
 
     SECTION("build twice") {
@@ -79,7 +79,7 @@ TEST_CASE("build", "[diskann][ut]") {
 
         auto result = index->Build(dataset);
         REQUIRE_FALSE(result.has_value());
-        REQUIRE(result.error().type == vsag::index_error_type::build_twice);
+        REQUIRE(result.error().type == vsag::ErrorType::BUILD_TWICE);
     }
 }
 
@@ -129,19 +129,19 @@ TEST_CASE("knn_search", "[diskann][ut]") {
                                                            false);
         auto result = empty_index->KnnSearch(query, k, params.dump());
         REQUIRE_FALSE(result.has_value());
-        REQUIRE(result.error().type == vsag::index_error_type::index_empty);
+        REQUIRE(result.error().type == vsag::ErrorType::INDEX_EMPTY);
     }
 
     SECTION("invalid parameters k is 0") {
         auto result = index->KnnSearch(query, 0, params.dump());
         REQUIRE_FALSE(result.has_value());
-        REQUIRE(result.error().type == vsag::index_error_type::invalid_parameter);
+        REQUIRE(result.error().type == vsag::ErrorType::INVALID_ARGUMENT);
     }
 
     SECTION("invalid parameters k less than 0") {
         auto result = index->KnnSearch(query, -1, params.dump());
         REQUIRE_FALSE(result.has_value());
-        REQUIRE(result.error().type == vsag::index_error_type::invalid_parameter);
+        REQUIRE(result.error().type == vsag::ErrorType::INVALID_ARGUMENT);
     }
 
     SECTION("dimension not equal") {
@@ -149,21 +149,21 @@ TEST_CASE("knn_search", "[diskann][ut]") {
         query.NumElements(1).Dim(dim - 1).Float32Vectors(vectors.data()).Owner(false);
         auto result = index->KnnSearch(query, k, params.dump());
         REQUIRE_FALSE(result.has_value());
-        REQUIRE(result.error().type == vsag::index_error_type::dimension_not_equal);
+        REQUIRE(result.error().type == vsag::ErrorType::INVALID_ARGUMENT);
     }
 
     SECTION("invalid bitset length is less than the size of index") {
         auto invalid_bitset = std::make_shared<vsag::Bitset>(1);
         auto result = index->KnnSearch(query, k, params.dump(), invalid_bitset);
         REQUIRE_FALSE(result.has_value());
-        REQUIRE(result.error().type == vsag::index_error_type::internal_error);
+        REQUIRE(result.error().type == vsag::ErrorType::INVALID_ARGUMENT);
     }
 
     SECTION("invalid parameters diskann not found") {
         nlohmann::json invalid_params{};
         auto result = index->KnnSearch(query, k, invalid_params.dump());
         REQUIRE_FALSE(result.has_value());
-        REQUIRE(result.error().type == vsag::index_error_type::invalid_parameter);
+        REQUIRE(result.error().type == vsag::ErrorType::INVALID_ARGUMENT);
     }
 
     SECTION("invalid parameters beam_search not found") {
@@ -171,7 +171,7 @@ TEST_CASE("knn_search", "[diskann][ut]") {
 
         auto result = index->KnnSearch(query, k, invalid_params.dump());
         REQUIRE_FALSE(result.has_value());
-        REQUIRE(result.error().type == vsag::index_error_type::invalid_parameter);
+        REQUIRE(result.error().type == vsag::ErrorType::INVALID_ARGUMENT);
     }
 
     SECTION("invalid parameters io_limit not found") {
@@ -179,7 +179,7 @@ TEST_CASE("knn_search", "[diskann][ut]") {
 
         auto result = index->KnnSearch(query, k, invalid_params.dump());
         REQUIRE_FALSE(result.has_value());
-        REQUIRE(result.error().type == vsag::index_error_type::invalid_parameter);
+        REQUIRE(result.error().type == vsag::ErrorType::INVALID_ARGUMENT);
     }
 
     SECTION("invalid parameters ef_search not found") {
@@ -187,7 +187,7 @@ TEST_CASE("knn_search", "[diskann][ut]") {
 
         auto result = index->KnnSearch(query, k, invalid_params.dump());
         REQUIRE_FALSE(result.has_value());
-        REQUIRE(result.error().type == vsag::index_error_type::invalid_parameter);
+        REQUIRE(result.error().type == vsag::ErrorType::INVALID_ARGUMENT);
     }
 }
 
@@ -237,7 +237,7 @@ TEST_CASE("range_search", "[diskann][ut]") {
                                                            false);
         auto result = empty_index->RangeSearch(query, radius, params.dump());
         REQUIRE_FALSE(result.has_value());
-        REQUIRE(result.error().type == vsag::index_error_type::index_empty);
+        REQUIRE(result.error().type == vsag::ErrorType::INDEX_EMPTY);
     }
 
     SECTION("invalid parameter radius equals to 0") {
@@ -252,7 +252,7 @@ TEST_CASE("range_search", "[diskann][ut]") {
         query.NumElements(1).Dim(dim).Float32Vectors(vectors.data()).Owner(false);
         auto result = index->RangeSearch(query, -1, params.dump());
         REQUIRE_FALSE(result.has_value());
-        REQUIRE(result.error().type == vsag::index_error_type::invalid_parameter);
+        REQUIRE(result.error().type == vsag::ErrorType::INVALID_ARGUMENT);
     }
 
     SECTION("dimension not equal") {
@@ -260,7 +260,7 @@ TEST_CASE("range_search", "[diskann][ut]") {
         query.NumElements(1).Dim(dim - 1).Float32Vectors(vectors.data()).Owner(false);
         auto result = index->RangeSearch(query, radius, params.dump());
         REQUIRE_FALSE(result.has_value());
-        REQUIRE(result.error().type == vsag::index_error_type::dimension_not_equal);
+        REQUIRE(result.error().type == vsag::ErrorType::INVALID_ARGUMENT);
     }
 
     SECTION("query length is not 1") {
@@ -268,21 +268,21 @@ TEST_CASE("range_search", "[diskann][ut]") {
         query.NumElements(2).Dim(dim).Float32Vectors(vectors.data()).Owner(false);
         auto result = index->RangeSearch(query, radius, params.dump());
         REQUIRE_FALSE(result.has_value());
-        REQUIRE(result.error().type == vsag::index_error_type::internal_error);
+        REQUIRE(result.error().type == vsag::ErrorType::INVALID_ARGUMENT);
     }
 
     SECTION("invalid bitset length is less than the size of index") {
         auto invalid_bitset = std::make_shared<vsag::Bitset>(1);
         auto result = index->RangeSearch(query, radius, params.dump(), invalid_bitset);
         REQUIRE_FALSE(result.has_value());
-        REQUIRE(result.error().type == vsag::index_error_type::internal_error);
+        REQUIRE(result.error().type == vsag::ErrorType::INVALID_ARGUMENT);
     }
 
     SECTION("invalid parameters diskann not found") {
         nlohmann::json invalid_params{};
         auto result = index->RangeSearch(query, radius, invalid_params.dump());
         REQUIRE_FALSE(result.has_value());
-        REQUIRE(result.error().type == vsag::index_error_type::invalid_parameter);
+        REQUIRE(result.error().type == vsag::ErrorType::INVALID_ARGUMENT);
     }
 
     SECTION("invalid parameters beam_search not found") {
@@ -290,7 +290,7 @@ TEST_CASE("range_search", "[diskann][ut]") {
 
         auto result = index->RangeSearch(query, radius, invalid_params.dump());
         REQUIRE_FALSE(result.has_value());
-        REQUIRE(result.error().type == vsag::index_error_type::invalid_parameter);
+        REQUIRE(result.error().type == vsag::ErrorType::INVALID_ARGUMENT);
     }
 
     SECTION("invalid parameters io_limit not found") {
@@ -298,7 +298,7 @@ TEST_CASE("range_search", "[diskann][ut]") {
 
         auto result = index->RangeSearch(query, radius, invalid_params.dump());
         REQUIRE_FALSE(result.has_value());
-        REQUIRE(result.error().type == vsag::index_error_type::invalid_parameter);
+        REQUIRE(result.error().type == vsag::ErrorType::INVALID_ARGUMENT);
     }
 
     SECTION("invalid parameters ef_search not found") {
@@ -306,7 +306,7 @@ TEST_CASE("range_search", "[diskann][ut]") {
 
         auto result = index->RangeSearch(query, radius, invalid_params.dump());
         REQUIRE_FALSE(result.has_value());
-        REQUIRE(result.error().type == vsag::index_error_type::invalid_parameter);
+        REQUIRE(result.error().type == vsag::ErrorType::INVALID_ARGUMENT);
     }
 }
 
@@ -329,7 +329,7 @@ TEST_CASE("serialize empty index", "[diskann][ut]") {
 
     auto result = index->Serialize();
     REQUIRE_FALSE(result.has_value());
-    REQUIRE(result.error().type == vsag::index_error_type::index_empty);
+    REQUIRE(result.error().type == vsag::ErrorType::INDEX_EMPTY);
 }
 
 TEST_CASE("deserialize on not empty index", "[diskann][ut]") {
@@ -366,5 +366,5 @@ TEST_CASE("deserialize on not empty index", "[diskann][ut]") {
 
     auto voidresult = index->Deserialize(binary_set.value());
     REQUIRE_FALSE(voidresult.has_value());
-    REQUIRE(voidresult.error().type == vsag::index_error_type::index_not_empty);
+    REQUIRE(voidresult.error().type == vsag::ErrorType::INDEX_NOT_EMPTY);
 }

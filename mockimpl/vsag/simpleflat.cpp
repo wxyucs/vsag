@@ -14,15 +14,15 @@ SimpleFlat::SimpleFlat(const std::string& metric_type, int64_t dim)
     : metric_type_(metric_type), dim_(dim) {
 }
 
-tl::expected<std::vector<int64_t>, index_error>
+tl::expected<std::vector<int64_t>, Error>
 SimpleFlat::Build(const Dataset& base) {
     std::vector<int64_t> failed_ids;
     if (not this->data_.empty()) {
-        return tl::unexpected(index_error(index_error_type::build_twice, ""));
+        return tl::unexpected(Error(ErrorType::BUILD_TWICE, ""));
     }
 
     if (this->dim_ != base.GetDim()) {
-        return tl::unexpected(index_error(index_error_type::dimension_not_equal, ""));
+        return tl::unexpected(Error(ErrorType::DIMENSION_NOT_EQUAL, ""));
     }
 
     int64_t raw_length = base.GetNumElements();
@@ -51,12 +51,12 @@ SimpleFlat::Build(const Dataset& base) {
     return std::move(failed_ids);
 }
 
-tl::expected<std::vector<int64_t>, index_error>
+tl::expected<std::vector<int64_t>, Error>
 SimpleFlat::Add(const Dataset& base) {
     std::vector<int64_t> failed_ids;
     if (not this->data_.empty()) {
         if (this->dim_ != base.GetDim()) {
-            return tl::unexpected(index_error(index_error_type::dimension_not_equal, ""));
+            return tl::unexpected(Error(ErrorType::DIMENSION_NOT_EQUAL, ""));
         }
     }
 
@@ -89,7 +89,7 @@ SimpleFlat::Add(const Dataset& base) {
     return std::move(failed_ids);
 }
 
-tl::expected<Dataset, index_error>
+tl::expected<Dataset, Error>
 SimpleFlat::KnnSearch(const Dataset& query,
                       int64_t k,
                       const std::string& parameters,
@@ -98,14 +98,14 @@ SimpleFlat::KnnSearch(const Dataset& query,
     k = std::min(k, GetNumElements());
     int64_t num_elements = query.GetNumElements();
     if (num_elements != 1) {
-        return tl::unexpected(index_error(index_error_type::internal_error, ""));
+        return tl::unexpected(Error(ErrorType::INTERNAL_ERROR, ""));
     }
     if (this->dim_ != dim) {
-        return tl::unexpected(index_error(index_error_type::dimension_not_equal, ""));
+        return tl::unexpected(Error(ErrorType::DIMENSION_NOT_EQUAL, ""));
     }
 
-    if (invalid && invalid->Capcity() < GetNumElements()) {
-        return tl::unexpected(index_error(index_error_type::internal_error, ""));
+    if (invalid && invalid->Capacity() < GetNumElements()) {
+        return tl::unexpected(Error(ErrorType::INTERNAL_ERROR, ""));
     }
 
     std::vector<rs> knn_result = knn_search(query.GetFloat32Vectors(), k, invalid);
@@ -126,7 +126,7 @@ SimpleFlat::KnnSearch(const Dataset& query,
     return std::move(result);
 }
 
-tl::expected<Dataset, index_error>
+tl::expected<Dataset, Error>
 SimpleFlat::RangeSearch(const Dataset& query,
                         float radius,
                         const std::string& parameters,
@@ -134,15 +134,15 @@ SimpleFlat::RangeSearch(const Dataset& query,
     int64_t nq = query.GetNumElements();
     int64_t dim = query.GetDim();
     if (this->dim_ != dim) {
-        return tl::unexpected(index_error(index_error_type::dimension_not_equal, ""));
+        return tl::unexpected(Error(ErrorType::DIMENSION_NOT_EQUAL, ""));
     }
 
     if (nq != 1) {
-        return tl::unexpected(index_error(index_error_type::internal_error, ""));
+        return tl::unexpected(Error(ErrorType::INTERNAL_ERROR, ""));
     }
 
-    if (invalid && invalid->Capcity() < GetNumElements()) {
-        return tl::unexpected(index_error(index_error_type::internal_error, ""));
+    if (invalid && invalid->Capacity() < GetNumElements()) {
+        return tl::unexpected(Error(ErrorType::INTERNAL_ERROR, ""));
     }
 
     auto range_result = range_search(query.GetFloat32Vectors(), radius, invalid);
@@ -163,7 +163,7 @@ SimpleFlat::RangeSearch(const Dataset& query,
     return std::move(result);
 }
 
-tl::expected<BinarySet, index_error>
+tl::expected<BinarySet, Error>
 SimpleFlat::Serialize() const {
     try {
         BinarySet bs;
@@ -197,11 +197,11 @@ SimpleFlat::Serialize() const {
         bs.Set(SIMPLEFLAT_VECTORS, vectors_binary);
         return bs;
     } catch (const std::bad_alloc& e) {
-        return tl::unexpected(index_error(index_error_type::no_enough_memory, ""));
+        return tl::unexpected(Error(ErrorType::NO_ENOUGH_MEMORY, ""));
     }
 }
 
-tl::expected<void, index_error>
+tl::expected<void, Error>
 SimpleFlat::Deserialize(const BinarySet& binary_set) {
     Binary ids_binary = binary_set.Get(SIMPLEFLAT_IDS);
     Binary data_binary = binary_set.Get(SIMPLEFLAT_VECTORS);
@@ -214,7 +214,7 @@ SimpleFlat::Deserialize(const BinarySet& binary_set) {
     std::memcpy(&tmp_dim, tmp_ptr, sizeof(int64_t));
 
     if (tmp_dim != dim_) {
-        return tl::unexpected(index_error(index_error_type::dimension_not_equal, ""));
+        return tl::unexpected(Error(ErrorType::DIMENSION_NOT_EQUAL, ""));
     }
 
     tmp_ptr += sizeof(int64_t);
@@ -224,7 +224,7 @@ SimpleFlat::Deserialize(const BinarySet& binary_set) {
 
     if (sizeof(int64_t) + sizeof(int64_t) + ids_size != ids_binary.size ||
         vector_size != data_binary.size) {
-        return tl::unexpected(index_error(index_error_type::invalid_binary, ""));
+        return tl::unexpected(Error(ErrorType::INVALID_BINARY, ""));
     }
 
     ids_.resize(this->num_elements_);
@@ -236,7 +236,7 @@ SimpleFlat::Deserialize(const BinarySet& binary_set) {
     return {};
 }
 
-tl::expected<void, index_error>
+tl::expected<void, Error>
 SimpleFlat::Deserialize(const ReaderSet& reader_set) {
     BinarySet bs;
 

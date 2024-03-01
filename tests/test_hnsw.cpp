@@ -75,7 +75,7 @@ TEST_CASE("HNSW Float Recall", "[hnsw]") {
                 correct++;
             }
             REQUIRE(result->GetDim() == k);
-        } else if (result.error().type == vsag::index_error_type::internal_error) {
+        } else if (result.error().type == vsag::ErrorType::INTERNAL_ERROR) {
             std::cerr << "failed to perform knn search on index" << std::endl;
         }
     }
@@ -134,7 +134,7 @@ TEST_CASE("HNSW IP Search", "[hnsw]") {
             if (result->GetIds()[0] == i) {
                 correct++;
             }
-        } else if (result.error().type == vsag::index_error_type::internal_error) {
+        } else if (result.error().type == vsag::ErrorType::INTERNAL_ERROR) {
             std::cerr << "failed to perform knn search on index" << std::endl;
         }
     }
@@ -458,7 +458,7 @@ TEST_CASE("HNSW Filtering Test", "[hnsw]") {
                 REQUIRE(filter->Get(result->GetIds()[j]) == false);
             }
         } else {
-            std::cerr << "failed to range search on index: internal error" << std::endl;
+            std::cerr << "failed to range search on index: internalError" << std::endl;
             exit(-1);
         }
 
@@ -470,7 +470,7 @@ TEST_CASE("HNSW Filtering Test", "[hnsw]") {
                 REQUIRE(filter->Get(result->GetIds()[j]) == false);
             }
         } else {
-            std::cerr << "failed to knn search on index: internal error" << std::endl;
+            std::cerr << "failed to knn search on index: internalError" << std::endl;
             exit(-1);
         }
 
@@ -483,8 +483,8 @@ TEST_CASE("HNSW Filtering Test", "[hnsw]") {
             REQUIRE(result->GetDim() == 0);
             REQUIRE(result->GetDistances() == nullptr);
             REQUIRE(result->GetIds() == nullptr);
-        } else if (result.error().type == vsag::index_error_type::internal_error) {
-            std::cerr << "failed to range search on index: internal error" << std::endl;
+        } else if (result.error().type == vsag::ErrorType::INTERNAL_ERROR) {
+            std::cerr << "failed to range search on index: internalError" << std::endl;
             exit(-1);
         }
 
@@ -492,8 +492,8 @@ TEST_CASE("HNSW Filtering Test", "[hnsw]") {
             REQUIRE(result->GetDim() == 0);
             REQUIRE(result->GetDistances() == nullptr);
             REQUIRE(result->GetIds() == nullptr);
-        } else if (result.error().type == vsag::index_error_type::internal_error) {
-            std::cerr << "failed to knn search on index: internal error" << std::endl;
+        } else if (result.error().type == vsag::ErrorType::INTERNAL_ERROR) {
+            std::cerr << "failed to knn search on index: internalError" << std::endl;
             exit(-1);
         }
 
@@ -504,8 +504,8 @@ TEST_CASE("HNSW Filtering Test", "[hnsw]") {
         if (auto result = hnsw->KnnSearch(query, k, parameters.dump(), zeros); result.has_value()) {
             correct_knn += vsag::knn_search_recall(
                 data, ids, max_elements, data + i * dim, dim, result->GetIds(), result->GetDim());
-        } else if (result.error().type == vsag::index_error_type::internal_error) {
-            std::cerr << "failed to knn search on index: internal error" << std::endl;
+        } else if (result.error().type == vsag::ErrorType::INTERNAL_ERROR) {
+            std::cerr << "failed to knn search on index: internalError" << std::endl;
             exit(-1);
         }
 
@@ -516,8 +516,8 @@ TEST_CASE("HNSW Filtering Test", "[hnsw]") {
                     correct_range++;
                 }
             }
-        } else if (result.error().type == vsag::index_error_type::internal_error) {
-            std::cerr << "failed to range search on index: internal error" << std::endl;
+        } else if (result.error().type == vsag::ErrorType::INTERNAL_ERROR) {
+            std::cerr << "failed to range search on index: internalError" << std::endl;
             exit(-1);
         }
         delete[] bits_ones;
@@ -583,7 +583,7 @@ TEST_CASE("HNSW small dimension", "[hnsw]") {
                 correct++;
             }
             REQUIRE(result->GetDim() == k);
-        } else if (result.error().type == vsag::index_error_type::internal_error) {
+        } else if (result.error().type == vsag::ErrorType::INTERNAL_ERROR) {
             std::cerr << "failed to perform knn search on index" << std::endl;
         }
     }
@@ -666,7 +666,7 @@ TEST_CASE("HNSW Random Id", "[hnsw]") {
                 correct++;
             }
             REQUIRE(result->GetDim() == k);
-        } else if (result.error().type == vsag::index_error_type::internal_error) {
+        } else if (result.error().type == vsag::ErrorType::INTERNAL_ERROR) {
             std::cerr << "failed to perform knn search on index" << std::endl;
         }
     }

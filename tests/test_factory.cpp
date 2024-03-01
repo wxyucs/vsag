@@ -54,8 +54,8 @@ TEST_CASE("index params", "[factory]") {
             if (result->GetIds()[0] == i) {
                 correct++;
             }
-        } else if (result.error().type == vsag::index_error_type::internal_error) {
-            std::cerr << "failed to search on index: internal error" << std::endl;
+        } else if (result.error().type == vsag::ErrorType::INTERNAL_ERROR) {
+            std::cerr << "failed to search on index: internalError" << std::endl;
         }
     }
     float recall = correct / max_elements;

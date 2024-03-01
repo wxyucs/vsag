@@ -11,6 +11,7 @@
 #include <stdexcept>
 
 #include "../utils.h"
+#include "common.h"
 #include "vsag/binaryset.h"
 #include "vsag/constants.h"
 #include "vsag/errors.h"
@@ -59,236 +60,252 @@ HNSW::HNSW(std::shared_ptr<hnswlib::SpaceInterface> space_interface, int M, int 
         space.get(), DEFAULT_MAX_ELEMENT, M, ef_construction);
 }
 
-tl::expected<std::vector<int64_t>, index_error>
+tl::expected<std::vector<int64_t>, Error>
 HNSW::build(const Dataset& base) {
     SlowTaskTimer t("hnsw build");
-    std::vector<int64_t> failed_ids;
-    spdlog::debug(fmt::format("index.dim={}, base.dim={}", this->dim_, base.GetDim()));
-    if (base.GetDim() != dim_) {
-        LOG_ERROR_AND_RETURNS(
-            index_error_type::dimension_not_equal,
-            fmt::format("dimension not equal: add({}) index({})", base.GetDim(), dim_));
-    }
-    int64_t num_elements = base.GetNumElements();
-    int64_t max_elements_ = alg_hnsw->getMaxElements();
-    if (max_elements_ < num_elements) {
-        max_elements_ = num_elements;
-        // noexcept even cannot alloc memory
-        alg_hnsw->resizeIndex(max_elements_);
-    }
 
-    auto ids = base.GetIds();
-    auto vectors = base.GetFloat32Vectors();
-    for (int64_t i = 0; i < num_elements; ++i) {
-        // noexcept runtime
-        if (!alg_hnsw->addPoint((const void*)(vectors + i * dim_), ids[i])) {
-            spdlog::debug("duplicate point: {}", ids[i]);
-            failed_ids.push_back(ids[i]);
+    try {
+        spdlog::debug("index.dim={}, base.dim={}", this->dim_, base.GetDim());
+
+        auto base_dim = base.GetDim();
+        CHECK_ARGUMENT(base_dim == dim_,
+                       fmt::format("base.dim({}) must be equal to index.dim({})", base_dim, dim_));
+
+        int64_t num_elements = base.GetNumElements();
+        int64_t max_elements_ = alg_hnsw->getMaxElements();
+        if (max_elements_ < num_elements) {
+            spdlog::debug("max_elements_={}, num_elements={}", max_elements_, num_elements);
+            max_elements_ = num_elements;
+            // noexcept even cannot alloc memory
+            alg_hnsw->resizeIndex(max_elements_);
         }
-    }
 
-    return failed_ids;
+        auto ids = base.GetIds();
+        auto vectors = base.GetFloat32Vectors();
+        std::vector<int64_t> failed_ids;
+        for (int64_t i = 0; i < num_elements; ++i) {
+            // noexcept runtime
+            if (!alg_hnsw->addPoint((const void*)(vectors + i * dim_), ids[i])) {
+                spdlog::debug("duplicate point: {}", ids[i]);
+                failed_ids.emplace_back(ids[i]);
+            }
+        }
+
+        return failed_ids;
+    } catch (const std::invalid_argument& e) {
+        LOG_ERROR_AND_RETURNS(
+            ErrorType::INVALID_ARGUMENT, "failed to build(invalid argument): ", e.what());
+    }
 }
 
-tl::expected<std::vector<int64_t>, index_error>
+tl::expected<std::vector<int64_t>, Error>
 HNSW::add(const Dataset& base) {
     SlowTaskTimer t("hnsw add", 10);
-    std::vector<int64_t> failed_ids;
-    int64_t num_elements = base.GetNumElements();
 
-    if (base.GetDim() != dim_) {
+    try {
+        auto base_dim = base.GetDim();
+        CHECK_ARGUMENT(base_dim == dim_,
+                       fmt::format("base.dim({}) must be equal to index.dim({})", base_dim, dim_));
+
+        int64_t num_elements = base.GetNumElements();
+        int64_t max_elements_ = alg_hnsw->getMaxElements();
+        if (num_elements + GetNumElements() > max_elements_) {
+            spdlog::debug("num_elements={}, index.num_elements, max_elements_={}",
+                          num_elements,
+                          GetNumElements(),
+                          max_elements_);
+            if (max_elements_ > EXPANSION_NUM) {
+                max_elements_ += EXPANSION_NUM;
+            } else {
+                max_elements_ *= 2;
+            }
+            // noexcept even cannot alloc memory
+            alg_hnsw->resizeIndex(max_elements_);
+        }
+
+        auto ids = base.GetIds();
+        auto vectors = base.GetFloat32Vectors();
+        std::vector<int64_t> failed_ids;
+        for (int64_t i = 0; i < num_elements; ++i) {
+            // noexcept runtime
+            if (!alg_hnsw->addPoint((const void*)(vectors + i * dim_), ids[i])) {
+                spdlog::debug("duplicate point: {}", i);
+                failed_ids.push_back(ids[i]);
+            }
+        }
+
+        return failed_ids;
+    } catch (const std::invalid_argument& e) {
         LOG_ERROR_AND_RETURNS(
-            index_error_type::dimension_not_equal,
-            fmt::format("dimension not equal: add({}) index({})", base.GetDim(), dim_));
+            ErrorType::INVALID_ARGUMENT, "failed to add(invalid argument): ", e.what());
     }
-
-    auto ids = base.GetIds();
-    auto vectors = base.GetFloat32Vectors();
-    int64_t max_elements_ = alg_hnsw->getMaxElements();
-    if (num_elements + GetNumElements() > max_elements_) {
-        if (max_elements_ > EXPANSION_NUM) {
-            max_elements_ += EXPANSION_NUM;
-        } else {
-            max_elements_ *= 2;
-        }
-        // noexcept even cannot alloc memory
-        alg_hnsw->resizeIndex(max_elements_);
-    }
-
-    for (int64_t i = 0; i < num_elements; ++i) {
-        // noexcept runtime
-        if (!alg_hnsw->addPoint((const void*)(vectors + i * dim_), ids[i])) {
-            spdlog::debug("duplicate point: {}", i);
-            failed_ids.push_back(ids[i]);
-        }
-    }
-
-    return std::move(failed_ids);
 }
 
-tl::expected<Dataset, index_error>
+tl::expected<Dataset, Error>
 HNSW::knn_search(const Dataset& query,
                  int64_t k,
                  const std::string& parameters,
                  BitsetPtr invalid) const {
     SlowTaskTimer t("hnsw knnsearch", 10);
-    nlohmann::json params = nlohmann::json::parse(parameters);
 
-    if (k <= 0) {
-        LOG_ERROR_AND_RETURNS(index_error_type::invalid_parameter,
-                              fmt::format("invalid parameter: k ({})", k));
-    }
+    try {
+        // check query vector
+        CHECK_ARGUMENT(query.GetNumElements() == 1, "query dataset should contain 1 vector only");
+        auto vector = query.GetFloat32Vectors();
+        int64_t query_dim = query.GetDim();
+        CHECK_ARGUMENT(
+            query_dim == dim_,
+            fmt::format("query.dim({}) must be equal to index.dim({})", query_dim, dim_));
 
-    if (!params.contains(INDEX_HNSW) || !params[INDEX_HNSW].contains(HNSW_PARAMETER_EF_RUNTIME)) {
-        LOG_ERROR_AND_RETURNS(index_error_type::invalid_parameter,
-                              "missing parameter: ",
-                              INDEX_HNSW,
-                              ".",
-                              HNSW_PARAMETER_EF_RUNTIME);
-    }
+        // check k
+        CHECK_ARGUMENT(k > 0, fmt::format("k({}) must be greater than 0", k))
+        k = std::min(k, GetNumElements());
 
-    alg_hnsw->setEf(params[INDEX_HNSW][HNSW_PARAMETER_EF_RUNTIME]);
+        // check search parameters
+        nlohmann::json params = nlohmann::json::parse(parameters);
+        CHECK_ARGUMENT(params.contains(INDEX_HNSW),
+                       fmt::format("parameters must contains {}", INDEX_HNSW));
+        CHECK_ARGUMENT(
+            params[INDEX_HNSW].contains(HNSW_PARAMETER_EF_RUNTIME),
+            fmt::format("parameters[{}] must contains {}", INDEX_HNSW, HNSW_PARAMETER_EF_RUNTIME));
+        alg_hnsw->setEf(params[INDEX_HNSW][HNSW_PARAMETER_EF_RUNTIME]);
 
-    k = std::min(k, GetNumElements());
-
-    std::shared_ptr<Filter> filter = nullptr;
-    if (invalid != nullptr) {
-        if (invalid->Capcity() < GetNumElements()) {
-            LOG_ERROR_AND_RETURNS(index_error_type::internal_error,
-                                  "number of invalid is less than the size of index");
+        // check filter
+        std::shared_ptr<Filter> filter = nullptr;
+        if (invalid != nullptr) {
+            CHECK_ARGUMENT(
+                invalid->Capacity() >= GetNumElements(),
+                fmt::format("invalid.capcity({}) must be greater equal than index.size({})",
+                            invalid->Capacity(),
+                            GetNumElements()));
+            filter = std::make_shared<Filter>(invalid);
         }
-        filter = std::make_shared<Filter>(invalid);
-    }
 
-    int64_t num_elements = query.GetNumElements();
-    if (num_elements != 1) {
-        LOG_ERROR_AND_RETURNS(index_error_type::internal_error,
-                              "number of elements is NOT 1 in query database");
-    }
-    int64_t dim = query.GetDim();
-    if (dim != dim_) {
-        LOG_ERROR_AND_RETURNS(index_error_type::dimension_not_equal,
-                              fmt::format("dimension not equal: query({}) index({})", dim, dim_));
-    }
-    auto vectors = query.GetFloat32Vectors();
-
-    std::priority_queue<std::pair<float, size_t>> results;
-    for (int64_t i = 0; i < num_elements; ++i) {
+        // perform search
+        std::priority_queue<std::pair<float, size_t>> results;
+        double time_cost;
         try {
-            double time_cost;
-            {
-                Timer t(time_cost);
-                results = alg_hnsw->searchKnn((const void*)(vectors + i * dim_), k, filter.get());
-            }
-
-            // stats
-            {
-                std::lock_guard<std::mutex> lock(stats_mutex_);
-
-                result_queues_[STATSTIC_KNN_TIME].Push(time_cost);
-            }
-        } catch (std::runtime_error& e) {
-            LOG_ERROR_AND_RETURNS(
-                index_error_type::internal_error, "failed to call searchKnn: ", e.what());
+            Timer t(time_cost);
+            results = alg_hnsw->searchKnn((const void*)(vector), k, filter.get());
+        } catch (const std::runtime_error& e) {
+            LOG_ERROR_AND_RETURNS(ErrorType::INTERNAL_ERROR,
+                                  "failed to perofrm knn_search(internalError): ",
+                                  e.what());
         }
-    }
 
-    Dataset result;
-    if (results.size() == 0) {
-        result.Dim(0).NumElements(1);
-        return result;
-    }
-    int64_t* ids = new int64_t[results.size()];
-    float* dists = new float[results.size()];
-    result.Dim(results.size()).NumElements(1).Ids(ids).Distances(dists);
-    for (int64_t j = results.size() - 1; j >= 0; --j) {
-        dists[j] = results.top().first;
-        ids[j] = results.top().second;
-        results.pop();
-    }
+        // update stats
+        {
+            std::lock_guard<std::mutex> lock(stats_mutex_);
+            result_queues_[STATSTIC_KNN_TIME].Push(time_cost);
+        }
 
-    return std::move(result);
+        // return result
+        Dataset result;
+        if (results.size() == 0) {
+            result.Dim(0).NumElements(1);
+            return result;
+        }
+        int64_t* ids = new int64_t[results.size()];
+        float* dists = new float[results.size()];
+        result.Dim(results.size()).NumElements(1).Ids(ids).Distances(dists);
+        for (int64_t j = results.size() - 1; j >= 0; --j) {
+            dists[j] = results.top().first;
+            ids[j] = results.top().second;
+            results.pop();
+        }
+
+        return std::move(result);
+    } catch (const std::invalid_argument& e) {
+        LOG_ERROR_AND_RETURNS(ErrorType::INVALID_ARGUMENT,
+                              "failed to perform knn_search(invalid argument): ",
+                              e.what());
+    }
 }
 
-tl::expected<Dataset, index_error>
+tl::expected<Dataset, Error>
 HNSW::range_search(const Dataset& query,
                    float radius,
                    const std::string& parameters,
                    BitsetPtr invalid) const {
     SlowTaskTimer t("hnsw rangesearch", 10);
-    nlohmann::json params = nlohmann::json::parse(parameters);
 
-    if (radius < 0) {
-        LOG_ERROR_AND_RETURNS(index_error_type::invalid_parameter,
-                              fmt::format("invalid parameter: radius ({})", radius));
-    }
-
-    if (!params.contains(INDEX_HNSW) || !params[INDEX_HNSW].contains(HNSW_PARAMETER_EF_RUNTIME)) {
-        LOG_ERROR_AND_RETURNS(
-            index_error_type::invalid_parameter, "missing parameter: ", HNSW_PARAMETER_EF_RUNTIME);
-    }
-
-    alg_hnsw->setEf(params[INDEX_HNSW][HNSW_PARAMETER_EF_RUNTIME]);
-
-    int64_t num_elements = query.GetNumElements();
-    if (num_elements != 1) {
-        LOG_ERROR_AND_RETURNS(index_error_type::internal_error,
-                              "number of elements is NOT 1 in query database");
-    }
-    int64_t dim = query.GetDim();
-    if (dim != dim_) {
-        LOG_ERROR_AND_RETURNS(index_error_type::dimension_not_equal,
-                              fmt::format("dimension not equal: query({}) index({})", dim, dim_));
-    }
-
-    std::shared_ptr<Filter> filter = nullptr;
-    if (invalid != nullptr) {
-        if (invalid->Capcity() < GetNumElements()) {
-            LOG_ERROR_AND_RETURNS(index_error_type::internal_error,
-                                  "number of invalid is less than the size of index");
-        }
-        filter = std::make_shared<Filter>(invalid);
-    }
-
-    auto vector = query.GetFloat32Vectors();
-
-    std::priority_queue<std::pair<float, size_t>> results;
     try {
+        // check query vector
+        CHECK_ARGUMENT(query.GetNumElements() == 1, "query dataset should contain 1 vector only");
+        auto vector = query.GetFloat32Vectors();
+        int64_t query_dim = query.GetDim();
+        CHECK_ARGUMENT(
+            query_dim == dim_,
+            fmt::format("query.dim({}) must be equal to index.dim({})", query_dim, dim_));
+
+        // check radius
+        CHECK_ARGUMENT(radius >= 0, fmt::format("radius({}) must be greater equal than 0", radius))
+
+        // check search parameters
+        nlohmann::json params = nlohmann::json::parse(parameters);
+        CHECK_ARGUMENT(params.contains(INDEX_HNSW),
+                       fmt::format("parameters must contains {}", INDEX_HNSW));
+        CHECK_ARGUMENT(
+            params[INDEX_HNSW].contains(HNSW_PARAMETER_EF_RUNTIME),
+            fmt::format("parameters[{}] must contains {}", INDEX_HNSW, HNSW_PARAMETER_EF_RUNTIME));
+        alg_hnsw->setEf(params[INDEX_HNSW][HNSW_PARAMETER_EF_RUNTIME]);
+
+        // check filter
+        std::shared_ptr<Filter> filter = nullptr;
+        if (invalid != nullptr) {
+            CHECK_ARGUMENT(
+                invalid->Capacity() >= GetNumElements(),
+                fmt::format("invalid.capcity({}) must be greater equal than index.size({})",
+                            invalid->Capacity(),
+                            GetNumElements()));
+            filter = std::make_shared<Filter>(invalid);
+        }
+
+        // perform search
+        std::priority_queue<std::pair<float, size_t>> results;
         double time_cost;
-        {
+        try {
             Timer timer(time_cost);
             results = alg_hnsw->searchRange((const void*)(vector), radius, filter.get());
+        } catch (std::runtime_error& e) {
+            LOG_ERROR_AND_RETURNS(ErrorType::INTERNAL_ERROR,
+                                  "failed to perofrm range_search(internalError): ",
+                                  e.what());
         }
+
+        // update stats
         {
             std::lock_guard<std::mutex> lock(stats_mutex_);
-            result_queues_[STATSTIC_RANGE_TIME].Push(time_cost);
+            result_queues_[STATSTIC_KNN_TIME].Push(time_cost);
         }
-    } catch (std::runtime_error& e) {
-        LOG_ERROR_AND_RETURNS(index_error_type::internal_error, e.what());
-    }
 
-    Dataset result;
-    if (results.size() == 0) {
-        result.Dim(0).NumElements(1);
-        return result;
-    }
-    int64_t* ids = new int64_t[results.size()];
-    float* dists = new float[results.size()];
-    result.Dim(results.size()).NumElements(1).Ids(ids).Distances(dists);
-    for (int64_t j = results.size() - 1; j >= 0; --j) {
-        dists[+j] = results.top().first;
-        ids[j] = results.top().second;
-        results.pop();
-    }
+        // return result
+        Dataset result;
+        if (results.size() == 0) {
+            result.Dim(0).NumElements(1);
+            return result;
+        }
+        int64_t* ids = new int64_t[results.size()];
+        float* dists = new float[results.size()];
+        result.Dim(results.size()).NumElements(1).Ids(ids).Distances(dists);
+        for (int64_t j = results.size() - 1; j >= 0; --j) {
+            dists[+j] = results.top().first;
+            ids[j] = results.top().second;
+            results.pop();
+        }
 
-    return std::move(result);
+        return std::move(result);
+    } catch (const std::invalid_argument& e) {
+        LOG_ERROR_AND_RETURNS(ErrorType::INVALID_ARGUMENT,
+                              "failed to perform range_search(invalid argument): ",
+                              e.what());
+    }
 }
 
-tl::expected<BinarySet, index_error>
+tl::expected<BinarySet, Error>
 HNSW::serialize() const {
     if (GetNumElements() == 0) {
-        LOG_ERROR_AND_RETURNS(index_error_type::index_empty,
-                              "failed to serialize: hnsw index is empty");
+        LOG_ERROR_AND_RETURNS(ErrorType::INDEX_EMPTY, "failed to serialize: hnsw index is empty");
     }
     SlowTaskTimer t("hnsw serialize");
     size_t num_bytes = alg_hnsw->calcSerializeSize();
@@ -305,15 +322,15 @@ HNSW::serialize() const {
         return bs;
     } catch (const std::bad_alloc& e) {
         LOG_ERROR_AND_RETURNS(
-            index_error_type::no_enough_memory, "failed to save index: ", e.what());
+            ErrorType::NO_ENOUGH_MEMORY, "failed to serialize(bad alloc): ", e.what());
     }
 }
 
-tl::expected<void, index_error>
+tl::expected<void, Error>
 HNSW::deserialize(const BinarySet& binary_set) {
     SlowTaskTimer t("hnsw deserialize");
     if (this->alg_hnsw->getCurrentElementCount() > 0) {
-        LOG_ERROR_AND_RETURNS(index_error_type::index_not_empty,
+        LOG_ERROR_AND_RETURNS(ErrorType::INDEX_NOT_EMPTY,
                               "failed to deserialize: index is not empty");
     }
 
@@ -324,18 +341,18 @@ HNSW::deserialize(const BinarySet& binary_set) {
 
     try {
         alg_hnsw->loadIndex(func, this->space.get());
-    } catch (std::runtime_error& e) {
-        LOG_ERROR_AND_RETURNS(index_error_type::read_error, "failed to deserialize: ", e.what());
+    } catch (const std::runtime_error& e) {
+        LOG_ERROR_AND_RETURNS(ErrorType::READ_ERROR, "failed to deserialize: ", e.what());
     }
 
     return {};
 }
 
-tl::expected<void, index_error>
+tl::expected<void, Error>
 HNSW::deserialize(const ReaderSet& reader_set) {
     SlowTaskTimer t("hnsw deserialize");
     if (this->alg_hnsw->getCurrentElementCount() > 0) {
-        LOG_ERROR_AND_RETURNS(index_error_type::index_not_empty,
+        LOG_ERROR_AND_RETURNS(ErrorType::INDEX_NOT_EMPTY,
                               "failed to deserialize: index is not empty");
     }
 
@@ -345,8 +362,8 @@ HNSW::deserialize(const ReaderSet& reader_set) {
 
     try {
         alg_hnsw->loadIndex(func, this->space.get());
-    } catch (std::runtime_error& e) {
-        LOG_ERROR_AND_RETURNS(index_error_type::read_error, "failed to deserialize: ", e.what());
+    } catch (const std::runtime_error& e) {
+        LOG_ERROR_AND_RETURNS(ErrorType::READ_ERROR, "failed to deserialize: ", e.what());
     }
 
     return {};

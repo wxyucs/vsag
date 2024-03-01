@@ -18,6 +18,7 @@
 #include <string>
 
 #include "../utils.h"
+#include "./common.h"
 #include "vsag/index.h"
 #include "vsag/option.h"
 
@@ -44,30 +45,44 @@ public:
 
     ~DiskANN() = default;
 
-    tl::expected<std::vector<int64_t>, index_error>
-    Build(const Dataset& base) override;
+    tl::expected<std::vector<int64_t>, Error>
+    Build(const Dataset& base) override {
+        SAFE_CALL(return this->build(base));
+    }
 
-    tl::expected<Dataset, index_error>
+    tl::expected<Dataset, Error>
     KnnSearch(const Dataset& query,
               int64_t k,
               const std::string& parameters,
-              BitsetPtr invalid = nullptr) const override;
+              BitsetPtr invalid = nullptr) const override {
+        SAFE_CALL(return this->knn_search(query, k, parameters, invalid));
+    }
 
-    tl::expected<Dataset, index_error>
+    tl::expected<Dataset, Error>
     RangeSearch(const Dataset& query,
                 float radius,
                 const std::string& parameters,
-                BitsetPtr invalid = nullptr) const override;
+                BitsetPtr invalid = nullptr) const override {
+        SAFE_CALL(return this->range_search(query, radius, parameters, invalid));
+    }
 
-    tl::expected<BinarySet, index_error>
-    Serialize() const override;
+public:
+    tl::expected<BinarySet, Error>
+    Serialize() const override {
+        SAFE_CALL(return this->serialize());
+    }
 
-    tl::expected<void, index_error>
-    Deserialize(const BinarySet& binary_set) override;
+    tl::expected<void, Error>
+    Deserialize(const BinarySet& binary_set) override {
+        SAFE_CALL(return this->deserialize(binary_set));
+    }
 
-    tl::expected<void, index_error>
-    Deserialize(const ReaderSet& reader_set) override;
+    tl::expected<void, Error>
+    Deserialize(const ReaderSet& reader_set) override {
+        SAFE_CALL(return this->deserialize(reader_set));
+    }
 
+public:
     int64_t
     GetNumElements() const override {
         if (status_ == EMPTY)
@@ -88,6 +103,31 @@ public:
 
     std::string
     GetStats() const override;
+
+private:
+    tl::expected<std::vector<int64_t>, Error>
+    build(const Dataset& base);
+
+    tl::expected<Dataset, Error>
+    knn_search(const Dataset& query,
+               int64_t k,
+               const std::string& parameters,
+               BitsetPtr invalid = nullptr) const;
+
+    tl::expected<Dataset, Error>
+    range_search(const Dataset& query,
+                 float radius,
+                 const std::string& parameters,
+                 BitsetPtr invalid = nullptr) const;
+
+    tl::expected<BinarySet, Error>
+    serialize() const;
+
+    tl::expected<void, Error>
+    deserialize(const BinarySet& binary_set);
+
+    tl::expected<void, Error>
+    deserialize(const ReaderSet& reader_set);
 
 private:
     std::shared_ptr<AlignedFileReader> reader_;

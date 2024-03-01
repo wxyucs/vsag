@@ -11,32 +11,32 @@ class SimpleFlat : public Index {
 public:
     explicit SimpleFlat(const std::string& metric_type, int64_t dim);
 
-    tl::expected<std::vector<int64_t>, index_error>
+    tl::expected<std::vector<int64_t>, Error>
     Build(const Dataset& base) override;
 
-    virtual tl::expected<std::vector<int64_t>, index_error>
+    virtual tl::expected<std::vector<int64_t>, Error>
     Add(const Dataset& base) override;
 
-    tl::expected<Dataset, index_error>
+    tl::expected<Dataset, Error>
     KnnSearch(const Dataset& query,
               int64_t k,
               const std::string& parameters,
               BitsetPtr invalid = nullptr) const override;
 
-    tl::expected<Dataset, index_error>
+    tl::expected<Dataset, Error>
     RangeSearch(const Dataset& query,
                 float radius,
                 const std::string& parameters,
                 BitsetPtr invalid = nullptr) const override;
 
 public:
-    tl::expected<BinarySet, index_error>
+    tl::expected<BinarySet, Error>
     Serialize() const override;
 
-    tl::expected<void, index_error>
+    tl::expected<void, Error>
     Deserialize(const BinarySet& binary_set) override;
 
-    tl::expected<void, index_error>
+    tl::expected<void, Error>
     Deserialize(const ReaderSet& reader_set) override;
 
     int64_t

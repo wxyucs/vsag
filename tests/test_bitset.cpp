@@ -10,25 +10,25 @@ using Catch::Matchers::ContainsSubstring;
 
 TEST_CASE("general usage", "[bitset]") {
     BitsetPtr bp = std::make_shared<Bitset>();
-    CHECK(bp->Capcity() == 0);
+    CHECK(bp->Capacity() == 0);
 
     bp->Set(100, true);
     CHECK(bp->Get(100) == true);
     CHECK(bp->CountOnes() == 1);
     CHECK(bp->CountZeros() == 103);
-    CHECK(bp->Capcity() == 104);
+    CHECK(bp->Capacity() == 104);
 
     bp->Set(79, true);
     CHECK(bp->Get(79) == true);
     CHECK(bp->CountOnes() == 2);
     CHECK(bp->CountZeros() == 102);
-    CHECK(bp->Capcity() == 104);
+    CHECK(bp->Capacity() == 104);
 
     bp->Set(100, false);
     CHECK(bp->Get(100) == false);
     CHECK(bp->CountOnes() == 1);
     CHECK(bp->CountZeros() == 103);
-    CHECK(bp->Capcity() == 104);
+    CHECK(bp->Capacity() == 104);
 }
 
 TEST_CASE("get and set", "[bitset]") {
@@ -46,11 +46,11 @@ TEST_CASE("get and set", "[bitset]") {
         ContainsSubstring("failed to set bitset: offset") && ContainsSubstring("is less than 0"));
 
     CHECK_NOTHROW(bp->Set(0, true));
-    CHECK(bp->Capcity() == 8);
+    CHECK(bp->Capacity() == 8);
     CHECK_NOTHROW(bp->Get(0));
 
     CHECK_NOTHROW(bp->Set(8, true));
-    CHECK(bp->Capcity() == 16);
+    CHECK(bp->Capacity() == 16);
     CHECK_NOTHROW(bp->Get(8));
 }
 
@@ -68,19 +68,19 @@ TEST_CASE("count ones and zeros", "[bitset]") {
 TEST_CASE("capcity and extend", "[bitset]") {
     int64_t mem_limit = 1024 * 1024;
     BitsetPtr bp = std::make_shared<Bitset>(mem_limit);
-    CHECK(bp->Capcity() == 0);
+    CHECK(bp->Capacity() == 0);
 
     bp->Set(1, true);
-    CHECK(bp->Capcity() == 8);
+    CHECK(bp->Capacity() == 8);
 
     bp->Set(11, true);
-    CHECK(bp->Capcity() == 16);
+    CHECK(bp->Capacity() == 16);
 
     bp->Set(1, false);
-    CHECK(bp->Capcity() == 16);
+    CHECK(bp->Capacity() == 16);
 
     bp->Set(111, false);
-    CHECK(bp->Capcity() == 112);
+    CHECK(bp->Capacity() == 112);
 
     CHECK_THROWS_WITH(bp->Extend(mem_limit * 8 + 1),
                       ContainsSubstring("failed to extend bitset: number_of_bytes") &&
@@ -91,7 +91,7 @@ TEST_CASE("capcity and extend", "[bitset]") {
                           ContainsSubstring("is less than current capcity"));
 
     CHECK_NOTHROW(bp->Extend(mem_limit * 8));
-    CHECK(bp->Capcity() == mem_limit * 8);
+    CHECK(bp->Capacity() == mem_limit * 8);
 }
 
 TEST_CASE("construct from memory", "[bitset]") {
@@ -99,7 +99,7 @@ TEST_CASE("construct from memory", "[bitset]") {
     memory[0] = 0b01010101;
     memory[1] = 0b11111010;
     BitsetPtr bp = std::make_shared<Bitset>(memory.get(), 2);
-    CHECK(bp->Capcity() == 16);
+    CHECK(bp->Capacity() == 16);
 
     CHECK(bp->Get(0) == true);
     CHECK(bp->Get(1) == false);

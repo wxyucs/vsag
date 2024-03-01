@@ -5,27 +5,38 @@
 
 namespace vsag {
 
-enum class index_error_type {
-    internal_error,
-    build_twice,
-    dimension_not_equal,
-    no_enough_memory,
-    index_not_empty,
-    invalid_binary,
-    read_error,
-    no_enough_data,
-    index_empty,
-    missing_file,
-    invalid_parameter,
-    invalid_index,
-    unexpected_error
+enum class ErrorType {
+    // some internalError in algorithm
+    INTERNAL_ERROR,
+    // index has been build, cannot build again
+    BUILD_TWICE,
+    // the dimension of add/build/search request is NOT equal to index
+    DIMENSION_NOT_EQUAL,
+    // failed to alloc memory
+    NO_ENOUGH_MEMORY,
+    // index object is NOT empty so that should not deserialize on it
+    INDEX_NOT_EMPTY,
+    // the content of binary is invalid
+    INVALID_BINARY,
+    // cannot read from binary
+    READ_ERROR,
+    // index is empty, cannot search or serialize
+    INDEX_EMPTY,
+    // some file missing in index diskann deserialization
+    MISSING_FILE,
+    // invalid argument
+    INVALID_ARGUMENT,
+    // the index to create is unsupported
+    UNSUPPORTED_INDEX,
+    // unknown error
+    UNKNOWN_ERROR
 };
 
-struct index_error {
-    index_error(index_error_type t, const std::string& msg) : type(t), message(msg) {
+struct Error {
+    Error(ErrorType t, const std::string& msg) : type(t), message(msg) {
     }
 
-    index_error_type type;
+    ErrorType type;
     std::string message;
 };
 
@@ -46,6 +57,6 @@ _concate(std::stringstream& ss, const T& value, const Args&... args) {
     std::stringstream ss;             \
     _concate(ss, __VA_ARGS__);        \
     spdlog::error(ss.str());          \
-    return tl::unexpected(index_error(t, ss.str()));
+    return tl::unexpected(Error(t, ss.str()));
 
 }  //namespace vsag

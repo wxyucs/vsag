@@ -60,7 +60,7 @@ constexpr const char* STATSTIC_RANGE_HOP = "range_hop";
 constexpr const char* STATSTIC_RANGE_CACHE_HIT = "range_cache_hit";
 constexpr const char* STATSTIC_RANGE_IO_TIME = "range_io_time";
 
-// error message
+//Error message
 
 constexpr const char* MESSAGE_PARAMETER = "invalid parameter";
 
