@@ -142,7 +142,6 @@ DiskANN::build(const Dataset& base) {
         auto ids = base.GetIds();
         auto data_num = base.GetNumElements();
 
-        std::stringstream data_stream;
         std::vector<size_t> failed_indexs;
         {
             // build graph
@@ -152,7 +151,7 @@ DiskANN::build(const Dataset& base) {
             auto index_build_params = diskann::IndexWriteParametersBuilder(L_, R_).build();
             failed_indexs =
                 build_index_->build(vectors, data_num, index_build_params, tags, use_reference_);
-            build_index_->save(graph_stream_, tag_stream_, data_stream);
+            build_index_->save(graph_stream_, tag_stream_);
             build_index_.reset();
         }
 
@@ -166,8 +165,14 @@ DiskANN::build(const Dataset& base) {
                                                      p_val_,
                                                      disk_pq_dims_);
 
-        diskann::create_disk_layout<float>(
-            data_stream, graph_stream_, disk_layout_stream_, sector_len_, "");
+        diskann::create_disk_layout<float>(vectors,
+                                           data_num,
+                                           data_dim,
+                                           failed_indexs,
+                                           graph_stream_,
+                                           disk_layout_stream_,
+                                           sector_len_,
+                                           "");
 
         std::vector<int64_t> failed_ids;
         std::transform(failed_indexs.begin(),

@@ -500,7 +500,7 @@ void Index<T, TagT, LabelT>::save(const char *filename, bool compact_before_save
 
 
 template <typename T, typename TagT, typename LabelT>
-void Index<T, TagT, LabelT>::save(std::stringstream &graph_stream, std::stringstream &tag_stream, std::stringstream &data_stream, bool compact_before_save)
+void Index<T, TagT, LabelT>::save(std::stringstream &graph_stream, std::stringstream &tag_stream, bool compact_before_save)
 {
     diskann::Timer timer;
 
@@ -531,7 +531,6 @@ void Index<T, TagT, LabelT>::save(std::stringstream &graph_stream, std::stringst
         // the error code for delete_file, but will ignore now because
         // delete should succeed if save will succeed.
         save_graph(graph_stream);
-        save_data(data_stream);
         save_tags(tag_stream);
     }
     else

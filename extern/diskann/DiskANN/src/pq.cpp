@@ -1485,7 +1485,7 @@ int generate_pq_data_from_pivots(const T* data, size_t num_points, size_t dim, c
 
         for (size_t i = 0; i < cur_blk_size; ++i)
         {
-            if (!skip_locs.empty() && skip_locs[next_skip_loc_index] == i + start_id) {
+            if (next_skip_loc_index < skip_locs.size() && skip_locs[next_skip_loc_index] == i + start_id) {
                 next_skip_loc_index ++;
                 continue;
             }
