@@ -11,8 +11,8 @@
 #include <utility>
 #include <vector>
 
+#include "../common.h"
 #include "../utils.h"
-#include "./common.h"
 #include "vsag/errors.h"
 #include "vsag/index.h"
 #include "vsag/readerset.h"

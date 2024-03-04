@@ -10,8 +10,8 @@
 #include <nlohmann/json.hpp>
 #include <stdexcept>
 
+#include "../common.h"
 #include "../utils.h"
-#include "common.h"
 #include "vsag/binaryset.h"
 #include "vsag/constants.h"
 #include "vsag/errors.h"

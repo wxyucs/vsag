@@ -15,6 +15,8 @@ version();
 }  // namespace vsag
 
 #include "binaryset.h"
+#include "bitset.h"
+#include "constants.h"
 #include "dataset.h"
 #include "errors.h"
 #include "factory.h"

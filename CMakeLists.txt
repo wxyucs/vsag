@@ -84,10 +84,12 @@ include_directories(include)
 add_subdirectory (src/simd)
 
 file (GLOB CPP_SRCS "src/*.cpp")
+file (GLOB CPP_FACTORY_SRCS "src/factory/*.cpp")
 file (GLOB CPP_INDEX_SRCS "src/index/*.cpp")
 list (FILTER CPP_SRCS EXCLUDE REGEX "_test.cpp")
+list (FILTER CPP_FACTORY_SRCS EXCLUDE REGEX "_test.cpp")
 list (FILTER CPP_INDEX_SRCS EXCLUDE REGEX "_test.cpp")
-add_library (vsag SHARED ${CPP_SRCS} ${CPP_INDEX_SRCS})
+add_library (vsag SHARED ${CPP_SRCS} ${CPP_FACTORY_SRCS} ${CPP_INDEX_SRCS})
 target_link_libraries (vsag diskann pthread m dl simd fmt::fmt-header-only)
 add_dependencies(vsag spdlog)
 

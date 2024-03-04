@@ -17,8 +17,8 @@
 #include <queue>
 #include <string>
 
+#include "../common.h"
 #include "../utils.h"
-#include "./common.h"
 #include "vsag/index.h"
 #include "vsag/option.h"
 

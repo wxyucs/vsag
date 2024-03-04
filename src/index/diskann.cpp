@@ -16,8 +16,8 @@
 #include <stdexcept>
 #include <utility>
 
+#include "../common.h"
 #include "../utils.h"
-#include "common.h"
 #include "vsag/constants.h"
 #include "vsag/errors.h"
 #include "vsag/expected.hpp"
