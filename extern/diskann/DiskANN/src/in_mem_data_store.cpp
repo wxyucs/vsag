@@ -15,8 +15,6 @@ InMemDataStore<data_t>::InMemDataStore(const location_t num_points, const size_t
     : AbstractDataStore<data_t>(num_points, dim), _distance_fn(distance_fn)
 {
     _aligned_dim = ROUND_UP(dim, _distance_fn->get_required_alignment());
-    alloc_aligned(((void **)&_data), this->_capacity * _aligned_dim * sizeof(data_t), 8 * sizeof(data_t));
-    std::memset(_data, 0, this->_capacity * _aligned_dim * sizeof(data_t));
 }
 
 template <typename data_t> InMemDataStore<data_t>::~InMemDataStore()
@@ -178,7 +176,8 @@ template <typename data_t> void InMemDataStore<data_t>::populate_data(const data
         throw ANNException("ERROR: mask is empty.", -1);
     }
     this->_capacity = num_pts;
-    memset(_data, 0, _aligned_dim * sizeof(data_t) * num_pts);
+    alloc_aligned(((void **)&_data), this->_capacity * _aligned_dim * sizeof(data_t), sizeof(void*) * sizeof(data_t));
+    std::memset(_data, 0, this->_capacity * _aligned_dim * sizeof(data_t));
     int64_t cur = 0;
     for (location_t i = 0; i < mask.size(); i++)
     {

@@ -1,6 +1,7 @@
 
 CMAKE_GENERATOR ?= "Unix Makefiles"
 CMAKE_INSTALL_PRECIX ?= "/usr/local/"
+ASAN_LIB ?= "/usr/lib/gcc/x86_64-redhat-linux/10/libasan.so"
 VSAG_CMAKE_ARGS = -DCMAKE_EXPORT_COMPILE_COMMANDS=1 -DCMAKE_INSTALL_PREFIX=${CMAKE_INSTALL_PREFIX} -DENABLE_TESTS=1 -DENABLE_PYBINDS=1 -G ${CMAKE_GENERATOR} -S. -Bbuild
 COMPILE_JOBS ?= 4
 UT_FILTER = ""
@@ -45,8 +46,8 @@ test:                   ## Build and run unit tests.
 test_asan:              ## Build and run unit tests with AddressSanitizer option.
 	cmake ${VSAG_CMAKE_ARGS} -DCMAKE_BUILD_TYPE=Debug -DENABLE_ASAN=ON -DENABLE_CCACHE=ON
 	cmake --build build --parallel ${COMPILE_JOBS}
-	./build/tests -d yes || true
-	./build/mockimpl/tests_mockimpl -d yes || true
+	LD_PRELOAD=${ASAN_LIB} ./build/tests -d yes
+	LD_PRELOAD=${ASAN_LIB} ./build/mockimpl/tests_mockimpl -d yes
 
 .PHONY: test_cov
 test_cov:               ## Build and run unit tests with code coverage enabled.
