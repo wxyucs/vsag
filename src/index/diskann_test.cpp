@@ -33,7 +33,7 @@ TEST_CASE("build", "[diskann][ut]") {
     int64_t ef_construction = 100;
     int64_t max_degree = 12;
     float pq_sample_rate = 1.0f;
-    size_t pq_dims = 128;
+    size_t pq_dims = 16;
     auto index = std::make_shared<vsag::DiskANN>(diskann::Metric::L2,
                                                  "float32",
                                                  ef_construction,
@@ -89,7 +89,7 @@ TEST_CASE("knn_search", "[diskann][ut]") {
     int64_t ef_construction = 100;
     int64_t max_degree = 12;
     float pq_sample_rate = 1.0f;
-    size_t pq_dims = 128;
+    size_t pq_dims = 16;
     auto index = std::make_shared<vsag::DiskANN>(diskann::Metric::L2,
                                                  "float32",
                                                  ef_construction,
@@ -197,7 +197,7 @@ TEST_CASE("range_search", "[diskann][ut]") {
     int64_t ef_construction = 100;
     int64_t max_degree = 12;
     float pq_sample_rate = 1.0f;
-    size_t pq_dims = 128;
+    size_t pq_dims = 16;
     auto index = std::make_shared<vsag::DiskANN>(diskann::Metric::L2,
                                                  "float32",
                                                  ef_construction,
@@ -316,7 +316,7 @@ TEST_CASE("serialize empty index", "[diskann][ut]") {
     int64_t ef_construction = 100;
     int64_t max_degree = 12;
     float pq_sample_rate = 1.0f;
-    size_t pq_dims = 128;
+    size_t pq_dims = 16;
     auto index = std::make_shared<vsag::DiskANN>(diskann::Metric::L2,
                                                  "float32",
                                                  ef_construction,
@@ -338,7 +338,7 @@ TEST_CASE("deserialize on not empty index", "[diskann][ut]") {
     int64_t ef_construction = 100;
     int64_t max_degree = 12;
     float pq_sample_rate = 1.0f;
-    size_t pq_dims = 128;
+    size_t pq_dims = 16;
     auto index = std::make_shared<vsag::DiskANN>(diskann::Metric::L2,
                                                  "float32",
                                                  ef_construction,

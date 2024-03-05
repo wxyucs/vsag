@@ -715,7 +715,7 @@ int generate_pq_pivots(const float *const passed_train_data, size_t num_train, u
         // diskann::cout << "Processing chunk " << i << " with dimensions [" << chunk_offsets[i] << ", "
         //               << chunk_offsets[i + 1] << ")" << std::endl;
 
-#pragma omp parallel for schedule(static, 65536)
+//#pragma omp parallel for schedule(static, 65536)
         for (int64_t j = 0; j < (int64_t)num_train; j++)
         {
             std::memcpy(cur_data.get() + j * cur_chunk_size, train_data.get() + j * dim + chunk_offsets[i],
