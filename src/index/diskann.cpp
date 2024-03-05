@@ -34,6 +34,7 @@ const static int MINIMAL_R = 8;
 const static int MAXIMAL_R = 64;
 const static int64_t MAX_IO_LIMIT = 512;
 const static int VECTOR_PER_BLOCK = 1;
+const static size_t MINIMAL_SECTOR_LEN = 4096;
 
 class LocalMemoryReader : public Reader {
 public:
@@ -117,7 +118,7 @@ DiskANN::DiskANN(diskann::Metric metric,
 
     // When the length of the vector is too long, set sector_len_ to the size of storing a vector along with its linkage list.
     sector_len_ =
-        std::max(sector_len_,
+        std::max(MINIMAL_SECTOR_LEN,
                  (size_t)((dim + 1) * sizeof(float) + R_ * sizeof(uint32_t)) * VECTOR_PER_BLOCK);
 }
 
@@ -612,6 +613,29 @@ DiskANN::GetStats() const {
     }
 
     return j.dump();
+}
+int64_t
+DiskANN::GetEstimateBuildMemory(const int64_t num_elements) const {
+    int64_t estimate_memory_usage = 0;
+    // Memory usage of graph
+    estimate_memory_usage += num_elements * R_ * sizeof(uint32_t);
+    // Memory usage of disk layout
+    if (sector_len_ > MINIMAL_SECTOR_LEN) {
+        estimate_memory_usage += num_elements * sector_len_ * sizeof(uint8_t);
+    } else {
+        size_t single_node =
+            (size_t)((dim_ + 1) * sizeof(float) + R_ * sizeof(uint32_t)) * VECTOR_PER_BLOCK;
+        size_t node_per_sector = MINIMAL_SECTOR_LEN / single_node;
+        size_t sector_size = num_elements / node_per_sector + 1;
+        estimate_memory_usage += sector_size * sector_len_ * sizeof(uint8_t);
+    }
+    // Memory usage of the ID mapping.
+    estimate_memory_usage += num_elements * sizeof(int64_t) * 2;
+    // Memory usage of the compressed PQ vectors.
+    estimate_memory_usage += disk_pq_dims_ * num_elements * sizeof(uint8_t) * 2;
+    // Memory usage of the PQ centers and chunck offsets.
+    estimate_memory_usage += 256 * dim_ * sizeof(float) * (3 + 1) + dim_ * sizeof(uint32_t);
+    return estimate_memory_usage;
 }
 
 }  // namespace vsag

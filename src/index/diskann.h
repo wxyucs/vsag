@@ -93,13 +93,17 @@ public:
     int64_t
     GetMemoryUsage() const override {
         if (status_ == MEMORY) {
-            return index_->get_memory_usage() + disk_layout_stream_.str().size() +
-                   pq_pivots_stream_.str().size() + disk_layout_stream_.str().size();
+            return index_->get_memory_usage() + disk_pq_compressed_vectors_.str().size() +
+                   pq_pivots_stream_.str().size() + disk_layout_stream_.str().size() +
+                   tag_stream_.str().size() + graph_stream_.str().size();
         } else if (status_ == HYBRID) {
             return index_->get_memory_usage();
         }
         return 0;
     }
+
+    int64_t
+    GetEstimateBuildMemory(const int64_t num_elements) const override;
 
     std::string
     GetStats() const override;
@@ -149,7 +153,7 @@ private:
     int R_ = 64;
     float p_val_ = 0.5;
     size_t disk_pq_dims_ = 8;
-    size_t sector_len_ = 4096;
+    size_t sector_len_;
 
     int64_t dim_;
     bool use_reference_ = true;

@@ -134,4 +134,6 @@ TEST_CASE("Random Index Test", "[random]") {
         auto range_result = diskann->RangeSearch(query, threshold, parameters.dump());
         REQUIRE(range_result.has_value());
     }
+
+    REQUIRE(diskann->GetMemoryUsage() < diskann->GetEstimateBuildMemory(max_elements));
 }

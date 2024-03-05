@@ -313,9 +313,9 @@ float FixedChunkPQTable::l2_distance(const float *query_vec, uint8_t *base_vec)
 int64_t FixedChunkPQTable::get_memory_usage()
 {
     int64_t memory_usage = 0;
-    memory_usage += 256 * ndims * sizeof(float) * 2;
-    memory_usage += NUM_PQ_CENTROIDS * ndims * sizeof(float);
-    memory_usage += ndims * sizeof(uint32_t);
+    memory_usage += 256 * ndims * sizeof(float) * 2; // tables + tables_tr
+    memory_usage += NUM_PQ_CENTROIDS * ndims * sizeof(float); // centroid
+    memory_usage += ndims * sizeof(uint32_t); // chunk_offsets
     return memory_usage;
 }
 

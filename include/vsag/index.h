@@ -34,7 +34,7 @@ public:
       */
     virtual tl::expected<std::vector<int64_t>, Error>
     Add(const Dataset& base) {
-        throw std::runtime_error("Index not support addding vectors");
+        throw std::runtime_error("Index not support adding vectors");
     }
 
     /**
@@ -113,6 +113,18 @@ public:
       */
     virtual int64_t
     GetMemoryUsage() const = 0;
+
+    /**
+      * Return the estimated memory required during building
+      *
+      * @param num_elements denotes the amount of data used to build the index.
+      *
+      * @return estimated memory required during building.
+      */
+    virtual int64_t
+    GetEstimateBuildMemory(const int64_t num_elements) const {
+        throw std::runtime_error("Index not support estimate the memory while building");
+    }
 
     /**
       * Get the statstics from index
