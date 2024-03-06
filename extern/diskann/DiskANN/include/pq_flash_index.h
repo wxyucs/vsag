@@ -70,12 +70,12 @@ template <typename T, typename LabelT = uint32_t> class PQFlashIndex
 
     DISKANN_DLLEXPORT int64_t cached_beam_search(const T *query, const uint64_t k_search, const uint64_t l_search,
                                               uint64_t *res_ids, float *res_dists, const uint64_t beam_width,
-                                              std::function<bool(uint32_t)> filter,
+                                              std::function<bool(int64_t)> filter,
                                               const uint32_t io_limit, const bool use_reorder_data = false,
                                               QueryStats *stats = nullptr);
     DISKANN_DLLEXPORT int64_t cached_beam_search_memory(const T *query, const uint64_t k_search, const uint64_t l_search,
                                               uint64_t *indices, float *distances, const uint64_t beam_width,
-                                              std::function<bool(uint32_t)> filter,
+                                              std::function<bool(int64_t)> filter,
                                               const uint32_t io_limit, const bool reorder = false,
                                               QueryStats *stats = nullptr);
     DISKANN_DLLEXPORT LabelT get_converted_label(const std::string &filter_label);
@@ -84,7 +84,7 @@ template <typename T, typename LabelT = uint32_t> class PQFlashIndex
                                            const uint64_t max_l_search, std::vector<uint64_t> &indices,
                                            std::vector<float> &distances, const uint64_t min_beam_width,
                                            uint32_t io_limit,  const bool reorder,
-                                           std::function<bool(uint32_t)> filter, bool memory,
+                                           std::function<bool(int64_t)> filter, bool memory,
                                            QueryStats *stats = nullptr);
 
     DISKANN_DLLEXPORT uint64_t get_data_dim();

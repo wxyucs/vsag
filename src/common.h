@@ -13,3 +13,5 @@
             throw std::invalid_argument(message); \
         }                                         \
     } while (0);
+
+#define ROW_ID_MASK 0xFFFFFFFFLL

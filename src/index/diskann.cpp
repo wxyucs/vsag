@@ -246,14 +246,14 @@ DiskANN::knn_search(const Dataset& query,
                        params[INDEX_DISKANN][DISKANN_PARAMETER_REORDER];
 
         // check filter
-        std::function<bool(uint32_t)> filter_ = nullptr;
+        std::function<bool(int64_t)> filter_ = nullptr;
         if (invalid) {
             CHECK_ARGUMENT(
                 invalid->Capacity() >= GetNumElements(),
                 fmt::format("invalid.capcity({}) must be greater equal than index.size({})",
                             invalid->Capacity(),
                             GetNumElements()));
-            filter_ = [&](uint32_t offset) -> bool { return invalid->Get(offset); };
+            filter_ = [&](int64_t offset) -> bool { return invalid->Get(offset & ROW_ID_MASK); };
         }
 
         // ensure that in the topK scenario, ef_search > k and io_limit > k.
@@ -381,7 +381,7 @@ DiskANN::range_search(const Dataset& query,
                        fmt::format("ef_search({}) must be greater than 0", ef_search));
 
         // check filter
-        std::function<bool(uint32_t)> filter = nullptr;
+        std::function<bool(int64_t)> filter = nullptr;
         if (invalid) {
             CHECK_ARGUMENT(
                 invalid->Capacity() >= GetNumElements(),
@@ -389,7 +389,7 @@ DiskANN::range_search(const Dataset& query,
                             invalid->Capacity(),
                             GetNumElements()));
 
-            filter = [&](uint32_t offset) -> bool { return invalid->Get(offset); };
+            filter = [&](int64_t offset) -> bool { return invalid->Get(offset & ROW_ID_MASK); };
         }
 
         bool reorder = params[INDEX_DISKANN].contains(DISKANN_PARAMETER_REORDER) &&

@@ -357,8 +357,10 @@ TEST_CASE("HNSW filtering knn search", "[hnsw]") {
     std::uniform_real_distribution<> distrib_real;
     int64_t* ids = new int64_t[max_elements];
     float* data = new float[dim * max_elements];
+
+    int64_t array_id = 1;
     for (int64_t i = 0; i < max_elements; i++) {
-        ids[i] = i;
+        ids[i] = (max_elements - i - 1) | (array_id << 32);
     }
     for (int64_t i = 0; i < dim * max_elements; ++i) {
         data[i] = distrib_real(rng);
@@ -388,7 +390,7 @@ TEST_CASE("HNSW filtering knn search", "[hnsw]") {
         REQUIRE(result->GetDim() == max_elements - num_deleted);
         for (int64_t j = 0; j < result->GetDim(); ++j) {
             // deleted ids NOT in result
-            REQUIRE(filter->Get(result->GetIds()[j]) == false);
+            REQUIRE(filter->Get(result->GetIds()[j] & 0xFFFFFFFFLL) == false);
         }
     }
 }

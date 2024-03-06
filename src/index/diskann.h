@@ -144,7 +144,7 @@ private:
     std::stringstream graph_stream_;
 
     std::function<void(const std::vector<read_request>&)> batch_read_;
-    std::function<bool(uint32_t)> filter = nullptr;
+    std::function<bool(int64_t)> filter = nullptr;
     diskann::Metric metric_;
     std::shared_ptr<Reader> disk_layout_reader_;
     std::string data_type_;

@@ -557,8 +557,10 @@ TEST_CASE("DiskAnn Filter Test", "[diskann]") {
     rng.seed(47);
     std::uniform_real_distribution<> distrib_real;
     std::uniform_int_distribution<> ids_random(0, max_elements - 1);
-    for (int i = 0; i < max_elements; i++) {
-        ids[i] = max_elements - i - 1;
+
+    int64_t array_id = 1;
+    for (int64_t i = 0; i < max_elements; i++) {
+        ids[i] = (max_elements - i - 1) | (array_id << 32);
     }
     for (int i = 0; i < dim * max_elements; i++) data[i] = distrib_real(rng);
 
@@ -585,7 +587,7 @@ TEST_CASE("DiskAnn Filter Test", "[diskann]") {
             result.has_value()) {
             if (result->GetNumElements() == 1) {
                 if (result->GetDim() != 0 && result->GetNumElements() == 1) {
-                    REQUIRE(invalid->Get(ids[i]) ^ (ids[i] == result->GetIds()[0]));
+                    REQUIRE(invalid->Get(ids[i] & 0xFFFFFFFFLL) ^ (ids[i] == result->GetIds()[0]));
                 }
             }
         } else if (result.error().type == vsag::ErrorType::INTERNAL_ERROR) {
@@ -596,7 +598,7 @@ TEST_CASE("DiskAnn Filter Test", "[diskann]") {
         if (auto result = diskann->RangeSearch(query, threshold, parameters.dump(), invalid);
             result.has_value()) {
             if (result->GetDim() != 0 && result->GetNumElements() == 1) {
-                REQUIRE(invalid->Get(ids[i]) ^ (ids[i] == result->GetIds()[0]));
+                REQUIRE(invalid->Get(ids[i] & 0xFFFFFFFFLL) ^ (ids[i] == result->GetIds()[0]));
             }
         } else if (result.error().type == vsag::ErrorType::INTERNAL_ERROR) {
             std::cerr << "failed to range search on index: internalError" << std::endl;

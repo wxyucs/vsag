@@ -1514,7 +1514,7 @@ bool getNextCompletedRequest(const IOContext &ctx, size_t size, int &completedIn
 template <typename T, typename LabelT>
 int64_t PQFlashIndex<T, LabelT>::cached_beam_search(const T *query1, const uint64_t k_search, const uint64_t l_search,
                                                  uint64_t *indices, float *distances, const uint64_t beam_width,
-                                                 std::function<bool(uint32_t)> filter,
+                                                 std::function<bool(int64_t)> filter,
                                                  const uint32_t io_limit, const bool use_reorder_data,
                                                  QueryStats *stats)
 {
@@ -1931,7 +1931,7 @@ size_t PQFlashIndex<T, LabelT>::load_graph(std::stringstream &in)
 template <typename T, typename LabelT>
 int64_t PQFlashIndex<T, LabelT>::cached_beam_search_memory(const T *query, const uint64_t k_search, const uint64_t l_search,
                                                  uint64_t *indices, float *distances, const uint64_t beam_width,
-                                                 std::function<bool(uint32_t)> filter,
+                                                 std::function<bool(int64_t)> filter,
                                                  const uint32_t io_limit, const bool reorder,
                                                  QueryStats *stats)
 {
@@ -2185,7 +2185,7 @@ int64_t PQFlashIndex<T, LabelT>::range_search(const T *query, const double range
                                               const uint64_t max_l_search, std::vector<uint64_t> &indices,
                                               std::vector<float> &distances, const uint64_t min_beam_width,
                                               uint32_t io_limit, const bool reorder,
-                                              std::function<bool(uint32_t)> filter, bool memory,
+                                              std::function<bool(int64_t)> filter, bool memory,
                                               QueryStats *stats)
 {
     int64_t res_count = 0;

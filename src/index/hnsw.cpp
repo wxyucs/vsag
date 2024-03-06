@@ -31,7 +31,7 @@ public:
 
     bool
     operator()(hnswlib::labeltype id) override {
-        return not bitset_->Get(id);
+        return not bitset_->Get(id & ROW_ID_MASK);
     }
 
 private:

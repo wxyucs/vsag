@@ -8,6 +8,8 @@
 #include "vsag/expected.hpp"
 #include "vsag/readerset.h"
 
+#define ROW_ID_MASK 0xFFFFFFFFLL
+
 namespace vsag {
 
 SimpleFlat::SimpleFlat(const std::string& metric_type, int64_t dim)
@@ -269,7 +271,7 @@ std::vector<SimpleFlat::rs>
 SimpleFlat::knn_search(const float* query, int64_t k, BitsetPtr invalid) const {
     std::priority_queue<SimpleFlat::rs> q;
     for (int64_t i = 0; i < this->num_elements_; ++i) {
-        if (invalid && invalid->Get(this->ids_[i])) {
+        if (invalid && invalid->Get(this->ids_[i] & ROW_ID_MASK)) {
             continue;
         }
         const float* base = data_.data() + i * this->dim_;
@@ -302,7 +304,7 @@ std::vector<SimpleFlat::rs>
 SimpleFlat::range_search(const float* query, float radius, BitsetPtr invalid) const {
     std::priority_queue<SimpleFlat::rs> q;
     for (int64_t i = 0; i < this->num_elements_; ++i) {
-        if (invalid && invalid->Get(this->ids_[i])) {
+        if (invalid && invalid->Get(this->ids_[i] & ROW_ID_MASK)) {
             continue;
         }
         const float* base = data_.data() + i * this->dim_;
