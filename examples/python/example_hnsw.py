@@ -5,6 +5,17 @@ import sys
 import json
 
 
+
+def cal_recall(index, ids, data, k, search_params):
+    correct = 0
+    for _id, vector in zip(ids, data):
+        _ids, dists = index.knn_search(vector=vector, k=k, parameters=search_params)
+        if _id in _ids:
+            correct += 1
+    return correct / len(ids)
+
+
+
 def float32_hnsw_test():
     dim = 128
     num_elements = 10000
@@ -14,30 +25,35 @@ def float32_hnsw_test():
     data = np.float32(np.random.random((num_elements, dim)))
 
     # Declaring index
-    index_params = {
+    index_params = json.dumps({
         "dtype": "float32",
         "metric_type": "l2",
         "dim": dim,
         "hnsw": {
-            "M": 16,
-            "ef_construction": 100,
-            "ef_runtime": 100,
-            "max_elements": num_elements
+            "max_degree": 16,
+            "ef_construction": 100
         }
-    }
-    index = pyvsag.Index("hnsw", json.dumps(index_params))
+    })
+    index = pyvsag.Index("hnsw", index_params)
 
     index.build(vectors=data,
                 ids=ids,
                 num_elements=num_elements,
                 dim=dim)
-
-    correct = 0
-    for _id, vector in zip(ids, data):
-        _ids, dists = index.knn_search(vector=vector, k=11, parameters="{}")
-        if _id in _ids:
-            correct += 1
-    print("float32 recall:", correct / len(ids))
+    
+    search_params = json.dumps({"hnsw": {"ef_search": 100}})
+    
+    print("[build] float32 recall:", cal_recall(index, ids, data, 11, search_params))
+    root_dir = "/tmp/"
+    file_sizes = index.save(root_dir)
+    
+    index = pyvsag.Index("hnsw", index_params)
+    index.load(root_dir, file_sizes, True)
+    print("[memory] float32 recall:", cal_recall(index, ids, data, 11, search_params))
+    
+    index = pyvsag.Index("hnsw", index_params)
+    index.load(root_dir, file_sizes, False)
+    print("[disk] float32 recall:", cal_recall(index, ids, data, 11, search_params))
 
 if __name__ == '__main__':
     float32_hnsw_test()

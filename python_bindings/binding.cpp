@@ -4,6 +4,11 @@
 
 #include <pybind11/numpy.h>
 #include <pybind11/pybind11.h>
+#include <pybind11/stl.h>
+
+#include <filesystem>
+#include <fstream>
+#include <map>
 
 #include "iostream"
 #include "vsag/vsag.h"
@@ -106,6 +111,63 @@ public:
         return py::make_tuple(labels, dists);
     }
 
+    std::map<std::string, size_t>
+    Save(const std::string& dir_name) {
+        auto serialize_result = index_->Serialize();
+        if (not serialize_result.has_value()) {
+            throw std::runtime_error("serialize error: " + serialize_result.error().message);
+        }
+        vsag::BinarySet& binary_set = serialize_result.value();
+        std::filesystem::path dir(dir_name);
+        std::map<std::string, size_t> file_sizes;
+        for (const auto& key : binary_set.GetKeys()) {
+            std::filesystem::path file_path(key);
+            std::filesystem::path full_path = dir / file_path;
+            vsag::Binary binary = binary_set.Get(key);
+            std::ofstream file(full_path.string(), std::ios::binary);
+            file.write(reinterpret_cast<char*>(binary.data.get()), binary.size);
+            file_sizes[key] = binary.size;
+            file.close();
+        }
+
+        return std::move(file_sizes);
+    }
+
+    void
+    Load(const std::string& dir_name,
+         const std::map<std::string, size_t>& file_sizes,
+         bool load_memory) {
+        std::filesystem::path dir(dir_name);
+        if (load_memory) {
+            vsag::BinarySet binary_set;
+            for (const auto& single_file : file_sizes) {
+                const std::string& key = single_file.first;
+                size_t size = single_file.second;
+                std::filesystem::path file_path(key);
+                std::filesystem::path full_path = dir / file_path;
+                std::ifstream file(full_path.string(), std::ios::binary);
+                vsag::Binary binary;
+                binary.size = size;
+                binary.data.reset(new int8_t[binary.size]);
+                file.read(reinterpret_cast<char*>(binary.data.get()), size);
+                file.close();
+                binary_set.Set(key, binary);
+            }
+            index_->Deserialize(binary_set);
+        } else {
+            vsag::ReaderSet reader_set;
+            for (const auto& single_file : file_sizes) {
+                const std::string& key = single_file.first;
+                size_t size = single_file.second;
+                std::filesystem::path file_path(key);
+                std::filesystem::path full_path = dir / file_path;
+                auto reader = vsag::Factory::CreateLocalFileReader(full_path.string(), 0, size);
+                reader_set.Set(key, reader);
+            }
+            index_->Deserialize(reader_set);
+        }
+    }
+
 private:
     std::shared_ptr<vsag::Index> index_;
 };
@@ -126,5 +188,11 @@ PYBIND11_MODULE(pyvsag, m) {
              &Index::RangeSearch,
              py::arg("vector"),
              py::arg("threshold"),
-             py::arg("parameters"));
+             py::arg("parameters"))
+        .def("save", &Index::Save, py::arg("dir_name"))
+        .def("load",
+             &Index::Load,
+             py::arg("dir_name"),
+             py::arg("file_sizes"),
+             py::arg("load_memory"));
 }
