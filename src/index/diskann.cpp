@@ -618,7 +618,8 @@ int64_t
 DiskANN::GetEstimateBuildMemory(const int64_t num_elements) const {
     int64_t estimate_memory_usage = 0;
     // Memory usage of graph
-    estimate_memory_usage += num_elements * R_ * sizeof(uint32_t);
+    estimate_memory_usage +=
+        num_elements * R_ * sizeof(uint32_t) + num_elements * (R_ + 1) * sizeof(uint32_t);
     // Memory usage of disk layout
     if (sector_len_ > MINIMAL_SECTOR_LEN) {
         estimate_memory_usage += num_elements * sector_len_ * sizeof(uint8_t);
