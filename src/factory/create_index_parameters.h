@@ -137,7 +137,10 @@ public:
         if (params[INDEX_DISKANN].contains(DISKANN_PARAMETER_USE_REFERENCE)) {
             obj.use_reference = params[INDEX_DISKANN][DISKANN_PARAMETER_USE_REFERENCE];
         }
-
+        // set obj.use_opq
+        if (params[INDEX_DISKANN].contains(DISKANN_PARAMETER_USE_OPQ)) {
+            obj.use_opq = params[INDEX_DISKANN][DISKANN_PARAMETER_USE_OPQ];
+        }
         return obj;
     }
 
@@ -154,6 +157,7 @@ public:
     // optional vars with default value
     bool use_preload = false;
     bool use_reference = true;
+    bool use_opq = false;
 
 private:
     CreateDiskannParameters() = default;

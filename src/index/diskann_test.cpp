@@ -42,6 +42,7 @@ TEST_CASE("build", "[diskann][ut]") {
                                                  pq_dims,
                                                  dim,
                                                  false,
+                                                 false,
                                                  false);
 
     int64_t num_elements = 10;
@@ -98,6 +99,7 @@ TEST_CASE("knn_search", "[diskann][ut]") {
                                                  pq_dims,
                                                  dim,
                                                  false,
+                                                 false,
                                                  false);
 
     int64_t num_elements = 100;
@@ -125,6 +127,7 @@ TEST_CASE("knn_search", "[diskann][ut]") {
                                                            pq_sample_rate,
                                                            pq_dims,
                                                            dim,
+                                                           false,
                                                            false,
                                                            false);
         auto result = empty_index->KnnSearch(query, k, params.dump());
@@ -206,6 +209,7 @@ TEST_CASE("range_search", "[diskann][ut]") {
                                                  pq_dims,
                                                  dim,
                                                  false,
+                                                 false,
                                                  false);
 
     int64_t num_elements = 100;
@@ -233,6 +237,7 @@ TEST_CASE("range_search", "[diskann][ut]") {
                                                            pq_sample_rate,
                                                            pq_dims,
                                                            dim,
+                                                           false,
                                                            false,
                                                            false);
         auto result = empty_index->RangeSearch(query, radius, params.dump());
@@ -325,6 +330,7 @@ TEST_CASE("serialize empty index", "[diskann][ut]") {
                                                  pq_dims,
                                                  dim,
                                                  false,
+                                                 false,
                                                  false);
 
     auto result = index->Serialize();
@@ -346,6 +352,7 @@ TEST_CASE("deserialize on not empty index", "[diskann][ut]") {
                                                  pq_sample_rate,
                                                  pq_dims,
                                                  dim,
+                                                 false,
                                                  false,
                                                  false);
 

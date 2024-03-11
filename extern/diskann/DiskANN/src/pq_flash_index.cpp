@@ -1081,7 +1081,12 @@ int PQFlashIndex<T, LabelT>::load_from_separate_paths(uint32_t num_threads, cons
     size_t num_pts_in_label_file = 0;
 
     size_t pq_file_dim, pq_file_num_centroids;
-    get_bin_metadata(pivots_stream, pq_file_num_centroids, pq_file_dim, 40);
+
+
+    uint64_t nrow, ncol;
+    std::unique_ptr<size_t[]> file_offset_data;
+    diskann::load_bin<size_t>(pivots_stream, reinterpret_cast<size_t *&>(file_offset_data), nrow, ncol);
+    get_bin_metadata(pivots_stream, pq_file_num_centroids, pq_file_dim, file_offset_data[0]);
 
     this->disk_index_file = disk_index_file;
 
@@ -1348,7 +1353,11 @@ int PQFlashIndex<T, LabelT>::load_from_separate_paths(uint32_t num_threads, std:
     size_t num_pts_in_label_file = 0;
 
     size_t pq_file_dim, pq_file_num_centroids;
-    get_bin_metadata(pivots_stream, pq_file_num_centroids, pq_file_dim, 40);
+
+    uint64_t nrow, ncol;
+    std::unique_ptr<size_t[]> file_offset_data;
+    diskann::load_bin<size_t>(pivots_stream, reinterpret_cast<size_t *&>(file_offset_data), nrow, ncol);
+    get_bin_metadata(pivots_stream, pq_file_num_centroids, pq_file_dim, file_offset_data[0]);
 
 
     if (pq_file_num_centroids != 256)

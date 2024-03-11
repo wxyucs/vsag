@@ -122,13 +122,26 @@ DISKANN_DLLEXPORT int generate_pq_pivots(const float *const train_data, size_t n
 
 
 DISKANN_DLLEXPORT int generate_opq_pivots(const float *train_data, size_t num_train, unsigned dim, unsigned num_centers,
-                                          unsigned num_pq_chunks, std::string opq_pivots_path,
+                                          unsigned num_pq_chunks, std::string opq_pivots_path, std::shared_ptr<float[]> &rotmat_tr,
                                           bool make_zero_mean = false);
 
+DISKANN_DLLEXPORT std::unique_ptr<float[]> generate_opq_pivots(const float *train_data, size_t num_train, unsigned dim, unsigned num_centers,
+                                          unsigned num_pq_chunks, std::stringstream &pq_pivots_stream,
+                                          bool make_zero_mean = false);
 template <typename T>
-int generate_pq_data_from_pivots(const std::string &data_file, unsigned num_centers, unsigned num_pq_chunks,
+int generate_pq_data_from_pivots(const std::string &data_file, uint32_t num_centers, uint32_t num_pq_chunks,
                                  const std::string &pq_pivots_path, const std::string &pq_compressed_vectors_path,
                                  bool use_opq = false);
+
+template <typename T>
+int generate_pq_data_from_pivots(std::stringstream &base_reader, uint32_t num_centers, uint32_t num_pq_chunks,
+                                 std::stringstream &pq_pivots_stream, std::stringstream &compressed_file_writer,
+                                 bool use_opq = false);
+
+template <typename T>
+int generate_pq_data_from_pivots(const T* data, size_t num_points, size_t dim, const std::vector<size_t>& skip_locs, uint32_t num_centers, uint32_t num_pq_chunks,
+                                 std::stringstream &pq_pivots_stream, std::stringstream &compressed_file_writer,
+                                 bool use_opq = false, std::shared_ptr<float[]> rotmat_tr = nullptr);
 
 template <typename T>
 void generate_disk_quantized_data(const std::string &data_file_to_use, const std::string &disk_pq_pivots_path,
@@ -142,7 +155,7 @@ void generate_disk_quantized_data(std::stringstream &data_stream, std::stringstr
 template <typename T>
 void generate_disk_quantized_data(const T* train_data, size_t train_size, size_t train_dim, const std::vector<size_t>& skip_locs,
                                   std::stringstream &disk_pq_pivots, std::stringstream &disk_pq_compressed_vectors,
-                                  diskann::Metric compare_metric, const double p_val, size_t &disk_pq_dims);
+                                  diskann::Metric compare_metric, const double p_val, size_t &disk_pq_dims, bool use_opq = false);
 
 template <typename T>
 void generate_quantized_data(const std::string &data_file_to_use, const std::string &pq_pivots_path,

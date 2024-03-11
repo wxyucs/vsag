@@ -406,7 +406,7 @@ void kmeanspp_selecting_pivots(float *data, size_t num_points, size_t dim, float
 
     float *dist = new float[num_points];
 
-#pragma omp parallel for schedule(static, 8192)
+//#pragma omp parallel for schedule(static, 8192)
     for (int64_t i = 0; i < (int64_t)num_points; i++)
     {
         dist[i] = math_utils::calc_distance(data + i * dim, data + init_id * dim, dim);
@@ -447,7 +447,7 @@ void kmeanspp_selecting_pivots(float *data, size_t num_points, size_t dim, float
         picked.push_back(tmp_pivot);
         std::memcpy(pivot_data + num_picked * dim, data + tmp_pivot * dim, dim * sizeof(float));
 
-#pragma omp parallel for schedule(static, 8192)
+//#pragma omp parallel for schedule(static, 8192)
         for (int64_t i = 0; i < (int64_t)num_points; i++)
         {
             dist[i] = (std::min)(dist[i], math_utils::calc_distance(data + i * dim, data + tmp_pivot * dim, dim));

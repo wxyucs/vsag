@@ -86,7 +86,8 @@ DiskANN::DiskANN(diskann::Metric metric,
                  size_t disk_pq_dims,
                  int64_t dim,
                  bool preload,
-                 bool use_reference)
+                 bool use_reference,
+                 bool use_opq)
     : metric_(metric),
       L_(L),
       R_(R),
@@ -95,7 +96,8 @@ DiskANN::DiskANN(diskann::Metric metric,
       disk_pq_dims_(disk_pq_dims),
       dim_(dim),
       preload_(preload),
-      use_reference_(use_reference) {
+      use_reference_(use_reference),
+      use_opq_(use_opq) {
     status_ = IndexStatus::EMPTY;
     batch_read_ = [&](const std::vector<read_request>& requests) -> void {
         std::vector<std::future<void>> futures;
@@ -164,7 +166,8 @@ DiskANN::build(const Dataset& base) {
                                                      disk_pq_compressed_vectors_,
                                                      metric_,
                                                      p_val_,
-                                                     disk_pq_dims_);
+                                                     disk_pq_dims_,
+                                                     use_opq_);
 
         diskann::create_disk_layout<float>(vectors,
                                            data_num,

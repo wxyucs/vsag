@@ -14,17 +14,17 @@ const std::string tmp_dir = "/tmp/";
 TEST_CASE("DiskAnn Float Recall", "[diskann]") {
     int dim = 128;            // Dimension of the elements
     int max_elements = 1000;  // Maximum number of elements, should be known beforehand
-    int M = 16;               // Tightly connected with internal dimensionality of the data
+    int max_degree = 16;      // Tightly connected with internal dimensionality of the data
     // strongly affects the memory consumption
     int ef_construction = 200;  // Controls index search speed/build speed tradeoff
-    int ef_runtime = 200;
+    int ef_search = 200;
     float pq_sample_rate =
         0.5;  // pq_sample_rate represents how much original data is selected during the training of pq compressed vectors.
     int pq_dims = 8;  // pq_dims represents the dimensionality of the compressed vector.
     std::string disk_layout_file = "index.out";
     // Initing index
     nlohmann::json diskann_parameters{
-        {"max_degree", M},
+        {"max_degree", max_degree},
         {"ef_construction", ef_construction},
         {"pq_sample_rate", pq_sample_rate},
         {"pq_dims", pq_dims},
@@ -61,7 +61,7 @@ TEST_CASE("DiskAnn Float Recall", "[diskann]") {
         vsag::Dataset query;
         query.NumElements(1).Dim(dim).Float32Vectors(data + i * dim).Owner(false);
         nlohmann::json parameters{
-            {"diskann", {{"ef_search", ef_runtime}, {"beam_search", 4}, {"io_limit", 200}}}};
+            {"diskann", {{"ef_search", ef_search}, {"beam_search", 4}, {"io_limit", 200}}}};
         int64_t k = 2;
         if (auto result = diskann->KnnSearch(query, k, parameters.dump()); result.has_value()) {
             if (result->GetNumElements() == 1) {
@@ -172,7 +172,6 @@ TEST_CASE("DiskAnn Float Recall", "[diskann]") {
         REQUIRE(index.has_value());
         diskann = index.value();
 
-        std::cout << "#####" << std::endl;
         diskann->Deserialize(bs);
     }
     // Query the elements for themselves and measure recall 1@2
@@ -181,7 +180,7 @@ TEST_CASE("DiskAnn Float Recall", "[diskann]") {
         vsag::Dataset query;
         query.NumElements(1).Dim(dim).Float32Vectors(data + i * dim).Owner(false);
         nlohmann::json parameters{
-            {"diskann", {{"ef_search", ef_runtime}, {"beam_search", 4}, {"io_limit", 200}}}};
+            {"diskann", {{"ef_search", ef_search}, {"beam_search", 4}, {"io_limit", 200}}}};
         int64_t k = 2;
         if (auto result = diskann->KnnSearch(query, k, parameters.dump()); result.has_value()) {
             if (result->GetNumElements() == 1) {
@@ -220,7 +219,6 @@ TEST_CASE("DiskAnn Float Recall", "[diskann]") {
         REQUIRE(index.has_value());
         diskann = index.value();
 
-        std::cout << "#####" << std::endl;
         diskann->Deserialize(rs);
     }
 
@@ -230,7 +228,7 @@ TEST_CASE("DiskAnn Float Recall", "[diskann]") {
         vsag::Dataset query;
         query.NumElements(1).Dim(dim).Float32Vectors(data + i * dim).Owner(false);
         nlohmann::json parameters{
-            {"diskann", {{"ef_search", ef_runtime}, {"beam_search", 4}, {"io_limit", 200}}}};
+            {"diskann", {{"ef_search", ef_search}, {"beam_search", 4}, {"io_limit", 200}}}};
         int64_t k = 2;
         if (auto result = diskann->KnnSearch(query, k, parameters.dump()); result.has_value()) {
             if (result->GetNumElements() == 1) {
@@ -252,17 +250,17 @@ TEST_CASE("DiskAnn Float Recall", "[diskann]") {
 TEST_CASE("DiskAnn IP Search", "[diskann]") {
     int dim = 128;            // Dimension of the elements
     int max_elements = 1000;  // Maximum number of elements, should be known beforehand
-    int M = 16;               // Tightly connected with internal dimensionality of the data
+    int max_degree = 16;      // Tightly connected with internal dimensionality of the data
     // strongly affects the memory consumption
     int ef_construction = 200;  // Controls index search speed/build speed tradeoff
-    int ef_runtime = 200;
+    int ef_search = 200;
     float pq_sample_rate =
         0.5;  // pq_sample_rate represents how much original data is selected during the training of pq compressed vectors.
     int pq_dims = 8;  // pq_dims represents the dimensionality of the compressed vector.
     std::string disk_layout_file = "index.out";
     // Initing index
     nlohmann::json diskann_parameters{
-        {"max_degree", M},
+        {"max_degree", max_degree},
         {"ef_construction", ef_construction},
         {"pq_sample_rate", pq_sample_rate},
         {"pq_dims", pq_dims},
@@ -299,7 +297,7 @@ TEST_CASE("DiskAnn IP Search", "[diskann]") {
         vsag::Dataset query;
         query.NumElements(1).Dim(dim).Float32Vectors(data + i * dim).Owner(false);
         nlohmann::json parameters{
-            {"diskann", {{"ef_search", ef_runtime}, {"beam_search", 4}, {"io_limit", 200}}}};
+            {"diskann", {{"ef_search", ef_search}, {"beam_search", 4}, {"io_limit", 200}}}};
         int64_t k = 2;
         if (auto result = diskann->KnnSearch(query, k, parameters.dump()); result.has_value()) {
             if (result->GetNumElements() == 1) {
@@ -319,20 +317,89 @@ TEST_CASE("DiskAnn IP Search", "[diskann]") {
     REQUIRE(recall > 0.70);
 }
 
+TEST_CASE("DiskAnn OPQ", "[diskann]") {
+    int dim = 128;            // Dimension of the elements
+    int max_elements = 1000;  // Maximum number of elements, should be known beforehand
+    int max_degree = 16;      // Tightly connected with internal dimensionality of the data
+    // strongly affects the memory consumption
+    int ef_construction = 200;  // Controls index search speed/build speed tradeoff
+    int ef_search = 200;
+    float pq_sample_rate =
+        0.5;  // pq_sample_rate represents how much original data is selected during the training of pq compressed vectors.
+    int pq_dims = 8;  // pq_dims represents the dimensionality of the compressed vector.
+    std::string disk_layout_file = "index.out";
+    // Initing index
+    nlohmann::json diskann_parameters{{"max_degree", max_degree},
+                                      {"ef_construction", ef_construction},
+                                      {"pq_sample_rate", pq_sample_rate},
+                                      {"pq_dims", pq_dims},
+                                      {"use_opq", true}};
+    nlohmann::json index_parameters{
+        {"dtype", "float32"},
+        {"metric_type", "l2"},
+        {"dim", dim},
+        {"diskann", diskann_parameters},
+    };
+
+    std::shared_ptr<vsag::Index> diskann;
+    auto index = vsag::Factory::CreateIndex("diskann", index_parameters.dump());
+    REQUIRE(index.has_value());
+    diskann = index.value();
+
+    int64_t* ids = new int64_t[max_elements];
+    float* data = new float[dim * max_elements];
+
+    // Generate random data
+    std::mt19937 rng;
+    rng.seed(47);
+    std::uniform_real_distribution<> distrib_real;
+    for (int i = 0; i < max_elements; i++) ids[i] = i;
+    for (int i = 0; i < dim * max_elements; i++) data[i] = distrib_real(rng);
+
+    // Build index
+    vsag::Dataset dataset;
+    dataset.Dim(dim).NumElements(max_elements).Ids(ids).Float32Vectors(data);
+    diskann->Build(dataset);
+
+    float correct = 0;
+    for (int i = 0; i < max_elements; i++) {
+        vsag::Dataset query;
+        query.NumElements(1).Dim(dim).Float32Vectors(data + i * dim).Owner(false);
+        nlohmann::json parameters{
+            {"diskann", {{"ef_search", ef_search}, {"beam_search", 4}, {"io_limit", 200}}}};
+        int64_t k = 2;
+        if (auto result = diskann->KnnSearch(query, k, parameters.dump()); result.has_value()) {
+            if (result->GetNumElements() == 1) {
+                REQUIRE(!std::isinf(result->GetDistances()[0]));
+                if (result->GetIds()[0] == i) {
+                    correct++;
+                }
+            }
+        } else if (result.error().type == vsag::ErrorType::INTERNAL_ERROR) {
+            std::cerr << "failed to search on index: internal error" << std::endl;
+            exit(-1);
+        }
+    }
+    float recall = correct / max_elements;
+    std::cout << "Stard Recall: " << recall << std::endl;
+
+    REQUIRE(recall > 0.99);
+}
+
 TEST_CASE("DiskAnn Range Query", "[diskann]") {
     int dim = 256;            // Dimension of the elements
     int max_elements = 1000;  // Maximum number of elements, should be known beforehand
-    int M = 16;               // Tightly connected with internal dimensionality of the data
+    int max_degree = 16;      // Tightly connected with internal dimensionality of the data
     // strongly affects the memory consumption
     int ef_construction = 200;  // Controls index search speed/build speed tradeoff
-    int ef_runtime = 200;
+    int ef_search = 200;
     float pq_sample_rate =
         0.5;  // pq_sample_rate represents how much original data is selected during the training of pq compressed vectors.
     int pq_dims = 32;  // pq_dims represents the dimensionality of the compressed vector.
     float threshold = 8.0;
     // Initing index
     nlohmann::json diskann_parameters{
-        {"max_degree", M},
+        {"max_degree", max_degree},
         {"ef_construction", ef_construction},
         {"pq_sample_rate", pq_sample_rate},
         {"pq_dims", pq_dims},
@@ -371,7 +438,7 @@ TEST_CASE("DiskAnn Range Query", "[diskann]") {
         vsag::Dataset query;
         query.NumElements(1).Dim(dim).Float32Vectors(data + i * dim).Owner(false);
         nlohmann::json parameters{
-            {"diskann", {{"ef_search", ef_runtime}, {"beam_search", 4}, {"io_limit", 200}}}};
+            {"diskann", {{"ef_search", ef_search}, {"beam_search", 4}, {"io_limit", 200}}}};
         auto range_result =
             vsag::l2_and_filtering(dim, max_elements, data, data + i * dim, threshold);
         if (auto result = diskann->RangeSearch(query, threshold, parameters.dump());
@@ -400,16 +467,16 @@ TEST_CASE("DiskAnn Range Query", "[diskann]") {
 TEST_CASE("DiskAnn Preload Graph", "[diskann]") {
     int dim = 65;             // Dimension of the elements
     int max_elements = 1000;  // Maximum number of elements, should be known beforehand
-    int M = 16;               // Tightly connected with internal dimensionality of the data
+    int max_degree = 16;      // Tightly connected with internal dimensionality of the data
     // strongly affects the memory consumption
     int ef_construction = 200;  // Controls index search speed/build speed tradeoff
-    int ef_runtime = 200;
+    int ef_search = 200;
     float pq_sample_rate =
         0.5;  // pq_sample_rate represents how much original data is selected during the training of pq compressed vectors.
     int pq_dims = 9;  // pq_dims represents the dimensionality of the compressed vector.
     float threshold = 8.0;
     // Initing index
-    nlohmann::json diskann_parameters{{"max_degree", M},
+    nlohmann::json diskann_parameters{{"max_degree", max_degree},
                                       {"ef_construction", ef_construction},
                                       {"pq_sample_rate", pq_sample_rate},
                                       {"pq_dims", pq_dims},
@@ -447,7 +514,7 @@ TEST_CASE("DiskAnn Preload Graph", "[diskann]") {
         vsag::Dataset query;
         query.NumElements(1).Dim(dim).Float32Vectors(data + i * dim).Owner(false);
         nlohmann::json parameters{
-            {"diskann", {{"ef_search", ef_runtime}, {"beam_search", 4}, {"io_limit", 200}}}};
+            {"diskann", {{"ef_search", ef_search}, {"beam_search", 4}, {"io_limit", 200}}}};
         int64_t k = 2;
         if (auto result = diskann->KnnSearch(query, k, parameters.dump()); result.has_value()) {
             if (result->GetNumElements() == 1) {
@@ -470,7 +537,7 @@ TEST_CASE("DiskAnn Preload Graph", "[diskann]") {
         vsag::Dataset query;
         query.NumElements(1).Dim(dim).Float32Vectors(data + i * dim).Owner(false);
         nlohmann::json parameters{{"diskann",
-                                   {{"ef_search", ef_runtime},
+                                   {{"ef_search", ef_search},
                                     {"beam_search", 4},
                                     {"io_limit", 200},
                                     {"use_reorder", true}}}};
@@ -496,7 +563,7 @@ TEST_CASE("DiskAnn Preload Graph", "[diskann]") {
         vsag::Dataset query;
         query.NumElements(1).Dim(dim).Float32Vectors(data + i * dim).Owner(false);
         nlohmann::json parameters{{"diskann",
-                                   {{"ef_search", ef_runtime},
+                                   {{"ef_search", ef_search},
                                     {"beam_search", 4},
                                     {"io_limit", 200},
                                     {"use_reorder", true}}}};
@@ -522,17 +589,17 @@ TEST_CASE("DiskAnn Preload Graph", "[diskann]") {
 TEST_CASE("DiskAnn Filter Test", "[diskann]") {
     int dim = 65;             // Dimension of the elements
     int max_elements = 1000;  // Maximum number of elements, should be known beforehand
-    int M = 16;               // Tightly connected with internal dimensionality of the data
+    int max_degree = 16;      // Tightly connected with internal dimensionality of the data
     // strongly affects the memory consumption
     int ef_construction = 200;  // Controls index search speed/build speed tradeoff
-    int ef_runtime = 200;
+    int ef_search = 200;
     float pq_sample_rate =
         0.5;  // pq_sample_rate represents how much original data is selected during the training of pq compressed vectors.
     int pq_dims = 9;  // pq_dims represents the dimensionality of the compressed vector.
     float threshold = 8.0;
     int64_t k = 10;
     // Initing index
-    nlohmann::json diskann_parameters{{"max_degree", M},
+    nlohmann::json diskann_parameters{{"max_degree", max_degree},
                                       {"ef_construction", ef_construction},
                                       {"pq_sample_rate", pq_sample_rate},
                                       {"pq_dims", pq_dims},
@@ -582,7 +649,7 @@ TEST_CASE("DiskAnn Filter Test", "[diskann]") {
         vsag::BitsetPtr invalid = vsag::Bitset::Random(max_elements);
         int64_t num_deleted = invalid->CountOnes();
         nlohmann::json parameters{
-            {"diskann", {{"ef_search", ef_runtime}, {"beam_search", 4}, {"io_limit", 200}}}};
+            {"diskann", {{"ef_search", ef_search}, {"beam_search", 4}, {"io_limit", 200}}}};
         if (auto result = diskann->KnnSearch(query, k, parameters.dump(), invalid);
             result.has_value()) {
             if (result->GetNumElements() == 1) {
@@ -670,16 +737,16 @@ TEST_CASE("DiskAnn Filter Test", "[diskann]") {
 TEST_CASE("DiskAnn Random Id", "[diskann]") {
     int dim = 65;             // Dimension of the elements
     int max_elements = 1000;  // Maximum number of elements, should be known beforehand
-    int M = 16;               // Tightly connected with internal dimensionality of the data
+    int max_degree = 16;      // Tightly connected with internal dimensionality of the data
     // strongly affects the memory consumption
     int ef_construction = 200;  // Controls index search speed/build speed tradeoff
-    int ef_runtime = 200;
+    int ef_search = 200;
     float pq_sample_rate =
         0.5;  // pq_sample_rate represents how much original data is selected during the training of pq compressed vectors.
     int pq_dims = 9;  // pq_dims represents the dimensionality of the compressed vector.
     float threshold = 8.0;
     // Initing index
-    nlohmann::json diskann_parameters{{"max_degree", M},
+    nlohmann::json diskann_parameters{{"max_degree", max_degree},
                                       {"ef_construction", ef_construction},
                                       {"pq_sample_rate", pq_sample_rate},
                                       {"pq_dims", pq_dims},
@@ -741,7 +808,7 @@ TEST_CASE("DiskAnn Random Id", "[diskann]") {
         vsag::Dataset query;
         query.NumElements(1).Dim(dim).Float32Vectors(data + i * dim).Owner(false);
         nlohmann::json parameters{
-            {"diskann", {{"ef_search", ef_runtime}, {"beam_search", 4}, {"io_limit", 200}}}};
+            {"diskann", {{"ef_search", ef_search}, {"beam_search", 4}, {"io_limit", 200}}}};
         int64_t k = 2;
         if (auto result = diskann->KnnSearch(query, k, parameters.dump()); result.has_value()) {
             if (result->GetNumElements() == 1) {
@@ -762,14 +829,14 @@ TEST_CASE("DiskAnn Random Id", "[diskann]") {
 TEST_CASE("DiskANN small dimension", "[hnsw]") {
     int dim = 3;
     int max_elements = 1000;
-    int M = 16;
+    int max_degree = 16;
     int ef_construction = 100;
-    int ef_runtime = 100;
+    int ef_search = 100;
     float pq_sample_rate = 0.5;
     int pq_dims = 8;
     // Initing index
     nlohmann::json diskann_parameters{
-        {"max_degree", M},
+        {"max_degree", max_degree},
         {"ef_construction", ef_construction},
         {"pq_sample_rate", pq_sample_rate},
         {"pq_dims", pq_dims},
@@ -808,7 +875,7 @@ TEST_CASE("DiskANN small dimension", "[hnsw]") {
         vsag::Dataset query;
         query.NumElements(1).Dim(dim).Float32Vectors(data + i * dim).Owner(false);
         nlohmann::json parameters{
-            {"diskann", {{"ef_search", ef_runtime}, {"beam_search", 4}, {"io_limit", 200}}}};
+            {"diskann", {{"ef_search", ef_search}, {"beam_search", 4}, {"io_limit", 200}}}};
         int64_t k = 2;
         if (auto result = diskann->KnnSearch(query, k, parameters.dump()); result.has_value()) {
             if (result->GetNumElements() == 1) {
