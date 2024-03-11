@@ -4,6 +4,7 @@
 #include <iostream>
 #include <string>
 
+#include "vsag/utils.h"
 #include "vsag/vsag.h"
 
 using namespace vsag;

@@ -18,6 +18,7 @@
 
 #include "../common.h"
 #include "../utils.h"
+#include "./diskann_zparameters.h"
 #include "vsag/constants.h"
 #include "vsag/errors.h"
 #include "vsag/expected.hpp"
@@ -227,26 +228,11 @@ DiskANN::knn_search(const Dataset& query,
         k = std::min(k, GetNumElements());
 
         // check search parameters
-        nlohmann::json params = nlohmann::json::parse(parameters);
-        CHECK_ARGUMENT(params.contains(INDEX_DISKANN),
-                       fmt::format("parameters must contains {}", INDEX_DISKANN));
-        CHECK_ARGUMENT(
-            params[INDEX_DISKANN].contains(DISKANN_PARAMETER_BEAM_SEARCH),
-            fmt::format(
-                "parameters[{}] must contains {}", INDEX_DISKANN, DISKANN_PARAMETER_BEAM_SEARCH));
-        CHECK_ARGUMENT(
-            params[INDEX_DISKANN].contains(DISKANN_PARAMETER_IO_LIMIT),
-            fmt::format(
-                "parameters[{}] must contains {}", INDEX_DISKANN, DISKANN_PARAMETER_IO_LIMIT));
-        CHECK_ARGUMENT(
-            params[INDEX_DISKANN].contains(DISKANN_PARAMETER_EF_SEARCH),
-            fmt::format(
-                "parameters[{}] must contains {}", INDEX_DISKANN, DISKANN_PARAMETER_EF_SEARCH));
-        size_t beam_search = params[INDEX_DISKANN][DISKANN_PARAMETER_BEAM_SEARCH];
-        int64_t io_limit = params[INDEX_DISKANN][DISKANN_PARAMETER_IO_LIMIT];
-        int64_t ef_search = params[INDEX_DISKANN][DISKANN_PARAMETER_EF_SEARCH];
-        bool reorder = params[INDEX_DISKANN].contains(DISKANN_PARAMETER_REORDER) &&
-                       params[INDEX_DISKANN][DISKANN_PARAMETER_REORDER];
+        auto params = DiskannSearchParameters::FromJson(parameters);
+        int64_t ef_search = params.ef_search;
+        size_t beam_search = params.beam_search;
+        int64_t io_limit = params.io_limit;
+        bool reorder = params.use_reorder;
 
         // check filter
         std::function<bool(int64_t)> filter_ = nullptr;
@@ -363,23 +349,9 @@ DiskANN::range_search(const Dataset& query,
         CHECK_ARGUMENT(query_num == 1, fmt::format("query.num({}) must be equal to 1", query_num));
 
         // check search parameters
-        nlohmann::json params = nlohmann::json::parse(parameters);
-        CHECK_ARGUMENT(params.contains(INDEX_DISKANN),
-                       fmt::format("parameters must contains {}", INDEX_DISKANN));
-        CHECK_ARGUMENT(
-            params[INDEX_DISKANN].contains(DISKANN_PARAMETER_BEAM_SEARCH),
-            fmt::format(
-                "parameters[{}] must contains {}", INDEX_DISKANN, DISKANN_PARAMETER_BEAM_SEARCH));
-        CHECK_ARGUMENT(
-            params[INDEX_DISKANN].contains(DISKANN_PARAMETER_IO_LIMIT),
-            fmt::format(
-                "parameters[{}] must contains {}", INDEX_DISKANN, DISKANN_PARAMETER_IO_LIMIT));
-        CHECK_ARGUMENT(
-            params[INDEX_DISKANN].contains(DISKANN_PARAMETER_EF_SEARCH),
-            fmt::format(
-                "parameters[{}] must contains {}", INDEX_DISKANN, DISKANN_PARAMETER_EF_SEARCH));
-        size_t beam_search = params[INDEX_DISKANN][DISKANN_PARAMETER_BEAM_SEARCH];
-        int64_t ef_search = params[INDEX_DISKANN][DISKANN_PARAMETER_EF_SEARCH];
+        auto params = DiskannSearchParameters::FromJson(parameters);
+        size_t beam_search = params.beam_search;
+        int64_t ef_search = params.ef_search;
         CHECK_ARGUMENT(ef_search > 0,
                        fmt::format("ef_search({}) must be greater than 0", ef_search));
 
@@ -395,10 +367,9 @@ DiskANN::range_search(const Dataset& query,
             filter = [&](int64_t offset) -> bool { return invalid->Get(offset & ROW_ID_MASK); };
         }
 
-        bool reorder = params[INDEX_DISKANN].contains(DISKANN_PARAMETER_REORDER) &&
-                       params[INDEX_DISKANN][DISKANN_PARAMETER_REORDER];
+        bool reorder = params.use_reorder;
+        int64_t io_limit = params.io_limit;
 
-        int64_t io_limit = params[INDEX_DISKANN][DISKANN_PARAMETER_IO_LIMIT];
         io_limit = std::min(MAX_IO_LIMIT, io_limit);
         if (reorder && preload_) {
             io_limit = std::min((int64_t)Option::Instance().GetSectorSize(), io_limit);
@@ -617,6 +588,7 @@ DiskANN::GetStats() const {
 
     return j.dump();
 }
+
 int64_t
 DiskANN::GetEstimateBuildMemory(const int64_t num_elements) const {
     int64_t estimate_memory_usage = 0;

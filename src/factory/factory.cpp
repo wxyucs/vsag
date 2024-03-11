@@ -16,8 +16,9 @@
 
 #include "../common.h"
 #include "../index/diskann.h"
+#include "../index/diskann_zparameters.h"
 #include "../index/hnsw.h"
-#include "./create_index_parameters.h"
+#include "../index/hnsw_zparameters.h"
 #include "vsag/vsag.h"
 
 namespace vsag {

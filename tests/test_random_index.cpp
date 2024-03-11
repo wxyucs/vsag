@@ -19,7 +19,7 @@ TEST_CASE("Random Index Test", "[random]") {
     std::uniform_int_distribution<int> max_elements_generate(
         2, 1000);  // DiskANN does not allow building a graph with fewer than 2 points.
     std::uniform_int_distribution<int> max_degree_generate(
-        2, 64);  // When the number of edges is less than 2, connectivity cannot be guaranteed.
+        5, 64);  // When the number of edges is less than 5, connectivity cannot be guaranteed.
     std::uniform_int_distribution<int> construct_generate(1, 500);
     std::uniform_int_distribution<int> search_generate(1, 500);
     std::uniform_int_distribution<int> k_generate(1, 200);

@@ -6,6 +6,7 @@
 #include <map>
 #include <memory>
 #include <mutex>
+#include <nlohmann/json.hpp>
 #include <queue>
 #include <stdexcept>
 #include <utility>
@@ -18,6 +19,7 @@
 #include "vsag/readerset.h"
 
 namespace vsag {
+
 class HNSW : public Index {
 public:
     HNSW(std::shared_ptr<hnswlib::SpaceInterface> space_interface, int M, int ef_construction);

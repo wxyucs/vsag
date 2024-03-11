@@ -12,6 +12,7 @@
 
 #include "../common.h"
 #include "../utils.h"
+#include "./hnsw_zparameters.h"
 #include "vsag/binaryset.h"
 #include "vsag/constants.h"
 #include "vsag/errors.h"
@@ -162,13 +163,8 @@ HNSW::knn_search(const Dataset& query,
         k = std::min(k, GetNumElements());
 
         // check search parameters
-        nlohmann::json params = nlohmann::json::parse(parameters);
-        CHECK_ARGUMENT(params.contains(INDEX_HNSW),
-                       fmt::format("parameters must contains {}", INDEX_HNSW));
-        CHECK_ARGUMENT(
-            params[INDEX_HNSW].contains(HNSW_PARAMETER_EF_RUNTIME),
-            fmt::format("parameters[{}] must contains {}", INDEX_HNSW, HNSW_PARAMETER_EF_RUNTIME));
-        alg_hnsw->setEf(params[INDEX_HNSW][HNSW_PARAMETER_EF_RUNTIME]);
+        auto params = HnswSearchParameters::FromJson(parameters);
+        alg_hnsw->setEf(params.ef_search);
 
         // check filter
         std::shared_ptr<Filter> filter = nullptr;
@@ -242,13 +238,8 @@ HNSW::range_search(const Dataset& query,
         CHECK_ARGUMENT(radius >= 0, fmt::format("radius({}) must be greater equal than 0", radius))
 
         // check search parameters
-        nlohmann::json params = nlohmann::json::parse(parameters);
-        CHECK_ARGUMENT(params.contains(INDEX_HNSW),
-                       fmt::format("parameters must contains {}", INDEX_HNSW));
-        CHECK_ARGUMENT(
-            params[INDEX_HNSW].contains(HNSW_PARAMETER_EF_RUNTIME),
-            fmt::format("parameters[{}] must contains {}", INDEX_HNSW, HNSW_PARAMETER_EF_RUNTIME));
-        alg_hnsw->setEf(params[INDEX_HNSW][HNSW_PARAMETER_EF_RUNTIME]);
+        auto params = HnswSearchParameters::FromJson(parameters);
+        alg_hnsw->setEf(params.ef_search);
 
         // check filter
         std::shared_ptr<Filter> filter = nullptr;

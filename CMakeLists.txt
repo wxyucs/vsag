@@ -121,6 +121,7 @@ if (ENABLE_TESTS)
 	tests/test_random_index.cpp
 	tests/test_cpuinfo.cpp
 	tests/test_simd.cpp
+	tests/test_index.cpp
     tests/test_option.cpp
     )
     target_include_directories(tests PRIVATE ${CMAKE_CURRENT_BINARY_DIR}/spdlog/install/include)

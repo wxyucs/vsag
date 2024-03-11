@@ -137,4 +137,20 @@ public:
     }
 };
 
+/**
+  * check if the build parameter is valid
+  *
+  * @return true if the parameter is valid, otherwise error with detail message.
+  */
+tl::expected<bool, Error>
+check_diskann_hnsw_build_parameters(const std::string& json_string);
+
+/**
+  * check if the build parameter is valid
+  *
+  * @return true if the parameter is valid, otherwise error with detail message.
+  */
+tl::expected<bool, Error>
+check_diskann_hnsw_search_parameters(const std::string& json_string);
+
 }  // namespace vsag

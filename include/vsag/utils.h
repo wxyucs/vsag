@@ -6,6 +6,8 @@
 #include <vector>
 
 #include "bitset.h"
+#include "vsag/errors.h"
+#include "vsag/expected.hpp"
 
 namespace vsag {
 
