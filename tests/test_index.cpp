@@ -4,7 +4,7 @@
 #include "catch2/catch_message.hpp"
 #include "vsag/index.h"
 
-TEST_CASE("check build parameters", "[test]") {
+TEST_CASE("check build parameters", "[index][test]") {
     auto json_string = R"(
         {
             "dtype": "float32",
@@ -26,7 +26,7 @@ TEST_CASE("check build parameters", "[test]") {
     REQUIRE(res.has_value());
 }
 
-TEST_CASE("check search parameters", "[test]") {
+TEST_CASE("check search parameters", "[index][test]") {
     auto json_string = R"(
         {
             "hnsw": {

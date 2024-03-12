@@ -8,7 +8,7 @@
 using namespace vsag;
 using Catch::Matchers::ContainsSubstring;
 
-TEST_CASE("general usage", "[bitset]") {
+TEST_CASE("general usage", "[bitset][test]") {
     BitsetPtr bp = std::make_shared<Bitset>();
     CHECK(bp->Capacity() == 0);
 
@@ -31,7 +31,7 @@ TEST_CASE("general usage", "[bitset]") {
     CHECK(bp->Capacity() == 104);
 }
 
-TEST_CASE("get and set", "[bitset]") {
+TEST_CASE("get and set", "[bitset][test]") {
     BitsetPtr bp = std::make_shared<Bitset>();
 
     CHECK_THROWS_WITH(
@@ -54,7 +54,7 @@ TEST_CASE("get and set", "[bitset]") {
     CHECK_NOTHROW(bp->Get(8));
 }
 
-TEST_CASE("count ones and zeros", "[bitset]") {
+TEST_CASE("count ones and zeros", "[bitset][test]") {
     BitsetPtr bp = std::make_shared<Bitset>();
 
     bp->Set(1, true);
@@ -65,7 +65,7 @@ TEST_CASE("count ones and zeros", "[bitset]") {
     CHECK(bp->CountZeros() == 14);
 }
 
-TEST_CASE("capcity and extend", "[bitset]") {
+TEST_CASE("capcity and extend", "[bitset][test]") {
     int64_t mem_limit = 1024 * 1024;
     BitsetPtr bp = std::make_shared<Bitset>(mem_limit);
     CHECK(bp->Capacity() == 0);
@@ -94,7 +94,7 @@ TEST_CASE("capcity and extend", "[bitset]") {
     CHECK(bp->Capacity() == mem_limit * 8);
 }
 
-TEST_CASE("construct from memory", "[bitset]") {
+TEST_CASE("construct from memory", "[bitset][test]") {
     auto memory = std::shared_ptr<uint8_t[]>(new uint8_t[2]);
     memory[0] = 0b01010101;
     memory[1] = 0b11111010;

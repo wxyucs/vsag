@@ -23,7 +23,7 @@ TEST_CASE("Factorials are computed", "[factorial]") {
     REQUIRE(Factorial(10) == 3628800);
 }
 
-TEST_CASE("HNSW Float Recall", "[hnsw]") {
+TEST_CASE("HNSW Float Recall", "[hnsw][test]") {
     spdlog::set_level(spdlog::level::debug);
     int dim = 128;
     int max_elements = 1000;
@@ -84,7 +84,7 @@ TEST_CASE("HNSW Float Recall", "[hnsw]") {
     REQUIRE(recall == 1);
 }
 
-TEST_CASE("HNSW IP Search", "[hnsw]") {
+TEST_CASE("HNSW IP Search", "[hnsw][test]") {
     spdlog::set_level(spdlog::level::debug);
     int dim = 128;
     int max_elements = 1000;
@@ -143,7 +143,7 @@ TEST_CASE("HNSW IP Search", "[hnsw]") {
     REQUIRE(recall > 0.85);
 }
 
-TEST_CASE("Two HNSW", "[hnsw]") {
+TEST_CASE("Two HNSW", "[hnsw][test]") {
     spdlog::set_level(spdlog::level::debug);
     int dim = 128;
     int max_elements = 1000;
@@ -206,7 +206,7 @@ TEST_CASE("Two HNSW", "[hnsw]") {
     REQUIRE(recall == 1);
 }
 
-TEST_CASE("HNSW build test", "[hnsw build]") {
+TEST_CASE("HNSW build test", "[hnsw][test]") {
     spdlog::set_level(spdlog::level::debug);
     int dim = 128;
     int max_elements = 1000;
@@ -259,7 +259,7 @@ TEST_CASE("HNSW build test", "[hnsw build]") {
     REQUIRE(hnsw->GetNumElements() == max_elements * 2);
 }
 
-TEST_CASE("HNSW range search", "[hnsw]") {
+TEST_CASE("HNSW range search", "[hnsw][test]") {
     spdlog::set_level(spdlog::level::debug);
     int dim = 71;
     int max_elements = 10000;
@@ -330,7 +330,7 @@ TEST_CASE("HNSW range search", "[hnsw]") {
     CHECK((expected->CountOnes() - result->GetDim()) * 100 < max_elements);
 }
 
-TEST_CASE("HNSW filtering knn search", "[hnsw]") {
+TEST_CASE("HNSW filtering knn search", "[hnsw][test]") {
     spdlog::set_level(spdlog::level::debug);
     int dim = 17;
     int max_elements = 1000;
@@ -395,7 +395,7 @@ TEST_CASE("HNSW filtering knn search", "[hnsw]") {
     }
 }
 
-TEST_CASE("HNSW Filtering Test", "[hnsw]") {
+TEST_CASE("HNSW Filtering Test", "[hnsw][test]") {
     spdlog::set_level(spdlog::level::debug);
     int dim = 17;
     int max_elements = 1000;
@@ -532,7 +532,7 @@ TEST_CASE("HNSW Filtering Test", "[hnsw]") {
     REQUIRE(recall_knn == 1);
 }
 
-TEST_CASE("HNSW small dimension", "[hnsw]") {
+TEST_CASE("HNSW small dimension", "[hnsw][test]") {
     spdlog::set_level(spdlog::level::debug);
     int dim = 3;
     int max_elements = 1000;
@@ -594,7 +594,7 @@ TEST_CASE("HNSW small dimension", "[hnsw]") {
     REQUIRE(recall == 1);
 }
 
-TEST_CASE("HNSW Random Id", "[hnsw]") {
+TEST_CASE("HNSW Random Id", "[hnsw][test]") {
     spdlog::set_level(spdlog::level::debug);
     int dim = 128;
     int max_elements = 1000;

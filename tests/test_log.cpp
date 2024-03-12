@@ -2,7 +2,7 @@
 
 #include "spdlog/spdlog.h"
 
-TEST_CASE("spdlog usage", "[log]") {
+TEST_CASE("spdlog usage", "[log][test]") {
     spdlog::info("Welcome to spdlog!");
     spdlog::error("SomeError message with arg: {}", 1);
 

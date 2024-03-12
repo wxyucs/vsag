@@ -4,7 +4,7 @@
 #include <catch2/catch_test_macros.hpp>
 #include <iostream>
 
-TEST_CASE("CPU info", "[cpuinfo]") {
+TEST_CASE("CPU info", "[cpuinfo][test]") {
     cpuinfo_initialize();
     std::cout << cpuinfo_get_processors_count() << std::endl;
     cpuinfo_deinitialize();

@@ -11,7 +11,7 @@
 
 const std::string tmp_dir = "/tmp/";
 
-TEST_CASE("DiskAnn Float Recall", "[diskann]") {
+TEST_CASE("DiskAnn Float Recall", "[diskann][test][diskann-ci-part1]") {
     int dim = 128;            // Dimension of the elements
     int max_elements = 1000;  // Maximum number of elements, should be known beforehand
     int max_degree = 16;      // Tightly connected with internal dimensionality of the data
@@ -247,7 +247,7 @@ TEST_CASE("DiskAnn Float Recall", "[diskann]") {
     REQUIRE(recall > 0.85);
 }
 
-TEST_CASE("DiskAnn IP Search", "[diskann]") {
+TEST_CASE("DiskAnn IP Search", "[diskann][test][diskann-ci-part1]") {
     int dim = 128;            // Dimension of the elements
     int max_elements = 1000;  // Maximum number of elements, should be known beforehand
     int max_degree = 16;      // Tightly connected with internal dimensionality of the data
@@ -317,7 +317,7 @@ TEST_CASE("DiskAnn IP Search", "[diskann]") {
     REQUIRE(recall > 0.70);
 }
 
-TEST_CASE("DiskAnn OPQ", "[diskann]") {
+TEST_CASE("DiskAnn OPQ", "[diskann][test][diskann-ci-part2]") {
     int dim = 128;            // Dimension of the elements
     int max_elements = 1000;  // Maximum number of elements, should be known beforehand
     int max_degree = 16;      // Tightly connected with internal dimensionality of the data
@@ -386,7 +386,7 @@ TEST_CASE("DiskAnn OPQ", "[diskann]") {
     REQUIRE(recall > 0.99);
 }
 
-TEST_CASE("DiskAnn Range Query", "[diskann]") {
+TEST_CASE("DiskAnn Range Query", "[diskann][test][diskann-ci-part2]") {
     int dim = 256;            // Dimension of the elements
     int max_elements = 1000;  // Maximum number of elements, should be known beforehand
     int max_degree = 16;      // Tightly connected with internal dimensionality of the data
@@ -464,7 +464,7 @@ TEST_CASE("DiskAnn Range Query", "[diskann]") {
     REQUIRE((true_result - return_result) / true_result < 0.01);
 }
 
-TEST_CASE("DiskAnn Preload Graph", "[diskann]") {
+TEST_CASE("DiskAnn Preload Graph", "[diskann][test][diskann-ci-part3]") {
     int dim = 65;             // Dimension of the elements
     int max_elements = 1000;  // Maximum number of elements, should be known beforehand
     int max_degree = 16;      // Tightly connected with internal dimensionality of the data
@@ -586,7 +586,7 @@ TEST_CASE("DiskAnn Preload Graph", "[diskann]") {
     REQUIRE(recall >= 0.99);
 }
 
-TEST_CASE("DiskAnn Filter Test", "[diskann]") {
+TEST_CASE("DiskAnn Filter Test", "[diskann][test][diskann-ci-part3]") {
     int dim = 65;             // Dimension of the elements
     int max_elements = 1000;  // Maximum number of elements, should be known beforehand
     int max_degree = 16;      // Tightly connected with internal dimensionality of the data
@@ -734,7 +734,7 @@ TEST_CASE("DiskAnn Filter Test", "[diskann]") {
     REQUIRE(recall_knn == 1);
 }
 
-TEST_CASE("DiskAnn Random Id", "[diskann]") {
+TEST_CASE("DiskAnn Random Id", "[diskann][test][diskann-ci-part4]") {
     int dim = 65;             // Dimension of the elements
     int max_elements = 1000;  // Maximum number of elements, should be known beforehand
     int max_degree = 16;      // Tightly connected with internal dimensionality of the data
@@ -826,7 +826,7 @@ TEST_CASE("DiskAnn Random Id", "[diskann]") {
     REQUIRE(recall >= 0.99);
 }
 
-TEST_CASE("DiskANN small dimension", "[hnsw]") {
+TEST_CASE("DiskANN small dimension", "[diskann][test][diskann-ci-part4]") {
     int dim = 3;
     int max_elements = 1000;
     int max_degree = 16;

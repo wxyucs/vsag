@@ -34,7 +34,7 @@ fvec_renorm_L2(size_t d, size_t nx, float* __restrict x) {
     }
 }
 
-TEST_CASE("InnerProduct", "[Kmeans]") {
+TEST_CASE("InnerProduct", "[Kmeans][test]") {
     size_t dim = 16;
     int max_elements = 100000;
     int clusters = 58;
@@ -85,7 +85,7 @@ TEST_CASE("InnerProduct", "[Kmeans]") {
     REQUIRE(loss < 8340);
 }
 
-TEST_CASE("L2", "[Kmeans]") {
+TEST_CASE("L2", "[Kmeans][test]") {
     size_t dim = 16;
     int max_elements = 100000;
     int clusters = 58;
