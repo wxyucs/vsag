@@ -334,6 +334,7 @@ TEST_CASE("HNSW filtering knn search", "[hnsw][test]") {
     spdlog::set_level(spdlog::level::debug);
     int dim = 17;
     int max_elements = 1000;
+    int label_num = 100;
     int max_degree = 16;
     int ef_construction = 100;
     int ef_search = 100;
@@ -358,9 +359,10 @@ TEST_CASE("HNSW filtering knn search", "[hnsw][test]") {
     int64_t* ids = new int64_t[max_elements];
     float* data = new float[dim * max_elements];
 
-    int64_t array_id = 1;
     for (int64_t i = 0; i < max_elements; i++) {
-        ids[i] = (max_elements - i - 1) | (array_id << 32);
+        int64_t array_id = i / label_num;
+        int64_t label = i % label_num;
+        ids[i] = label | (array_id << 32);
     }
     for (int64_t i = 0; i < dim * max_elements; ++i) {
         data[i] = distrib_real(rng);
@@ -382,12 +384,12 @@ TEST_CASE("HNSW filtering knn search", "[hnsw][test]") {
         };
         int64_t k = max_elements;
 
-        vsag::BitsetPtr filter = vsag::Bitset::Random(max_elements);
+        vsag::BitsetPtr filter = vsag::Bitset::Random(label_num);
         int64_t num_deleted = filter->CountOnes();
 
         auto result = hnsw->KnnSearch(query, k, parameters.dump(), filter);
         REQUIRE(result.has_value());
-        REQUIRE(result->GetDim() == max_elements - num_deleted);
+        REQUIRE(result->GetDim() == max_elements - num_deleted * (max_elements / label_num));
         for (int64_t j = 0; j < result->GetDim(); ++j) {
             // deleted ids NOT in result
             REQUIRE(filter->Get(result->GetIds()[j] & 0xFFFFFFFFLL) == false);

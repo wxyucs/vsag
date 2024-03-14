@@ -237,12 +237,16 @@ DiskANN::knn_search(const Dataset& query,
         // check filter
         std::function<bool(int64_t)> filter_ = nullptr;
         if (invalid) {
-            CHECK_ARGUMENT(
-                invalid->Capacity() >= GetNumElements(),
-                fmt::format("invalid.capcity({}) must be greater equal than index.size({})",
-                            invalid->Capacity(),
-                            GetNumElements()));
-            filter_ = [&](int64_t offset) -> bool { return invalid->Get(offset & ROW_ID_MASK); };
+            filter_ = [&](int64_t offset) -> bool {
+                int64_t bit_index = offset & ROW_ID_MASK;
+                if (bit_index >= invalid->Capacity()) {
+                    spdlog::error("id {} is greater than the capacity {} of bitset ",
+                                  bit_index,
+                                  invalid->Capacity());
+                    return false;
+                }
+                return invalid->Get(bit_index);
+            };
         }
 
         // ensure that in the topK scenario, ef_search > k and io_limit > k.
@@ -298,9 +302,12 @@ DiskANN::knn_search(const Dataset& query,
                 }
 
             } catch (const std::runtime_error& e) {
-                spdlog::error(std::string("failed to perform knn search on diskann: ") + e.what());
+                delete[] distances;
+                delete[] ids;
+                LOG_ERROR_AND_RETURNS(ErrorType::INTERNAL_ERROR,
+                                      "failed to perform knn search on diskann: ",
+                                      e.what());
             }
-            //        distances[i * k] = static_cast<float>(stats->n_ios);
         }
 
         Dataset result;
@@ -358,13 +365,16 @@ DiskANN::range_search(const Dataset& query,
         // check filter
         std::function<bool(int64_t)> filter = nullptr;
         if (invalid) {
-            CHECK_ARGUMENT(
-                invalid->Capacity() >= GetNumElements(),
-                fmt::format("invalid.capcity({}) must be greater equal than index.size({})",
-                            invalid->Capacity(),
-                            GetNumElements()));
-
-            filter = [&](int64_t offset) -> bool { return invalid->Get(offset & ROW_ID_MASK); };
+            filter = [&](int64_t offset) -> bool {
+                int64_t bit_index = offset & ROW_ID_MASK;
+                if (bit_index >= invalid->Capacity()) {
+                    spdlog::error("id {} is greater than the capacity {} of bitset ",
+                                  bit_index,
+                                  invalid->Capacity());
+                    return false;
+                }
+                return invalid->Get(bit_index & ROW_ID_MASK);
+            };
         }
 
         bool reorder = params.use_reorder;
@@ -381,32 +391,36 @@ DiskANN::range_search(const Dataset& query,
         std::vector<uint64_t> labels;
         std::vector<float> range_distances;
         diskann::QueryStats query_stats;
+        try {
+            double time_cost = 0;
+            {
+                Timer timer(time_cost);
+                index_->range_search(query.GetFloat32Vectors(),
+                                     radius,
+                                     ef_search,
+                                     ef_search * 2,
+                                     labels,
+                                     range_distances,
+                                     beam_search,
+                                     io_limit,
+                                     reorder,
+                                     filter,
+                                     preload_,
+                                     &query_stats);
+            }
+            {
+                std::lock_guard<std::mutex> lock(stats_mutex_);
 
-        double time_cost = 0;
-        {
-            Timer timer(time_cost);
-            index_->range_search(query.GetFloat32Vectors(),
-                                 radius,
-                                 ef_search,
-                                 ef_search * 2,
-                                 labels,
-                                 range_distances,
-                                 beam_search,
-                                 io_limit,
-                                 reorder,
-                                 filter,
-                                 preload_,
-                                 &query_stats);
-        }
-        {
-            std::lock_guard<std::mutex> lock(stats_mutex_);
-
-            result_queues_[STATSTIC_RANGE_IO].Push(query_stats.n_ios);
-            result_queues_[STATSTIC_RANGE_HOP].Push(query_stats.n_hops);
-            result_queues_[STATSTIC_RANGE_TIME].Push(time_cost);
-            result_queues_[STATSTIC_RANGE_CACHE_HIT].Push(query_stats.n_cache_hits);
-            result_queues_[STATSTIC_RANGE_IO_TIME].Push((query_stats.io_us / query_stats.n_ios) /
-                                                        MACRO_TO_MILLI);
+                result_queues_[STATSTIC_RANGE_IO].Push(query_stats.n_ios);
+                result_queues_[STATSTIC_RANGE_HOP].Push(query_stats.n_hops);
+                result_queues_[STATSTIC_RANGE_TIME].Push(time_cost);
+                result_queues_[STATSTIC_RANGE_CACHE_HIT].Push(query_stats.n_cache_hits);
+                result_queues_[STATSTIC_RANGE_IO_TIME].Push(
+                    (query_stats.io_us / query_stats.n_ios) / MACRO_TO_MILLI);
+            }
+        } catch (const std::runtime_error& e) {
+            LOG_ERROR_AND_RETURNS(
+                ErrorType::INTERNAL_ERROR, "failed to perform range search on diskann: ", e.what());
         }
 
         int64_t k = labels.size();

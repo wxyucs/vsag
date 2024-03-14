@@ -158,8 +158,7 @@ TEST_CASE("knn_search", "[diskann][ut]") {
     SECTION("invalid bitset length is less than the size of index") {
         auto invalid_bitset = std::make_shared<vsag::Bitset>(1);
         auto result = index->KnnSearch(query, k, params.dump(), invalid_bitset);
-        REQUIRE_FALSE(result.has_value());
-        REQUIRE(result.error().type == vsag::ErrorType::INVALID_ARGUMENT);
+        REQUIRE(result.has_value());
     }
 
     SECTION("invalid parameters diskann not found") {
@@ -279,8 +278,7 @@ TEST_CASE("range_search", "[diskann][ut]") {
     SECTION("invalid bitset length is less than the size of index") {
         auto invalid_bitset = std::make_shared<vsag::Bitset>(1);
         auto result = index->RangeSearch(query, radius, params.dump(), invalid_bitset);
-        REQUIRE_FALSE(result.has_value());
-        REQUIRE(result.error().type == vsag::ErrorType::INVALID_ARGUMENT);
+        REQUIRE(result.has_value());
     }
 
     SECTION("invalid parameters diskann not found") {

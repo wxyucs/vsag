@@ -114,8 +114,7 @@ TEST_CASE("knn_search", "[hnsw][ut]") {
     SECTION("invalid bitset length is less than the size of index") {
         auto invalid_bitset = std::make_shared<vsag::Bitset>(1);
         auto result = index->KnnSearch(query, k, params.dump(), invalid_bitset);
-        REQUIRE_FALSE(result.has_value());
-        REQUIRE(result.error().type == vsag::ErrorType::INVALID_ARGUMENT);
+        REQUIRE(result.has_value());
     }
 
     SECTION("query length is not 1") {

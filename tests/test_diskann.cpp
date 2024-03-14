@@ -589,6 +589,7 @@ TEST_CASE("DiskAnn Preload Graph", "[diskann][test][diskann-ci-part3]") {
 TEST_CASE("DiskAnn Filter Test", "[diskann][test][diskann-ci-part3]") {
     int dim = 65;             // Dimension of the elements
     int max_elements = 1000;  // Maximum number of elements, should be known beforehand
+    int label_num = 100;      // Total number of labels
     int max_degree = 16;      // Tightly connected with internal dimensionality of the data
     // strongly affects the memory consumption
     int ef_construction = 200;  // Controls index search speed/build speed tradeoff
@@ -625,9 +626,10 @@ TEST_CASE("DiskAnn Filter Test", "[diskann][test][diskann-ci-part3]") {
     std::uniform_real_distribution<> distrib_real;
     std::uniform_int_distribution<> ids_random(0, max_elements - 1);
 
-    int64_t array_id = 1;
     for (int64_t i = 0; i < max_elements; i++) {
-        ids[i] = (max_elements - i - 1) | (array_id << 32);
+        int64_t array_id = i / label_num;
+        int64_t label = i % label_num;
+        ids[i] = label | (array_id << 32);
     }
     for (int i = 0; i < dim * max_elements; i++) data[i] = distrib_real(rng);
 
@@ -646,7 +648,7 @@ TEST_CASE("DiskAnn Filter Test", "[diskann][test][diskann-ci-part3]") {
         vsag::Dataset query;
         query.NumElements(1).Dim(dim).Float32Vectors(data + i * dim).Owner(false);
 
-        vsag::BitsetPtr invalid = vsag::Bitset::Random(max_elements);
+        vsag::BitsetPtr invalid = vsag::Bitset::Random(label_num);
         int64_t num_deleted = invalid->CountOnes();
         nlohmann::json parameters{
             {"diskann", {{"ef_search", ef_search}, {"beam_search", 4}, {"io_limit", 200}}}};
@@ -671,7 +673,7 @@ TEST_CASE("DiskAnn Filter Test", "[diskann][test][diskann-ci-part3]") {
             std::cerr << "failed to range search on index: internalError" << std::endl;
             exit(-1);
         }
-        size_t bytes_count = max_elements / 4 + 1;
+        size_t bytes_count = label_num / 8 + 1;
         auto bits_ones = new uint8_t[bytes_count];
         std::memset(bits_ones, 0xFF, bytes_count);
         vsag::BitsetPtr ones = std::make_shared<vsag::Bitset>(bits_ones, bytes_count);

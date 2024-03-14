@@ -32,7 +32,13 @@ public:
 
     bool
     operator()(hnswlib::labeltype id) override {
-        return not bitset_->Get(id & ROW_ID_MASK);
+        int64_t bit_index = id & ROW_ID_MASK;
+        if (bit_index >= bitset_->Capacity()) {
+            spdlog::error(
+                "id {} is greater than the capacity {} of bitset ", bit_index, bitset_->Capacity());
+            return false;  // FIXME: throwing an error directly here would lead to a memory leak within the HNSW internals.
+        }
+        return not bitset_->Get(bit_index);
     }
 
 private:
@@ -169,11 +175,6 @@ HNSW::knn_search(const Dataset& query,
         // check filter
         std::shared_ptr<Filter> filter = nullptr;
         if (invalid != nullptr) {
-            CHECK_ARGUMENT(
-                invalid->Capacity() >= GetNumElements(),
-                fmt::format("invalid.capcity({}) must be greater equal than index.size({})",
-                            invalid->Capacity(),
-                            GetNumElements()));
             filter = std::make_shared<Filter>(invalid);
         }
 
@@ -244,11 +245,6 @@ HNSW::range_search(const Dataset& query,
         // check filter
         std::shared_ptr<Filter> filter = nullptr;
         if (invalid != nullptr) {
-            CHECK_ARGUMENT(
-                invalid->Capacity() >= GetNumElements(),
-                fmt::format("invalid.capcity({}) must be greater equal than index.size({})",
-                            invalid->Capacity(),
-                            GetNumElements()));
             filter = std::make_shared<Filter>(invalid);
         }
 

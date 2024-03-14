@@ -106,10 +106,6 @@ SimpleFlat::KnnSearch(const Dataset& query,
         return tl::unexpected(Error(ErrorType::DIMENSION_NOT_EQUAL, ""));
     }
 
-    if (invalid && invalid->Capacity() < GetNumElements()) {
-        return tl::unexpected(Error(ErrorType::INTERNAL_ERROR, ""));
-    }
-
     std::vector<rs> knn_result = knn_search(query.GetFloat32Vectors(), k, invalid);
 
     Dataset result;
@@ -140,10 +136,6 @@ SimpleFlat::RangeSearch(const Dataset& query,
     }
 
     if (nq != 1) {
-        return tl::unexpected(Error(ErrorType::INTERNAL_ERROR, ""));
-    }
-
-    if (invalid && invalid->Capacity() < GetNumElements()) {
         return tl::unexpected(Error(ErrorType::INTERNAL_ERROR, ""));
     }
 
@@ -271,7 +263,8 @@ std::vector<SimpleFlat::rs>
 SimpleFlat::knn_search(const float* query, int64_t k, BitsetPtr invalid) const {
     std::priority_queue<SimpleFlat::rs> q;
     for (int64_t i = 0; i < this->num_elements_; ++i) {
-        if (invalid && invalid->Get(this->ids_[i] & ROW_ID_MASK)) {
+        int64_t bit_index = this->ids_[i] & ROW_ID_MASK;
+        if (invalid && bit_index < invalid->Capacity() && invalid->Get(bit_index)) {
             continue;
         }
         const float* base = data_.data() + i * this->dim_;
@@ -304,7 +297,8 @@ std::vector<SimpleFlat::rs>
 SimpleFlat::range_search(const float* query, float radius, BitsetPtr invalid) const {
     std::priority_queue<SimpleFlat::rs> q;
     for (int64_t i = 0; i < this->num_elements_; ++i) {
-        if (invalid && invalid->Get(this->ids_[i] & ROW_ID_MASK)) {
+        int64_t bit_index = this->ids_[i] & ROW_ID_MASK;
+        if (invalid && bit_index < invalid->Capacity() && invalid->Get(bit_index)) {
             continue;
         }
         const float* base = data_.data() + i * this->dim_;
