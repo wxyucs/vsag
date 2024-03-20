@@ -1658,14 +1658,12 @@ int generate_pq_data_from_pivots(const T* data, size_t num_points, size_t dim, c
             std::unique_ptr<float[]> cur_data = std::make_unique<float[]>(cur_blk_size * cur_chunk_size);
             std::unique_ptr<uint32_t[]> closest_center = std::make_unique<uint32_t[]>(cur_blk_size);
 
-#pragma omp parallel for schedule(static, 8192)
             for (int64_t j = 0; j < (int64_t)cur_blk_size; j++)
             {
                 for (size_t k = 0; k < cur_chunk_size; k++)
                     cur_data[j * cur_chunk_size + k] = block_data_float[j * dim + chunk_offsets[i] + k];
             }
 
-#pragma omp parallel for schedule(static, 1)
             for (int64_t j = 0; j < (int64_t)num_centers; j++)
             {
                 std::memcpy(cur_pivot_data.get() + j * cur_chunk_size,
@@ -1675,7 +1673,6 @@ int generate_pq_data_from_pivots(const T* data, size_t num_points, size_t dim, c
             math_utils::compute_closest_centers(cur_data.get(), cur_blk_size, cur_chunk_size, cur_pivot_data.get(),
                                                 num_centers, 1, closest_center.get());
 
-#pragma omp parallel for schedule(static, 8192)
             for (int64_t j = 0; j < (int64_t)cur_blk_size; j++)
             {
                 block_compressed_base[j * num_pq_chunks + i] = closest_center[j];

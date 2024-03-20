@@ -851,7 +851,6 @@ inline void load_aligned_bin(const std::string &bin_file, T *&data, size_t &npts
 template <typename InType, typename OutType>
 void convert_types(const InType *srcmat, OutType *destmat, size_t npts, size_t dim)
 {
-#pragma omp parallel for schedule(static, 65536)
     for (int64_t i = 0; i < (int64_t)npts; i++)
     {
         for (uint64_t j = 0; j < dim; j++)
