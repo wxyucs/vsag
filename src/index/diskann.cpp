@@ -35,7 +35,30 @@ const static int MINIMAL_R = 8;
 const static int MAXIMAL_R = 64;
 const static int64_t MAX_IO_LIMIT = 512;
 const static int VECTOR_PER_BLOCK = 1;
+const static float GRAPH_SLACK = 1.3 * 1.05;
 const static size_t MINIMAL_SECTOR_LEN = 4096;
+const static std::string BUILD_STATUS = "status";
+const static std::string BUILD_CURRENT_ROUND = "round";
+const static std::string BUILD_NODES = "builded_nodes";
+const static std::string BUILD_FAILED_LOC = "failed_loc";
+
+template <typename T>
+Binary
+to_binary(T& value) {
+    Binary binary;
+    binary.size = sizeof(T);
+    binary.data = std::make_shared<int8_t[]>(binary.size);
+    std::memcpy(binary.data.get(), &value, binary.size);
+    return binary;
+}
+
+template <typename T>
+T
+from_binary(const Binary& binary) {
+    T value;
+    std::memcpy(&value, binary.data.get(), binary.size);
+    return value;
+}
 
 class LocalMemoryReader : public Reader {
 public:
@@ -66,7 +89,7 @@ private:
 };
 
 Binary
-convertStreamToBinary(const std::stringstream& stream) {
+convert_stream_to_binary(const std::stringstream& stream) {
     std::streambuf* buf = stream.rdbuf();
     std::streamsize size = buf->pubseekoff(0, stream.end, stream.in);  // get the stream buffer size
     buf->pubseekpos(0, stream.in);                                     // reset pointer pos
@@ -77,6 +100,14 @@ convertStreamToBinary(const std::stringstream& stream) {
         .size = (size_t)size,
     };
     return std::move(binary);
+}
+
+void
+convert_binary_to_stream(const Binary& binary, std::stringstream& stream) {
+    stream.clear();
+    if (binary.data && binary.size > 0) {
+        stream.write((const char*)binary.data.get(), binary.size);
+    }
 }
 
 DiskANN::DiskANN(diskann::Metric metric,
@@ -122,13 +153,12 @@ DiskANN::DiskANN(diskann::Metric metric,
     // When the length of the vector is too long, set sector_len_ to the size of storing a vector along with its linkage list.
     sector_len_ =
         std::max(MINIMAL_SECTOR_LEN,
-                 (size_t)((dim + 1) * sizeof(float) + R_ * sizeof(uint32_t)) * VECTOR_PER_BLOCK);
+                 (size_t)(dim * sizeof(float) + (R_ * GRAPH_SLACK + 1) * sizeof(uint32_t)) *
+                     VECTOR_PER_BLOCK);
 }
 
 tl::expected<std::vector<int64_t>, Error>
 DiskANN::build(const Dataset& base) {
-    SlowTaskTimer t("diskann build");
-
     try {
         auto data_dim = base.GetDim();
         CHECK_ARGUMENT(data_dim == dim_,
@@ -146,42 +176,47 @@ DiskANN::build(const Dataset& base) {
         auto ids = base.GetIds();
         auto data_num = base.GetNumElements();
 
-        std::vector<size_t> failed_indexs;
+        std::vector<size_t> failed_locs;
         {
+            SlowTaskTimer t("diskann build full (graph)");
             // build graph
             build_index_ = std::make_shared<diskann::Index<float, int64_t, int64_t>>(
                 metric_, data_dim, data_num, false, true, false, false, 0, false);
             std::vector<int64_t> tags(ids, ids + data_num);
             auto index_build_params = diskann::IndexWriteParametersBuilder(L_, R_).build();
-            failed_indexs =
+            failed_locs =
                 build_index_->build(vectors, data_num, index_build_params, tags, use_reference_);
             build_index_->save(graph_stream_, tag_stream_);
             build_index_.reset();
         }
-
-        diskann::generate_disk_quantized_data<float>(vectors,
-                                                     data_num,
-                                                     data_dim,
-                                                     failed_indexs,
-                                                     pq_pivots_stream_,
-                                                     disk_pq_compressed_vectors_,
-                                                     metric_,
-                                                     p_val_,
-                                                     disk_pq_dims_,
-                                                     use_opq_);
-
-        diskann::create_disk_layout<float>(vectors,
-                                           data_num,
-                                           data_dim,
-                                           failed_indexs,
-                                           graph_stream_,
-                                           disk_layout_stream_,
-                                           sector_len_,
-                                           "");
+        {
+            SlowTaskTimer t("diskann build full (pq)");
+            diskann::generate_disk_quantized_data<float>(vectors,
+                                                         data_num,
+                                                         data_dim,
+                                                         failed_locs,
+                                                         pq_pivots_stream_,
+                                                         disk_pq_compressed_vectors_,
+                                                         metric_,
+                                                         p_val_,
+                                                         disk_pq_dims_,
+                                                         use_opq_);
+        }
+        {
+            SlowTaskTimer t("diskann build full (disk layout)");
+            diskann::create_disk_layout<float>(vectors,
+                                               data_num,
+                                               data_dim,
+                                               failed_locs,
+                                               graph_stream_,
+                                               disk_layout_stream_,
+                                               sector_len_,
+                                               "");
+        }
 
         std::vector<int64_t> failed_ids;
-        std::transform(failed_indexs.begin(),
-                       failed_indexs.end(),
+        std::transform(failed_locs.begin(),
+                       failed_locs.end(),
                        std::back_inserter(failed_ids),
                        [&ids](const auto& index) { return ids[index]; });
 
@@ -457,12 +492,12 @@ DiskANN::serialize() const {
     try {
         BinarySet bs;
 
-        bs.Set(DISKANN_PQ, convertStreamToBinary(pq_pivots_stream_));
-        bs.Set(DISKANN_COMPRESSED_VECTOR, convertStreamToBinary(disk_pq_compressed_vectors_));
-        bs.Set(DISKANN_LAYOUT_FILE, convertStreamToBinary(disk_layout_stream_));
-        bs.Set(DISKANN_TAG_FILE, convertStreamToBinary(tag_stream_));
+        bs.Set(DISKANN_PQ, convert_stream_to_binary(pq_pivots_stream_));
+        bs.Set(DISKANN_COMPRESSED_VECTOR, convert_stream_to_binary(disk_pq_compressed_vectors_));
+        bs.Set(DISKANN_LAYOUT_FILE, convert_stream_to_binary(disk_layout_stream_));
+        bs.Set(DISKANN_TAG_FILE, convert_stream_to_binary(tag_stream_));
         if (preload_) {
-            bs.Set(DISKANN_GRAPH, convertStreamToBinary(graph_stream_));
+            bs.Set(DISKANN_GRAPH, convert_stream_to_binary(graph_stream_));
         }
         return bs;
     } catch (const std::bad_alloc& e) {
@@ -473,37 +508,15 @@ DiskANN::serialize() const {
 tl::expected<void, Error>
 DiskANN::deserialize(const BinarySet& binary_set) {
     SlowTaskTimer t("diskann deserialize");
-
     if (this->index_) {
         LOG_ERROR_AND_RETURNS(ErrorType::INDEX_NOT_EMPTY,
                               "failed to deserialize: index is not empty")
     }
-
-    auto pq_pivots = binary_set.Get(DISKANN_PQ);
-    pq_pivots_stream_.write((char*)pq_pivots.data.get(), pq_pivots.size);
-
-    auto compressed_vector = binary_set.Get(DISKANN_COMPRESSED_VECTOR);
-    disk_pq_compressed_vectors_.write((char*)compressed_vector.data.get(), compressed_vector.size);
-
-    auto disk_layout = binary_set.Get(DISKANN_LAYOUT_FILE);
-    disk_layout_stream_.write((char*)disk_layout.data.get(), disk_layout.size);
-
-    auto tag_file = binary_set.Get(DISKANN_TAG_FILE);
-    tag_stream_.write((char*)tag_file.data.get(), tag_file.size);
-
-    disk_layout_reader_ = std::make_shared<LocalMemoryReader>(disk_layout_stream_);
-
-    reader_.reset(new LocalFileReader(batch_read_));
-    index_.reset(new diskann::PQFlashIndex<float, int64_t>(reader_, metric_, sector_len_));
-    index_->set_sector_size(Option::Instance().GetSectorSize());
-    index_->load_from_separate_paths(
-        omp_get_num_procs(), pq_pivots_stream_, disk_pq_compressed_vectors_, tag_stream_);
-
+    convert_binary_to_stream(binary_set.Get(DISKANN_LAYOUT_FILE), disk_layout_stream_);
     auto graph = binary_set.Get(DISKANN_GRAPH);
     if (preload_) {
         if (graph.data) {
-            graph_stream_.write((char*)graph.data.get(), graph.size);
-            index_->load_graph(graph_stream_);
+            convert_binary_to_stream(graph, graph_stream_);
         } else {
             LOG_ERROR_AND_RETURNS(
                 ErrorType::MISSING_FILE,
@@ -514,6 +527,7 @@ DiskANN::deserialize(const BinarySet& binary_set) {
             spdlog::warn("serialize without using file: {} ", DISKANN_GRAPH);
         }
     }
+    load_disk_index(binary_set);
     status_ = IndexStatus::MEMORY;
 
     return {};
@@ -606,18 +620,20 @@ DiskANN::GetStats() const {
 int64_t
 DiskANN::GetEstimateBuildMemory(const int64_t num_elements) const {
     int64_t estimate_memory_usage = 0;
-    // Memory usage of graph
+    // Memory usage of graph (1.365 is the relaxation factor used by DiskANN during graph construction.)
     estimate_memory_usage +=
-        num_elements * R_ * sizeof(uint32_t) + num_elements * (R_ + 1) * sizeof(uint32_t);
+        (num_elements * R_ * sizeof(uint32_t) + num_elements * (R_ + 1) * sizeof(uint32_t)) *
+        GRAPH_SLACK;
     // Memory usage of disk layout
     if (sector_len_ > MINIMAL_SECTOR_LEN) {
-        estimate_memory_usage += num_elements * sector_len_ * sizeof(uint8_t);
+        estimate_memory_usage += (num_elements + 1) * sector_len_ * sizeof(uint8_t);
     } else {
         size_t single_node =
-            (size_t)((dim_ + 1) * sizeof(float) + R_ * sizeof(uint32_t)) * VECTOR_PER_BLOCK;
+            (size_t)(dim_ * sizeof(float) + (R_ * GRAPH_SLACK + 1) * sizeof(uint32_t)) *
+            VECTOR_PER_BLOCK;
         size_t node_per_sector = MINIMAL_SECTOR_LEN / single_node;
         size_t sector_size = num_elements / node_per_sector + 1;
-        estimate_memory_usage += sector_size * sector_len_ * sizeof(uint8_t);
+        estimate_memory_usage += (sector_size + 1) * sector_len_ * sizeof(uint8_t);
     }
     // Memory usage of the ID mapping.
     estimate_memory_usage += num_elements * sizeof(int64_t) * 2;
@@ -628,4 +644,229 @@ DiskANN::GetEstimateBuildMemory(const int64_t num_elements) const {
     return estimate_memory_usage;
 }
 
+template <typename Container>
+Binary
+serialize_to_binary(const Container& container) {
+    using ValueType = typename Container::value_type;
+    size_t total_size = container.size() * sizeof(ValueType);
+    std::shared_ptr<int8_t[]> raw_data(new int8_t[total_size], std::default_delete<int8_t[]>());
+
+    int8_t* data_ptr = raw_data.get();
+    for (const ValueType& value : container) {
+        std::memcpy(data_ptr, &value, sizeof(ValueType));
+        data_ptr += sizeof(ValueType);
+    }
+
+    Binary binary_data{raw_data, total_size};
+    return binary_data;
+}
+
+template <typename Container>
+Container
+deserialize_from_binary(const Binary& binary_data) {
+    using ValueType = typename Container::value_type;
+
+    Container deserialized_container;
+    const int8_t* data_ptr = binary_data.data.get();
+    size_t num_elements = binary_data.size / sizeof(ValueType);
+
+    for (size_t i = 0; i < num_elements; ++i) {
+        ValueType value;
+        std::memcpy(&value, data_ptr, sizeof(ValueType));
+        deserialized_container.insert(deserialized_container.end(), value);
+        data_ptr += sizeof(ValueType);
+    }
+
+    return std::move(deserialized_container);
+}
+
+template <typename T>
+Binary
+serialize_vector_to_binary(std::vector<T> data) {
+    size_t total_size = data.size() * sizeof(T);
+    std::shared_ptr<int8_t[]> raw_data(new int8_t[total_size], std::default_delete<int8_t[]>());
+    int8_t* data_ptr = raw_data.get();
+    std::memcpy(data_ptr, data.data(), total_size);
+    Binary binary_data{raw_data, total_size};
+    return binary_data;
+}
+
+template <typename T>
+std::vector<T>
+deserialize_vector_from_binary(const Binary& binary_data) {
+    std::vector<T> deserialized_container;
+    const int8_t* data_ptr = binary_data.data.get();
+    size_t num_elements = binary_data.size / sizeof(T);
+    deserialized_container.resize(num_elements);
+    std::memcpy(deserialized_container.data(), data_ptr, num_elements * sizeof(T));
+    return std::move(deserialized_container);
+}
+
+tl::expected<BinarySet, Error>
+DiskANN::continue_build(const Dataset& base, const BinarySet& binary_set) {
+    try {
+        BuildStatus build_status = BuildStatus::BEGIN;
+        if (not binary_set.GetKeys().empty()) {
+            Binary status_binary = binary_set.Get(BUILD_STATUS);
+            CHECK_ARGUMENT(
+                status_binary.data != nullptr,
+                "number of elements must be greater equal than " + std::to_string(DATA_LIMIT));
+            build_status = from_binary<BuildStatus>(status_binary);
+        }
+        CHECK_ARGUMENT(
+            base.GetDim() == dim_,
+            fmt::format("base.dim({}) must be equal to index.dim({})", base.GetDim(), dim_));
+        CHECK_ARGUMENT(
+            base.GetNumElements() >= DATA_LIMIT,
+            "number of elements must be greater equal than " + std::to_string(DATA_LIMIT));
+        if (this->index_) {
+            LOG_ERROR_AND_RETURNS(ErrorType::BUILD_TWICE, "failed to build index: build twice");
+        }
+        status_ = IndexStatus::BUILDING;
+        BinarySet after_binary_set;
+        switch (build_status) {
+            case BEGIN: {
+                int round = 1;
+                SlowTaskTimer t(fmt::format("diskann build graph {}/{}", round, build_batch_num_));
+                build_status = BuildStatus::GRAPH;
+                build_partial_graph(base, binary_set, after_binary_set, round);
+                round++;
+                after_binary_set.Set(BUILD_CURRENT_ROUND, to_binary<int>(round));
+                break;
+            }
+            case GRAPH: {
+                int round = from_binary<int>(binary_set.Get(BUILD_CURRENT_ROUND));
+                SlowTaskTimer t(
+                    fmt::format("diskann build (graph {}/{})", round, build_batch_num_));
+                build_partial_graph(base, binary_set, after_binary_set, round);
+                if (round < build_batch_num_) {
+                    round++;
+                } else {
+                    build_status = BuildStatus::EDGE_PRUNE;
+                }
+                after_binary_set.Set(BUILD_CURRENT_ROUND, to_binary<int>(round));
+                break;
+            }
+            case EDGE_PRUNE: {
+                SlowTaskTimer t(fmt::format("diskann build (edge prune)"));
+                int round = from_binary<int>(binary_set.Get(BUILD_CURRENT_ROUND));
+                build_partial_graph(base, binary_set, after_binary_set, round);
+                build_status = BuildStatus::PQ;
+                break;
+            }
+            case PQ: {
+                SlowTaskTimer t(fmt::format("diskann build (pq)"));
+                auto failed_locs =
+                    deserialize_vector_from_binary<size_t>(after_binary_set.Get(BUILD_FAILED_LOC));
+                diskann::generate_disk_quantized_data<float>(base.GetFloat32Vectors(),
+                                                             base.GetNumElements(),
+                                                             dim_,
+                                                             failed_locs,
+                                                             pq_pivots_stream_,
+                                                             disk_pq_compressed_vectors_,
+                                                             metric_,
+                                                             p_val_,
+                                                             disk_pq_dims_,
+                                                             use_opq_);
+                after_binary_set = binary_set;
+                after_binary_set.Set(DISKANN_PQ, convert_stream_to_binary(pq_pivots_stream_));
+                after_binary_set.Set(DISKANN_COMPRESSED_VECTOR,
+                                     convert_stream_to_binary(disk_pq_compressed_vectors_));
+                build_status = BuildStatus::DISK_LAYOUT;
+                break;
+            }
+            case DISK_LAYOUT: {
+                SlowTaskTimer t(fmt::format("diskann build (disk layout)"));
+                auto failed_locs =
+                    deserialize_vector_from_binary<size_t>(after_binary_set.Get(BUILD_FAILED_LOC));
+                convert_binary_to_stream(binary_set.Get(DISKANN_GRAPH), graph_stream_);
+                diskann::create_disk_layout<float>(base.GetFloat32Vectors(),
+                                                   base.GetNumElements(),
+                                                   dim_,
+                                                   failed_locs,
+                                                   graph_stream_,
+                                                   disk_layout_stream_,
+                                                   sector_len_,
+                                                   "");
+                load_disk_index(binary_set);
+                build_status = BuildStatus::FINISH;
+                status_ = IndexStatus::MEMORY;
+                break;
+            }
+            case FINISH:
+                spdlog::warn("build process is finished");
+        }
+        after_binary_set.Set(BUILD_STATUS, to_binary<BuildStatus>(build_status));
+        return after_binary_set;
+    } catch (const std::invalid_argument& e) {
+        LOG_ERROR_AND_RETURNS(
+            ErrorType::INVALID_ARGUMENT, "failed to build(invalid argument): ", e.what());
+    }
+}
+
+tl::expected<void, Error>
+DiskANN::build_partial_graph(const Dataset& base,
+                             const BinarySet& binary_set,
+                             BinarySet& after_binary_set,
+                             int round) {
+    auto vectors = base.GetFloat32Vectors();
+    auto ids = base.GetIds();
+    auto data_num = base.GetNumElements();
+    std::vector<int64_t> tags(ids, ids + data_num);
+    {
+        // build graph
+        build_index_ = std::make_shared<diskann::Index<float, int64_t, int64_t>>(
+            metric_, dim_, data_num, false, true, false, false, 0, false);
+
+        std::unordered_set<uint32_t> builded_nodes;
+        if (round > 1) {
+            std::stringstream graph_stream, tag_stream;
+            convert_binary_to_stream(binary_set.Get(DISKANN_GRAPH), graph_stream);
+            convert_binary_to_stream(binary_set.Get(DISKANN_TAG_FILE), tag_stream);
+
+            build_index_->load(graph_stream, tag_stream, omp_get_max_threads(), L_);
+            builded_nodes =
+                deserialize_from_binary<std::unordered_set<uint32_t>>(binary_set.Get(BUILD_NODES));
+        }
+
+        auto index_build_params = diskann::IndexWriteParametersBuilder(L_, R_).build();
+        std::vector<size_t> failed_locs = build_index_->build(vectors,
+                                                              dim_,
+                                                              index_build_params,
+                                                              tags,
+                                                              use_reference_,
+                                                              round,
+                                                              build_batch_num_,
+                                                              &builded_nodes);
+        build_index_->save(graph_stream_, tag_stream_);
+        after_binary_set.Set(BUILD_NODES,
+                             serialize_to_binary<std::unordered_set<uint32_t>>(builded_nodes));
+        after_binary_set.Set(BUILD_FAILED_LOC, serialize_vector_to_binary<size_t>(failed_locs));
+        build_index_.reset();
+    }
+    after_binary_set.Set(DISKANN_GRAPH, convert_stream_to_binary(graph_stream_));
+    after_binary_set.Set(DISKANN_TAG_FILE, convert_stream_to_binary(tag_stream_));
+    return tl::expected<void, Error>();
+}
+
+tl::expected<void, Error>
+DiskANN::load_disk_index(const BinarySet& binary_set) {
+    disk_layout_reader_ = std::make_shared<LocalMemoryReader>(disk_layout_stream_);
+    reader_.reset(new LocalFileReader(batch_read_));
+    index_.reset(new diskann::PQFlashIndex<float, int64_t>(reader_, metric_, sector_len_));
+    index_->set_sector_size(Option::Instance().GetSectorSize());
+
+    convert_binary_to_stream(binary_set.Get(DISKANN_COMPRESSED_VECTOR),
+                             disk_pq_compressed_vectors_);
+    convert_binary_to_stream(binary_set.Get(DISKANN_PQ), pq_pivots_stream_);
+    convert_binary_to_stream(binary_set.Get(DISKANN_TAG_FILE), tag_stream_);
+    index_->load_from_separate_paths(
+        omp_get_num_procs(), pq_pivots_stream_, disk_pq_compressed_vectors_, tag_stream_);
+    if (preload_) {
+        index_->load_graph(graph_stream_);
+    } else {
+        graph_stream_.clear();
+    }
+    return tl::expected<void, Error>();
+}
 }  // namespace vsag

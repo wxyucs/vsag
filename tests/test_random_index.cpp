@@ -33,7 +33,7 @@ TEST_CASE("Random Index Test", "[random][test]") {
     int dim = dim_generate(rng);
     int max_elements = max_elements_generate(rng);
     int max_degree = max_degree_generate(rng);
-    int ef_construction = construct_generate(rng);
+    int ef_construction = std::max(max_degree, construct_generate(rng));
     int ef_search = search_generate(rng);
     int64_t k = k_generate(rng);
 

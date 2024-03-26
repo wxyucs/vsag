@@ -85,7 +85,7 @@ template <typename T, typename TagT = uint32_t, typename LabelT = uint32_t> clas
     DISKANN_DLLEXPORT void load(const char *index_file, uint32_t num_threads, uint32_t search_l) override;
 
 
-    DISKANN_DLLEXPORT void load(std::stringstream &graph_stream, std::stringstream &tag_stream, std::stringstream &data_stream, uint32_t num_threads, uint32_t search_l);
+    DISKANN_DLLEXPORT void load(std::stringstream &graph_stream, std::stringstream &tag_stream, uint32_t num_threads, uint32_t search_l);
 #endif
 
     // get some private variables
@@ -107,6 +107,11 @@ template <typename T, typename TagT = uint32_t, typename LabelT = uint32_t> clas
     // Batch build from a data array, which must pad vectors to aligned_dim
     DISKANN_DLLEXPORT std::vector<size_t> build(const T *data, const size_t num_points_to_load, const IndexWriteParameters &parameters,
                                  const std::vector<TagT> &tags, bool use_reference);
+
+
+    DISKANN_DLLEXPORT std::vector<size_t> build(const T *data, const size_t num_points_to_load, const IndexWriteParameters &parameters,
+                                                const std::vector<TagT> &tags, bool use_reference, int round,
+                                                int batch_num, std::unordered_set<uint32_t>* builded_nodes);
 
     DISKANN_DLLEXPORT void build(const std::string &data_file, const size_t num_points_to_load,
                                  IndexBuildParams &build_params) override;
@@ -418,6 +423,14 @@ template <typename T, typename TagT = uint32_t, typename LabelT = uint32_t> clas
     uint8_t *_pq_data = nullptr;
     bool _pq_generated = false;
     FixedChunkPQTable _pq_table;
+
+
+    // build checkpoint
+    bool _partial_build = false;
+    int _round;
+    int _batch_num;
+    std::mutex _builded_nodes_lock;
+    std::unordered_set<uint32_t>* _builded_nodes;
 
     //
     // Data structures, locks and flags for dynamic indexing and tags

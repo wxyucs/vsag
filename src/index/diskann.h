@@ -25,7 +25,9 @@
 
 namespace vsag {
 
-enum IndexStatus { EMPTY = 0, MEMORY = 1, HYBRID = 2 };
+enum IndexStatus { EMPTY = 0, MEMORY = 1, HYBRID = 2, BUILDING = 3 };
+
+enum BuildStatus { BEGIN = 0, GRAPH = 1, EDGE_PRUNE = 2, PQ = 3, DISK_LAYOUT = 4, FINISH = 5 };
 
 class DiskANN : public Index {
 public:
@@ -50,6 +52,11 @@ public:
     tl::expected<std::vector<int64_t>, Error>
     Build(const Dataset& base) override {
         SAFE_CALL(return this->build(base));
+    }
+
+    tl::expected<BinarySet, Error>
+    ContinueBuild(const Dataset& base, const BinarySet& binary_set) {
+        SAFE_CALL(return this->continue_build(base, binary_set));
     }
 
     tl::expected<Dataset, Error>
@@ -114,6 +121,9 @@ private:
     tl::expected<std::vector<int64_t>, Error>
     build(const Dataset& base);
 
+    tl::expected<BinarySet, Error>
+    continue_build(const Dataset& base, const BinarySet& binary_set);
+
     tl::expected<Dataset, Error>
     knn_search(const Dataset& query,
                int64_t k,
@@ -134,6 +144,15 @@ private:
 
     tl::expected<void, Error>
     deserialize(const ReaderSet& reader_set);
+
+    tl::expected<void, Error>
+    build_partial_graph(const Dataset& base,
+                        const BinarySet& binary_set,
+                        BinarySet& after_binary_set,
+                        int round);
+
+    tl::expected<void, Error>
+    load_disk_index(const BinarySet& binary_set);
 
 private:
     std::shared_ptr<AlignedFileReader> reader_;
@@ -156,6 +175,8 @@ private:
     float p_val_ = 0.5;
     size_t disk_pq_dims_ = 8;
     size_t sector_len_;
+
+    int64_t build_batch_num_ = 10;
 
     int64_t dim_;
     bool use_reference_ = true;

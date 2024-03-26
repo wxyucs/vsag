@@ -640,7 +640,6 @@ size_t Index<T, TagT, LabelT>::load_tags(std::stringstream &in)
             _tag_to_location[tag] = i;
         }
     }
-    diskann::cout << "Tags loaded." << std::endl;
     delete[] tag_data;
     return file_num_points;
 }
@@ -761,7 +760,7 @@ size_t Index<T, TagT, LabelT>::load_delete_set(const std::string &filename)
 // load the index from file and update the max_degree, cur (navigating
 // node loc), and _final_graph (adjacency list)
 template <typename T, typename TagT, typename LabelT>
-void Index<T, TagT, LabelT>::load(std::stringstream &graph_stream, std::stringstream &tag_stream, std::stringstream &data_stream, uint32_t num_threads, uint32_t search_l)
+void Index<T, TagT, LabelT>::load(std::stringstream &graph_stream, std::stringstream &tag_stream, uint32_t num_threads, uint32_t search_l)
 {
     std::unique_lock<std::shared_timed_mutex> ul(_update_lock);
     std::unique_lock<std::shared_timed_mutex> cl(_consolidate_lock);
@@ -771,49 +770,12 @@ void Index<T, TagT, LabelT>::load(std::stringstream &graph_stream, std::stringst
     _has_built = true;
 
     size_t tags_file_num_pts = 0, graph_num_pts = 0, data_file_num_pts = 0, label_num_pts = 0;
-    if (!_save_as_one_file)
-    {
-        // For DLVS Store, we will not support saving the index in multiple
-        // files.
-#ifndef EXEC_ENV_OLS
-        data_file_num_pts = load_data(data_stream);
-        if (_enable_tags)
-        {
-            tags_file_num_pts = load_tags(tag_stream);
-        }
-        graph_num_pts = load_graph(graph_stream, data_file_num_pts);
-#endif
-    }
-    else
-    {
-        diskann::cout << "Single index file saving/loading support not yet "
-                         "enabled. Not loading the index."
-                      << std::endl;
-        return;
-    }
 
-    if (data_file_num_pts != graph_num_pts || (data_file_num_pts != tags_file_num_pts && _enable_tags))
+    if (_enable_tags)
     {
-        std::stringstream stream;
-        stream << "ERROR: When loading index, loaded " << data_file_num_pts << " points from datafile, "
-               << graph_num_pts << " from graph, and " << tags_file_num_pts
-               << " tags, with num_frozen_pts being set to " << _num_frozen_pts << " in constructor." << std::endl;
-        diskann::cerr << stream.str() << std::endl;
-        throw diskann::ANNException(stream.str(), -1, __FUNCSIG__, __FILE__, __LINE__);
+        tags_file_num_pts = load_tags(tag_stream);
     }
-    _nd = data_file_num_pts - _num_frozen_pts;
-    _empty_slots.clear();
-    _empty_slots.reserve(_max_points);
-    for (auto i = _nd; i < _max_points; i++)
-    {
-        _empty_slots.insert((uint32_t)i);
-    }
-
-    reposition_frozen_point_to_end();
-    diskann::cout << "Num frozen points:" << _num_frozen_pts << " _nd: " << _nd << " _start: " << _start
-                  << " size(_location_to_tag): " << _location_to_tag.size()
-                  << " size(_tag_to_location):" << _tag_to_location.size() << " Max points: " << _max_points
-                  << std::endl;
+    graph_num_pts = load_graph(graph_stream, _nd);
 
     // For incremental index, _query_scratch is initialized in the constructor.
     // For the bulk index, the params required to initialize _query_scratch
@@ -1135,10 +1097,6 @@ size_t Index<T, TagT, LabelT>::load_graph(std::stringstream &in, size_t expected
     in.read((char *)&file_frozen_pts, sizeof(size_t));
     size_t vamana_metadata_size = sizeof(size_t) + sizeof(uint32_t) + sizeof(uint32_t) + sizeof(size_t);
 
-    diskann::cout << "From graph header, expected_file_size: " << expected_file_size
-                  << ", _max_observed_degree: " << _max_observed_degree << ", _start: " << _start
-                  << ", file_frozen_pts: " << file_frozen_pts << std::endl;
-
     if (file_frozen_pts != _num_frozen_pts)
     {
         std::stringstream stream;
@@ -1178,11 +1136,6 @@ size_t Index<T, TagT, LabelT>::load_graph(std::stringstream &in, size_t expected
         uint32_t k;
         in.read((char *)&k, sizeof(uint32_t));
 
-        if (k == 0)
-        {
-            diskann::cerr << "ERROR: Point found with no out-neighbors, point#" << nodes_read << std::endl;
-        }
-
         cc += k;
         ++nodes_read;
         std::vector<uint32_t> tmp(k);
@@ -1198,7 +1151,7 @@ size_t Index<T, TagT, LabelT>::load_graph(std::stringstream &in, size_t expected
         }
     }
 
-    diskann::cout << "done. Index has " << nodes_read << " nodes and " << cc << " out-edges, _start is set to "
+    diskann::cout << "load graph done. Index has " << nodes_read << " nodes and " << cc << " out-edges, _start is set to "
                   << _start << std::endl;
     return nodes_read;
 }
@@ -1816,7 +1769,11 @@ void Index<T, TagT, LabelT>::link(const IndexWriteParameters &parameters)
 
     for (uint32_t i = _start + 1; i < (uint32_t)_nd + _start + 1; i++)
     {
-        visit_order.emplace_back(i % _nd);
+        uint32_t loc = i % _nd;
+        if (not _partial_build || _builded_nodes->find(loc) == _builded_nodes->end())
+        {
+            visit_order.emplace_back(loc);
+        }
     }
 
     // If there are any frozen points, add them all.
@@ -1832,9 +1789,15 @@ void Index<T, TagT, LabelT>::link(const IndexWriteParameters &parameters)
 
     diskann::Timer link_timer;
 
+    bool skip_build = false;
+
 #pragma omp parallel for schedule(dynamic, 2048)
     for (int64_t node_ctr = 0; node_ctr < (int64_t)(visit_order.size()); node_ctr++)
     {
+        if (_partial_build && skip_build)
+        {
+            continue;
+        }
         auto node = visit_order[node_ctr];
 
         ScratchStoreManager<InMemQueryScratch<T>> manager(_query_scratch);
@@ -1854,21 +1817,23 @@ void Index<T, TagT, LabelT>::link(const IndexWriteParameters &parameters)
             LockGuard guard(_locks[node]);
             _final_graph[node].reserve((size_t)(_indexingRange * GRAPH_SLACK_FACTOR * 1.05));
             _final_graph[node] = pruned_list;
+            if (_partial_build)
+            {
+                LockGuard guard(_builded_nodes_lock);
+                _builded_nodes->insert(node);
+                if (_builded_nodes->size() * _batch_num >= _round * _nd)
+                {
+                    skip_build = true;
+                }
+            }
             assert(_final_graph[node].size() <= _indexingRange);
         }
 
         inter_insert(node, pruned_list, scratch);
-
-        if (node_ctr % 100000 == 0)
-        {
-            // diskann::cout << "\r" << (100.0 * node_ctr) / (visit_order.size()) << "% of index build completed."
-            //               << std::flush;
-        }
     }
-
-    if (_nd > 0)
+    if (not visit_order.empty())
     {
-        // diskann::cout << "Starting final cleanup.." << std::flush;
+        return;
     }
 #pragma omp parallel for schedule(dynamic, 2048)
     for (int64_t node_ctr = 0; node_ctr < (int64_t)(visit_order.size()); node_ctr++)
@@ -2163,6 +2128,58 @@ std::vector<size_t> Index<T, TagT, LabelT>::build(const T *data, const size_t nu
         //         normalize(_data + _aligned_dim * i, _aligned_dim);
         //     }
         // }
+    }
+
+    build_with_data_populated(parameters, unique_tags);
+    return std::move(fail_idx);
+}
+
+template <typename T, typename TagT, typename LabelT>
+std::vector<size_t> Index<T, TagT, LabelT>::build(const T *data, const size_t num_points_to_load,
+                                                  const IndexWriteParameters &parameters, const std::vector<TagT> &tags,
+                                                  bool use_reference, int round, int batch_num,
+                                                  std::unordered_set<uint32_t>* builded_nodes)
+{
+    _partial_build = true;
+    _batch_num = batch_num;
+    _builded_nodes = builded_nodes;
+    _round = round;
+    if (num_points_to_load == 0)
+    {
+        throw ANNException("Do not call build with 0 points", -1, __FUNCSIG__, __FILE__, __LINE__);
+    }
+    if (_pq_dist)
+    {
+        throw ANNException("ERROR: Do not use this build interface with PQ distance", -1, __FUNCSIG__, __FILE__,
+                           __LINE__);
+    }
+
+    std::unique_lock<std::shared_timed_mutex> ul(_update_lock);
+    std::vector<size_t> fail_idx;
+    std::vector<TagT> unique_tags;
+    std::unordered_set<TagT> unique_tags_set;
+    {
+        std::unique_lock<std::shared_timed_mutex> tl(_tag_lock);
+        boost::dynamic_bitset<> mask(tags.size());
+        for (size_t i = 0; i < tags.size(); i ++) {
+            auto tag = tags[i];
+            if (unique_tags_set.find(tag) != unique_tags_set.end()) {
+                fail_idx.push_back(i);
+                mask.reset(i);
+            } else {
+                unique_tags.push_back(tag);
+                unique_tags_set.insert(tag);
+                mask.set(i);
+            }
+        }
+
+        _nd = unique_tags.size();
+        if (use_reference) {
+            _data_store->link_data(data, (location_t)_nd, mask);
+        } else {
+            _data_store->populate_data(data, (location_t)_nd, mask);
+        }
+
     }
 
     build_with_data_populated(parameters, unique_tags);

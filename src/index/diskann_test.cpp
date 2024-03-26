@@ -373,3 +373,105 @@ TEST_CASE("deserialize on not empty index", "[diskann][ut]") {
     REQUIRE_FALSE(voidresult.has_value());
     REQUIRE(voidresult.error().type == vsag::ErrorType::INDEX_NOT_EMPTY);
 }
+
+TEST_CASE("split building process", "[diskann][ut]") {
+    spdlog::set_level(spdlog::level::debug);
+    int64_t dim = 128;
+    int64_t ef_construction = 100;
+    int64_t max_degree = 12;
+    float pq_sample_rate = 1.0f;
+    size_t pq_dims = 16;
+
+    int64_t num_elements = 1000;
+    auto [ids, vectors] = generate_ids_and_vectors(num_elements, dim);
+
+    vsag::Dataset dataset;
+    dataset.Dim(dim)
+        .NumElements(num_elements)
+        .Ids(ids.data())
+        .Float32Vectors(vectors.data())
+        .Owner(false);
+
+    vsag::BinarySet binary_set;
+    vsag::BuildStatus status;
+    std::shared_ptr<vsag::DiskANN> partial_index;
+    double partial_time = 0;
+    {
+        vsag::Timer timer(partial_time);
+        do {
+            partial_index = std::make_shared<vsag::DiskANN>(diskann::Metric::L2,
+                                                            "float32",
+                                                            ef_construction,
+                                                            max_degree,
+                                                            pq_sample_rate,
+                                                            pq_dims,
+                                                            dim,
+                                                            false,
+                                                            false,
+                                                            false);
+            binary_set = partial_index->ContinueBuild(dataset, binary_set).value();
+            vsag::Binary status_binary = binary_set.Get("status");
+            memcpy(&status, status_binary.data.get(), status_binary.size);
+        } while (status != vsag::BuildStatus::FINISH);
+    }
+
+    nlohmann::json parameters{
+        {"diskann", {{"ef_search", 10}, {"beam_search", 4}, {"io_limit", 20}}}};
+    float correct = 0;
+    for (int i = 0; i < num_elements; i++) {
+        vsag::Dataset query;
+        query.NumElements(1).Dim(dim).Float32Vectors(vectors.data() + i * dim).Owner(false);
+        int64_t k = 2;
+        if (auto result = partial_index->KnnSearch(query, k, parameters.dump());
+            result.has_value()) {
+            if (result->GetNumElements() == 1) {
+                REQUIRE(!std::isinf(result->GetDistances()[0]));
+                if (result->GetIds()[0] == i) {
+                    correct++;
+                }
+            }
+        } else if (result.error().type == vsag::ErrorType::INTERNAL_ERROR) {
+            std::cerr << "failed to search on index: internalError" << std::endl;
+            exit(-1);
+        }
+    }
+    float recall_partial = correct / 1000;
+
+    double full_time = 0;
+    {
+        vsag::Timer timer(full_time);
+        std::shared_ptr<vsag::DiskANN> full_index =
+            std::make_shared<vsag::DiskANN>(diskann::Metric::L2,
+                                            "float32",
+                                            ef_construction,
+                                            max_degree,
+                                            pq_sample_rate,
+                                            pq_dims,
+                                            dim,
+                                            false,
+                                            false,
+                                            false);
+        full_index->Build(dataset);
+    }
+    correct = 0;
+    for (int i = 0; i < num_elements; i++) {
+        vsag::Dataset query;
+        query.NumElements(1).Dim(dim).Float32Vectors(vectors.data() + i * dim).Owner(false);
+        int64_t k = 2;
+        if (auto result = partial_index->KnnSearch(query, k, parameters.dump());
+            result.has_value()) {
+            if (result->GetNumElements() == 1) {
+                REQUIRE(!std::isinf(result->GetDistances()[0]));
+                if (result->GetIds()[0] == i) {
+                    correct++;
+                }
+            }
+        } else if (result.error().type == vsag::ErrorType::INTERNAL_ERROR) {
+            std::cerr << "failed to search on index: internalError" << std::endl;
+            exit(-1);
+        }
+    }
+    float recall_full = correct / 1000;
+    std::cout << "Recall: " << recall_full << std::endl;
+    REQUIRE(recall_full == recall_partial);
+}
