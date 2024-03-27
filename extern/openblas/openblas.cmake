@@ -15,7 +15,7 @@ ExternalProject_Add(
     CONFIGURE_COMMAND ""
     BUILD_COMMAND
 	env PATH=/usr/lib/ccache:$ENV{PATH}
-	make
+	make USE_OPENMP=1
 	-j${NUM_BUILDING_JOBS}
     INSTALL_COMMAND
 	make

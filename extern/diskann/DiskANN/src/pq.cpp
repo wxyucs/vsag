@@ -698,7 +698,7 @@ int generate_pq_pivots(const float *const passed_train_data, size_t num_train, u
     chunk_offsets.push_back(dim);
 
     full_pivot_data.reset(new float[num_centers * dim]);
-
+#pragma omp parallel for schedule(dynamic)
     for (size_t i = 0; i < num_pq_chunks; i++)
     {
         size_t cur_chunk_size = chunk_offsets[i + 1] - chunk_offsets[i];
@@ -1647,7 +1647,7 @@ int generate_pq_data_from_pivots(const T* data, size_t num_points, size_t dim, c
                         block_data_tmp.get(), (blasint)dim);
             std::memcpy(block_data_float.get(), block_data_tmp.get(), cur_blk_size * dim * sizeof(float));
         }
-
+#pragma omp parallel for schedule(dynamic)
         for (size_t i = 0; i < num_pq_chunks; i++)
         {
             size_t cur_chunk_size = chunk_offsets[i + 1] - chunk_offsets[i];
