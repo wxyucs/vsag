@@ -123,6 +123,7 @@ if (ENABLE_TESTS)
 	tests/test_simd.cpp
 	tests/test_index.cpp
     tests/test_option.cpp
+    tests/test_multi_thread.cpp
     )
     target_include_directories(tests PRIVATE ${CMAKE_CURRENT_BINARY_DIR}/spdlog/install/include)
     target_link_libraries (tests PRIVATE Catch2::Catch2WithMain vsag simd)

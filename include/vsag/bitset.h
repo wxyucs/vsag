@@ -71,19 +71,13 @@ public:
 
         int64_t byte_index = offset / 8;
         int64_t bit_index = offset % 8;
-        int64_t data_size = 0;
-        {
-            std::lock_guard<std::mutex> lock(mutex_);
-            data_size = data_.size();
-        }
-        if (byte_index >= data_size) {
+        if (byte_index >= number_of_bytes_) {
             throw std::runtime_error("failed to get from bitset: offset(" + std::to_string(offset) +
-                                     ") is greater than capcity(" + std::to_string(data_size * 8) +
-                                     ")");
+                                     ") is greater than capcity(" +
+                                     std::to_string(number_of_bytes_ * 8) + ")");
         }
 
-        std::lock_guard<std::mutex> lock(mutex_);
-        return (data_.data()[byte_index] & (1 << bit_index)) > 0;
+        return (data_[byte_index] & (1 << bit_index)) > 0;
     }
 
     /**
@@ -101,23 +95,18 @@ public:
 
         int64_t byte_index = offset / 8;
         int64_t bit_index = offset % 8;
-        int64_t data_size = 0;
-        {
-            std::lock_guard<std::mutex> lock(mutex_);
-            data_size = data_.size();
-        }
-        if (byte_index >= data_size) {
+        if (byte_index >= number_of_bytes_) {
             this->Extend(offset + 1);
         }
 
         std::lock_guard<std::mutex> lock(mutex_);
-        int64_t origin_value = (data_.data()[byte_index] & (1 << bit_index)) > 0;
+        int64_t origin_value = (data_[byte_index] & (1 << bit_index)) > 0;
         if (value) {
-            data_.data()[byte_index] |= (1 << bit_index);
+            data_[byte_index] |= (1 << bit_index);
             // num_ones plus one only origin_value is 0
             num_ones_ += (1 - origin_value);
         } else {
-            data_.data()[byte_index] &= ~(1 << bit_index);
+            data_[byte_index] &= ~(1 << bit_index);
             // num_onse sub one only origin_value is 1
             num_ones_ -= origin_value;
         }
@@ -130,31 +119,28 @@ public:
       */
     uint64_t
     CountOnes() {
-        std::lock_guard<std::mutex> lock(mutex_);
         return num_ones_;
     }
 
     /**
       * Count the number of bits have been set to 0
-      * 
+      *
       * @return the number of 0s in the bitset
       */
     uint64_t
     CountZeros() {
-        std::lock_guard<std::mutex> lock(mutex_);
-        return data_.size() * 8 - num_ones_;
+        return number_of_bytes_ * 8 - num_ones_;
     }
 
 public:
     /**
       * Get the capacity of this bitset
-      * 
+      *
       * @return the number of bits can be used
       */
     uint64_t
     Capacity() {
-        std::lock_guard<std::mutex> lock(mutex_);
-        return data_.size() * 8;
+        return number_of_bytes_ * 8;
     }
 
     /**
@@ -163,18 +149,18 @@ public:
     void
     Extend(uint64_t number_of_bits) {
         std::lock_guard<std::mutex> lock(mutex_);
-        uint64_t number_of_bytes = number_of_bits / 8 + (number_of_bits % 8 > 0 ? 1 : 0);
-        if (number_of_bytes > mem_limit_) {
+        number_of_bytes_ = number_of_bits / 8 + (number_of_bits % 8 > 0 ? 1 : 0);
+        if (number_of_bytes_ > mem_limit_) {
             throw std::runtime_error(
-                "failed to extend bitset: number_of_bytes(" + std::to_string(number_of_bytes) +
+                "failed to extend bitset: number_of_bytes(" + std::to_string(number_of_bytes_) +
                 ") is greater than memory limit(" + std::to_string(mem_limit_) + ")");
         }
-        if (number_of_bytes < data_.size()) {
+        if (number_of_bytes_ < data_.size()) {
             throw std::runtime_error(
                 "failed to extend bitset: number_of_bits(" + std::to_string(number_of_bits) +
                 ") is less than current capcity(" + std::to_string(data_.size() * 8) + ")");
         }
-        data_.resize(number_of_bytes);
+        data_.resize(number_of_bytes_);
     };
 
     /**
@@ -184,7 +170,7 @@ public:
     Dump(int64_t offset) {
         std::lock_guard<std::mutex> lock(mutex_);
         int64_t byte_index = offset / 8;
-        uint8_t ch = data_.data()[byte_index];
+        uint8_t ch = data_[byte_index];
         std::stringstream ss;
         for (int64_t i = 0; i < 8; ++i) {
             if (ch & (1 << i)) {
@@ -200,6 +186,7 @@ private:
     const int64_t mem_limit_;
     std::mutex mutex_;
     std::vector<uint8_t> data_;
+    uint64_t number_of_bytes_ = 0;
     int64_t num_ones_ = 0;
 };
 
