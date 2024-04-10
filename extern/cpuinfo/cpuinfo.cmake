@@ -11,3 +11,5 @@ set(CPUINFO_BUILD_MOCK_TESTS OFF CACHE BOOL "Disable some option in the library"
 set(CPUINFO_BUILD_BENCHMARKS OFF CACHE BOOL "Disable some option in the library" FORCE)
 set(CPUINFO_BUILD_PKG_CONFIG OFF CACHE BOOL "Disable some option in the library" FORCE)
 FetchContent_MakeAvailable(cpuinfo)
+
+include_directories(${cpuinfo_SOURCE_DIR}/include)
