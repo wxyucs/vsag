@@ -1625,7 +1625,7 @@ int generate_pq_data_from_pivots(const T* data, size_t num_points, size_t dim, c
         size_t start_id = block * block_size;
         size_t end_id = std::min((block + 1) * block_size, num_points);
         size_t cur_blk_size = end_id - start_id;
-        diskann::convert_types<T, float>(data + start_id, block_data_tmp.get(), cur_blk_size, dim);
+        diskann::convert_types<T, float>(data + start_id * dim, block_data_tmp.get(), cur_blk_size, dim);
 
         // diskann::cout << "Processing points  [" << start_id << ", " << end_id << ").." << std::flush;
 
@@ -1647,7 +1647,7 @@ int generate_pq_data_from_pivots(const T* data, size_t num_points, size_t dim, c
                         block_data_tmp.get(), (blasint)dim);
             std::memcpy(block_data_float.get(), block_data_tmp.get(), cur_blk_size * dim * sizeof(float));
         }
-#pragma omp parallel for schedule(dynamic)
+
         for (size_t i = 0; i < num_pq_chunks; i++)
         {
             size_t cur_chunk_size = chunk_offsets[i + 1] - chunk_offsets[i];
