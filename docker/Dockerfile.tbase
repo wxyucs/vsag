@@ -53,6 +53,14 @@ RUN wget "http://tbase.cn-hangzhou.alipay.aliyun-inc.com/vsag%2Fthirdparty%2FPyt
 ADD requirements.txt /tmp/
 RUN pip3 install --no-cache-dir -r /tmp/requirements.txt
 
+# Install CMake 3.28
+RUN wget "http://tbase.cn-hangzhou.alipay.aliyun-inc.com/vsag%2Fthirdparty%2Fcmake-3.28.4.tar.gz?OSSAccessKeyId=LTAILFuN8FJQZ4Eu&Expires=101713183169&Signature=n97%2B%2Bmq8ma24RQbtHu4HyxkaIV4%3D" -O cmake-3.28.4.tar.gz && \
+    tar zxvf cmake-3.28.4.tar.gz && \
+    cd cmake-3.28.4 && \
+    ./configure && \
+    make install && \
+    cmake --version
+
 ##### CC/CXX related issues #####
 ENV CC      /usr/bin/gcc
 ENV CXX     /usr/bin/g++

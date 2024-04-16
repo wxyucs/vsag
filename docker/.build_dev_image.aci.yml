@@ -1,5 +1,5 @@
 environments:
-  imageTag: dev-20230605
+  imageTag: dev-20240415
 
 stages:
   - BUILD_IMAGE
