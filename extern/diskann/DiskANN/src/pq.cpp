@@ -698,7 +698,7 @@ int generate_pq_pivots(const float *const passed_train_data, size_t num_train, u
     chunk_offsets.push_back(dim);
 
     full_pivot_data.reset(new float[num_centers * dim]);
-#pragma omp parallel for schedule(dynamic)
+
     for (size_t i = 0; i < num_pq_chunks; i++)
     {
         size_t cur_chunk_size = chunk_offsets[i + 1] - chunk_offsets[i];
