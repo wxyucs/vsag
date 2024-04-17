@@ -39,21 +39,21 @@ fmt:                    ## Format codes.
 test:                   ## Build and run unit tests.
 	cmake ${VSAG_CMAKE_ARGS} -DCMAKE_BUILD_TYPE=Debug -DENABLE_CCACHE=ON
 	cmake --build build --parallel ${COMPILE_JOBS}
-	./build/tests -d yes ${UT_FILTER}
+	./build/tests/tests -d yes ${UT_FILTER}
 	./build/mockimpl/tests_mockimpl -d yes
 
 .PHONY: test_asan
 test_asan:              ## Build and run unit tests with AddressSanitizer option.
 	cmake ${VSAG_CMAKE_ARGS} -DCMAKE_BUILD_TYPE=Debug -DENABLE_ASAN=ON -DENABLE_CCACHE=ON
 	cmake --build build --parallel ${COMPILE_JOBS}
-	LD_PRELOAD=${ASAN_LIB} ./build/tests -d yes ${UT_FILTER}
+	LD_PRELOAD=${ASAN_LIB} ./build/tests/tests -d yes ${UT_FILTER}
 	LD_PRELOAD=${ASAN_LIB} ./build/mockimpl/tests_mockimpl -d yes
 
 .PHONY: test_cov
 test_cov:               ## Build and run unit tests with code coverage enabled.
 	cmake ${VSAG_CMAKE_ARGS} -DCMAKE_BUILD_TYPE=Debug -DENABLE_COVERAGE=ON -DENABLE_CCACHE=ON
 	cmake --build build --parallel ${COMPILE_JOBS}
-	./build/tests -d yes ${UT_FILTER}
+	./build/tests/tests -d yes ${UT_FILTER}
 	./build/mockimpl/tests_mockimpl -d yes
 	bash scripts/aci/collect_cpp_coverage.sh
 	genhtml --output-directory testresult/coverage/html testresult/coverage/coverage.info

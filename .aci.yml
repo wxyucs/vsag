@@ -13,7 +13,7 @@ only:
 parameters:
   image: reg.docker.alibaba-inc.com/tbase/tbase:dev-20230605-clang13
   image_gcc: reg.docker.alibaba-inc.com/tbase/tbase:dev-20230605-gcc10
-  image_vsag: reg.docker.alibaba-inc.com/tbase/tbase:dev-20230605-vsag
+  image_vsag: reg.docker.alibaba-inc.com/tbase/tbase:dev-20240415-vsag
 
 stages:
   - FORMAT-PRE-CHECK

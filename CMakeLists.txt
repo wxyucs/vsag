@@ -75,6 +75,7 @@ include(extern/spdlog/spdlog.cmake)
 include(extern/catch2/catch2.cmake)
 include(extern/cpuinfo/cpuinfo.cmake)
 include(extern/fmt/fmt.cmake)
+include(extern/hdf5/hdf5.cmake)
 
 include_directories(extern/hnswlib)
 include_directories(extern/faiss)
@@ -109,27 +110,7 @@ message("CPU ARCH: ${CMAKE_HOST_SYSTEM_PROCESSOR}")
 add_subdirectory (examples/cpp)
 
 if (ENABLE_TESTS)
-    file (GLOB_RECURSE SRC_TESTS "src/*_test.cpp")
-    add_executable (tests
-	${SRC_TESTS}
-	tests/test_json.cpp
-	tests/test_log.cpp
-	tests/test_hnsw.cpp
-	tests/test_diskann.cpp
-	tests/test_kmeans.cpp
-	tests/test_factory.cpp
-	tests/test_utils.cpp
-	tests/test_bitset.cpp
-	tests/test_random_index.cpp
-	tests/test_cpuinfo.cpp
-	tests/test_simd.cpp
-	tests/test_index.cpp
-    tests/test_option.cpp
-    tests/test_multi_thread.cpp
-    )
-    target_include_directories(tests PRIVATE ${CMAKE_CURRENT_BINARY_DIR}/spdlog/install/include)
-    target_link_libraries (tests PRIVATE Catch2::Catch2WithMain vsag simd)
-    add_dependencies(tests spdlog Catch2)
+     add_subdirectory (tests)
 endif ()
 
 if (ENABLE_PYBINDS)

@@ -15,6 +15,9 @@
 
 namespace vsag {
 
+class Index;
+using IndexPtr = std::shared_ptr<Index>;
+
 class Index {
 public:
     /**

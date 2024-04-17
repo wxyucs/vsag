@@ -32,7 +32,7 @@ init() {
     ss << "\navx512bw: " << cpuinfo_has_x86_avx512bw();
     ss << "\navx512vl: " << cpuinfo_has_x86_avx512vl();
     ss << "\n====vsag init done====";
-    spdlog::info(ss.str());
+    spdlog::debug(ss.str());
 
     setup_simd();
 

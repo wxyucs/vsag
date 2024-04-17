@@ -19,6 +19,7 @@ version();
 #include "constants.h"
 #include "dataset.h"
 #include "errors.h"
+#include "expected.hpp"
 #include "factory.h"
 #include "index.h"
 #include "option.h"
