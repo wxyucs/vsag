@@ -46,4 +46,17 @@ private:
     std::vector<float> queue_;
 };
 
+template <typename T>
+struct Number {
+    Number(T n) : num(n) {
+    }
+
+    bool
+    in_range(T lower, T upper) {
+        return ((unsigned)(num - lower) <= (upper - lower));
+    }
+
+    T num;
+};
+
 }  // namespace vsag

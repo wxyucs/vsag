@@ -156,4 +156,13 @@ check_diskann_hnsw_build_parameters(const std::string& json_string);
 tl::expected<bool, Error>
 check_diskann_hnsw_search_parameters(const std::string& json_string);
 
+/**
+  * [experimental]
+  * generate build index parameters from data size and dim
+  *
+  * @return the build parameter string
+  */
+tl::expected<std::string, Error>
+generate_build_parameters(std::string metric_type, int64_t num_elements, int64_t dim);
+
 }  // namespace vsag

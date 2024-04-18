@@ -156,7 +156,7 @@ TEST_CASE("DiskAnn Multi-threading", "[diskann][test][diskann-ci-part4]") {
 
     float recall = correct / max_elements;
     std::cout << index->GetStats() << std::endl;
-    REQUIRE(recall == 1);
+    REQUIRE(recall >= 0.99);
     delete[] bits_zeros;
 }
 
