@@ -162,7 +162,7 @@ class HierarchicalNSW : public AlgorithmInterface<float> {
     };
 
 
-    void setEf(size_t ef) {
+    void setEf(size_t ef) override {
         ef_ = ef;
     }
 
@@ -202,11 +202,11 @@ class HierarchicalNSW : public AlgorithmInterface<float> {
         return (int) r;
     }
 
-    size_t getMaxElements() {
+    size_t getMaxElements() override {
         return max_elements_;
     }
 
-    size_t getCurrentElementCount() {
+    size_t getCurrentElementCount() override {
         return cur_element_count;
     }
 
@@ -661,7 +661,7 @@ class HierarchicalNSW : public AlgorithmInterface<float> {
     }
 
 
-    void resizeIndex(size_t new_max_elements) {
+    void resizeIndex(size_t new_max_elements) override {
         if (new_max_elements < cur_element_count)
             throw std::runtime_error("Cannot resize, max element is less than the current number of elements");
 
@@ -702,7 +702,7 @@ class HierarchicalNSW : public AlgorithmInterface<float> {
     }
 
 
-    void saveIndex(void *d) {
+    void saveIndex(void *d) override {
 	// std::ofstream output(location, std::ios::binary);
         // std::streampos position;
 	char *dest = (char *)d;
@@ -751,7 +751,7 @@ class HierarchicalNSW : public AlgorithmInterface<float> {
     }
 
 
-    size_t calcSerializeSize() {
+    size_t calcSerializeSize() override {
         // std::ofstream output(location, std::ios::binary);
         // std::streampos position;
 	size_t size = 0;
@@ -842,7 +842,7 @@ class HierarchicalNSW : public AlgorithmInterface<float> {
     }
 
     // load using reader
-    void loadIndex(std::function<void(uint64_t, uint64_t, void*)> read_func, SpaceInterface *s, size_t max_elements_i = 0) {
+    void loadIndex(std::function<void(uint64_t, uint64_t, void*)> read_func, SpaceInterface *s, size_t max_elements_i = 0) override {
         // std::ifstream input(location, std::ios::binary);
 
         // if (!input.is_open())
@@ -916,8 +916,7 @@ class HierarchicalNSW : public AlgorithmInterface<float> {
         /// Optional check end
 
         // input.seekg(pos, input.beg);
-
-        data_level0_memory_ = (char *) malloc(max_elements * size_data_per_element_);
+        resizeIndex(max_elements);
         if (data_level0_memory_ == nullptr)
             throw std::runtime_error("Not enough memory: loadIndex failed to allocate level0");
         // input.read(data_level0_memory_, cur_element_count * size_data_per_element_);
@@ -930,9 +929,7 @@ class HierarchicalNSW : public AlgorithmInterface<float> {
         std::vector<std::mutex>(max_elements).swap(link_list_locks_);
         std::vector<std::mutex>(MAX_LABEL_OPERATION_LOCKS).swap(label_op_locks_);
 
-        visited_list_pool_ = new VisitedListPool(1, max_elements);
 
-        linkLists_ = (char **) malloc(sizeof(void *) * max_elements);
         if (linkLists_ == nullptr)
             throw std::runtime_error("Not enough memory: loadIndex failed to allocate linklists");
         element_levels_ = std::vector<int>(max_elements);

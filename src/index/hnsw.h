@@ -22,7 +22,10 @@ namespace vsag {
 
 class HNSW : public Index {
 public:
-    HNSW(std::shared_ptr<hnswlib::SpaceInterface> space_interface, int M, int ef_construction);
+    HNSW(std::shared_ptr<hnswlib::SpaceInterface> space_interface,
+         int M,
+         int ef_construction,
+         bool is_static = false);
 
     tl::expected<std::vector<int64_t>, Error>
     Build(const Dataset& base) override {
@@ -69,7 +72,7 @@ public:
 public:
     int64_t
     GetNumElements() const override {
-        return alg_hnsw->cur_element_count;
+        return alg_hnsw->getCurrentElementCount();
     }
 
     int64_t
@@ -79,10 +82,6 @@ public:
 
     std::string
     GetStats() const override;
-
-public:
-    void
-    SetEfRuntime(int64_t ef_runtime);
 
 private:
     tl::expected<std::vector<int64_t>, Error>
@@ -113,10 +112,11 @@ private:
     deserialize(const ReaderSet& binary_set);
 
 private:
-    std::shared_ptr<hnswlib::HierarchicalNSW> alg_hnsw;
+    std::shared_ptr<hnswlib::AlgorithmInterface<float>> alg_hnsw;
     std::shared_ptr<hnswlib::SpaceInterface> space;
 
     int64_t dim_;
+    bool static_ = false;
 
     mutable std::mutex stats_mutex_;
     mutable std::map<std::string, WindowResultQueue> result_queues_;

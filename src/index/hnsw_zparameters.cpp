@@ -57,7 +57,8 @@ CreateHnswParameters::FromJson(const std::string& json_string) {
                    fmt::format("ef_construction({}) must in range[$max_degree({}), 64]",
                                obj.ef_construction,
                                obj.max_degree));
-
+    obj.use_static = params[INDEX_HNSW].contains(HNSW_PARAMETER_USE_STATIC) &&
+                     params[INDEX_HNSW][HNSW_PARAMETER_USE_STATIC];
     return obj;
 }
 

@@ -25,6 +25,7 @@ static __int64 xgetbv(unsigned int x) {
 #include <x86intrin.h>
 #include <cpuid.h>
 #include <stdint.h>
+#include <future>
 static void cpuid(int32_t cpuInfo[4], int32_t eax, int32_t ecx) {
     __cpuid_count(eax, ecx, cpuInfo[0], cpuInfo[1], cpuInfo[2], cpuInfo[3]);
 }
@@ -169,6 +170,22 @@ class AlgorithmInterface {
         searchKnnCloserFirst(const void* query_data, size_t k, BaseFilterFunctor* isIdAllowed = nullptr) const;
 
     virtual void saveIndex(const std::string &location) = 0;
+
+    virtual void saveIndex(void* d) = 0;
+
+    virtual size_t getMaxElements() = 0;
+
+    virtual void setEf(size_t ef) = 0;
+
+    virtual void resizeIndex(size_t new_max_elements) = 0;
+
+    virtual size_t calcSerializeSize() = 0;
+
+    virtual void loadIndex(std::function<void(uint64_t, uint64_t, void*)> read_func, SpaceInterface *s,
+              size_t max_elements_i = 0) = 0;
+
+    virtual size_t getCurrentElementCount() = 0;
+
     virtual ~AlgorithmInterface(){
     }
 };
@@ -198,3 +215,4 @@ AlgorithmInterface<dist_t>::searchKnnCloserFirst(const void* query_data, size_t 
 #include "space_ip.h"
 #include "bruteforce.h"
 #include "hnswalg.h"
+#include "hnswalg_static.h"

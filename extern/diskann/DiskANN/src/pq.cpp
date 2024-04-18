@@ -750,6 +750,120 @@ int generate_pq_pivots(const float *const passed_train_data, size_t num_train, u
     return 0;
 }
 
+
+int generate_pq_pivots(const float *const passed_train_data, size_t num_train, uint32_t dim, uint32_t num_centers,
+                       uint32_t num_pq_chunks, uint32_t max_k_means_reps, std::vector<std::vector<std::vector<float>>> &codebook,
+                       bool make_zero_mean)
+{
+    if (num_pq_chunks > dim)
+    {
+        diskann::cout << " Error: number of chunks more than dimension" << std::endl;
+        return -1;
+    }
+
+    std::unique_ptr<float[]> train_data = std::make_unique<float[]>(num_train * dim);
+    std::memcpy(train_data.get(), passed_train_data, num_train * dim * sizeof(float));
+
+    std::unique_ptr<float[]> full_pivot_data;
+
+    if (make_zero_mean)
+    { // If we use L2 distance, there is an option to
+        // translate all vectors to make them centered and
+        // then compute PQ. This needs to be set to false
+        // when using PQ for MIPS as such translations dont
+        // preserve inner products.
+        for (uint64_t d = 0; d < dim; d++)
+        {
+            float centroid = 0;
+            for (uint64_t p = 0; p < num_train; p++)
+            {
+                centroid += train_data[p * dim + d];
+            }
+            centroid /= num_train;
+
+            for (uint64_t p = 0; p < num_train; p++)
+            {
+                train_data[p * dim + d] -= centroid;
+            }
+        }
+    }
+
+    std::vector<uint32_t> chunk_offsets;
+
+    size_t low_val = (size_t)std::floor((double)dim / (double)num_pq_chunks);
+    size_t high_val = (size_t)std::ceil((double)dim / (double)num_pq_chunks);
+    size_t max_num_high = dim - (low_val * num_pq_chunks);
+    size_t cur_num_high = 0;
+    size_t cur_bin_threshold = high_val;
+
+    std::vector<std::vector<uint32_t>> bin_to_dims(num_pq_chunks);
+    std::vector<float> bin_loads(num_pq_chunks, 0);
+
+    // Process dimensions not inserted by previous loop
+    for (uint32_t d = 0; d < dim; d++)
+    {
+        auto cur_best = num_pq_chunks + 1;
+        float cur_best_load = std::numeric_limits<float>::max();
+        for (uint32_t b = 0; b < num_pq_chunks; b++)
+        {
+            if (bin_loads[b] < cur_best_load && bin_to_dims[b].size() < cur_bin_threshold)
+            {
+                cur_best = b;
+                cur_best_load = bin_loads[b];
+            }
+        }
+        bin_to_dims[cur_best].push_back(d);
+        if (bin_to_dims[cur_best].size() == high_val)
+        {
+            cur_num_high++;
+            if (cur_num_high == max_num_high)
+                cur_bin_threshold = low_val;
+        }
+    }
+
+    chunk_offsets.clear();
+    chunk_offsets.push_back(0);
+
+    for (uint32_t b = 1; b < num_pq_chunks; b++)
+    {
+        chunk_offsets.push_back(chunk_offsets[b - 1] + (uint32_t)bin_to_dims[b - 1].size());
+    }
+    chunk_offsets.push_back(dim);
+
+#pragma omp parallel for schedule(dynamic)
+    for (size_t i = 0; i < num_pq_chunks; i++)
+    {
+        size_t cur_chunk_size = chunk_offsets[i + 1] - chunk_offsets[i];
+
+        if (cur_chunk_size == 0)
+            continue;
+        std::unique_ptr<float[]> cur_pivot_data = std::make_unique<float[]>(num_centers * cur_chunk_size);
+        std::unique_ptr<float[]> cur_data = std::make_unique<float[]>(num_train * cur_chunk_size);
+        std::unique_ptr<uint32_t[]> closest_center = std::make_unique<uint32_t[]>(num_train);
+
+        // diskann::cout << "Processing chunk " << i << " with dimensions [" << chunk_offsets[i] << ", "
+        //               << chunk_offsets[i + 1] << ")" << std::endl;
+
+        //#pragma omp parallel for schedule(static, 65536)
+        for (int64_t j = 0; j < (int64_t)num_train; j++)
+        {
+            std::memcpy(cur_data.get() + j * cur_chunk_size, train_data.get() + j * dim + chunk_offsets[i],
+                        cur_chunk_size * sizeof(float));
+        }
+
+        kmeans::selecting_pivots(cur_data.get(), num_train, cur_chunk_size, cur_pivot_data.get(), num_centers);
+
+        kmeans::run_lloyds(cur_data.get(), num_train, cur_chunk_size, cur_pivot_data.get(), num_centers,
+                           max_k_means_reps, NULL, closest_center.get());
+
+        for (uint64_t j = 0; j < num_centers; j++){
+            std::memcpy(codebook[i][j].data(), cur_pivot_data.get() + j * cur_chunk_size,
+                        cur_chunk_size * sizeof(float));
+        }
+    }
+    return 0;
+}
+
 int generate_opq_pivots(const float *passed_train_data, size_t num_train, uint32_t dim, uint32_t num_centers,
                         uint32_t num_pq_chunks, std::string opq_pivots_path, bool make_zero_mean)
 {
@@ -1124,6 +1238,7 @@ int generate_opq_pivots(const float *passed_train_data, size_t num_train, uint32
 
         // compute the SVD of the correlation matrix to help determine the new
         // rotation matrix
+        // FIXME: SVD decomposition is very time-consuming, and we will switch to the implementation by FAISS in the future.
         uint32_t errcode = (uint32_t)LAPACKE_sgesdd(LAPACK_ROW_MAJOR, 'A', (blasint)dim, (blasint)dim,
                                                     correlation_matrix.get(), (blasint)dim, singular_values.get(),
                                                     Umat.get(), (blasint)dim, Vmat_T.get(), (blasint)dim);

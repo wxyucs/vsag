@@ -43,6 +43,7 @@ constexpr const char* DISKANN_PARAMETER_REORDER = "use_reorder";
 constexpr const char* HNSW_PARAMETER_EF_RUNTIME = "ef_search";
 constexpr const char* HNSW_PARAMETER_M = "max_degree";
 constexpr const char* HNSW_PARAMETER_CONSTRUCTION = "ef_construction";
+constexpr const char* HNSW_PARAMETER_USE_STATIC = "use_static";
 
 // statstic key
 

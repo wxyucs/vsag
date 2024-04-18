@@ -120,6 +120,10 @@ DISKANN_DLLEXPORT int generate_pq_pivots(const float *const train_data, size_t n
                                              unsigned num_centers, unsigned num_pq_chunks, unsigned max_k_means_reps,
                                              std::stringstream &pq_pivots_stream, bool make_zero_mean = false);
 
+DISKANN_DLLEXPORT int generate_pq_pivots(const float *const train_data, size_t num_train, unsigned dim,
+                                         unsigned num_centers, unsigned num_pq_chunks, unsigned max_k_means_reps,
+                                         std::vector<std::vector<std::vector<float>>> &codebook, bool make_zero_mean = false);
+
 
 DISKANN_DLLEXPORT int generate_opq_pivots(const float *train_data, size_t num_train, unsigned dim, unsigned num_centers,
                                           unsigned num_pq_chunks, std::string opq_pivots_path, std::shared_ptr<float[]> &rotmat_tr,

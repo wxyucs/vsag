@@ -1,6 +1,7 @@
 #include <spdlog/spdlog.h>
 
 #include <catch2/catch_test_macros.hpp>
+#include <fstream>
 #include <limits>
 #include <nlohmann/json.hpp>
 #include <numeric>
@@ -15,6 +16,20 @@ unsigned int
 Factorial(unsigned int number) {
     return number <= 1 ? number : Factorial(number - 1) * number;
 }
+
+template <typename T>
+static void
+writeBinaryPOD(std::ostream& out, const T& podRef) {
+    out.write((char*)&podRef, sizeof(T));
+}
+
+template <typename T>
+static void
+readBinaryPOD(std::istream& in, T& podRef) {
+    in.read((char*)&podRef, sizeof(T));
+}
+
+const std::string tmp_dir = "/tmp/";
 
 TEST_CASE("Factorials are computed", "[factorial]") {
     REQUIRE(Factorial(1) == 1);
@@ -675,5 +690,263 @@ TEST_CASE("HNSW Random Id", "[hnsw][test]") {
         }
     }
     float recall = correct / hnsw->GetNumElements();
+    REQUIRE(recall == 1);
+}
+
+TEST_CASE("pq infer knn search time recall", "[hnsw][test]") {
+    spdlog::set_level(spdlog::level::debug);
+    int dim = 128;
+    int max_elements = 1000;
+    int max_degree = 64;
+    int ef_construction = 200;
+    int ef_search = 200;
+    // Initing index
+    nlohmann::json hnsw_parameters{
+        {"max_degree", max_degree},
+        {"ef_construction", ef_construction},
+        {"use_static", true},
+    };
+    nlohmann::json index_parameters{
+        {"dtype", "float32"}, {"metric_type", "l2"}, {"dim", dim}, {"hnsw", hnsw_parameters}};
+
+    std::shared_ptr<vsag::Index> hnsw;
+    auto index = vsag::Factory::CreateIndex("hnsw", index_parameters.dump());
+    REQUIRE(index.has_value());
+    hnsw = index.value();
+
+    // Generate random data
+    std::mt19937 rng;
+    rng.seed(47);
+    std::uniform_real_distribution<> distrib_real;
+    int64_t* ids = new int64_t[max_elements];
+    float* data = new float[dim * max_elements];
+    for (int i = 0; i < max_elements; i++) {
+        ids[i] = i;
+    }
+    for (int i = 0; i < dim * max_elements; i++) {
+        data[i] = distrib_real(rng);
+    }
+
+    vsag::Dataset dataset;
+    dataset.Dim(dim).NumElements(max_elements).Ids(ids).Float32Vectors(data);
+    hnsw->Build(dataset);
+
+    // Query the elements for themselves and measure recall 1@1
+    float correct = 0;
+    for (int i = 0; i < max_elements; i++) {
+        vsag::Dataset query;
+        query.NumElements(1).Dim(dim).Float32Vectors(data + i * dim).Owner(false);
+        nlohmann::json parameters{
+            {"hnsw", {{"ef_search", ef_search}}},
+        };
+        int64_t k = 10;
+        if (auto result = hnsw->KnnSearch(query, k, parameters.dump()); result.has_value()) {
+            if (result->GetIds()[0] == i) {
+                correct++;
+            }
+            REQUIRE(result->GetDim() == k);
+        } else if (result.error().type == vsag::ErrorType::INTERNAL_ERROR) {
+            std::cerr << "failed to perform knn search on index" << std::endl;
+        }
+    }
+    float recall = correct / max_elements;
+
+    REQUIRE(recall == 1);
+}
+
+TEST_CASE("hnsw serialize", "[hnsw][test]") {
+    spdlog::set_level(spdlog::level::debug);
+    int dim = 128;
+    int max_elements = 1000;
+    int max_degree = 64;
+    int ef_construction = 200;
+    int ef_search = 200;
+    // Initing index
+    nlohmann::json hnsw_parameters{
+        {"max_degree", max_degree},
+        {"ef_construction", ef_construction},
+        {"use_static", true},
+    };
+    nlohmann::json index_parameters{
+        {"dtype", "float32"}, {"metric_type", "l2"}, {"dim", dim}, {"hnsw", hnsw_parameters}};
+
+    std::shared_ptr<vsag::Index> hnsw;
+    auto index = vsag::Factory::CreateIndex("hnsw", index_parameters.dump());
+    REQUIRE(index.has_value());
+    hnsw = index.value();
+
+    // Generate random data
+    std::mt19937 rng;
+    rng.seed(47);
+    std::uniform_real_distribution<> distrib_real;
+    int64_t* ids = new int64_t[max_elements];
+    float* data = new float[dim * max_elements];
+    for (int i = 0; i < max_elements; i++) {
+        ids[i] = i;
+    }
+    for (int i = 0; i < dim * max_elements; i++) {
+        data[i] = distrib_real(rng);
+    }
+
+    vsag::Dataset dataset;
+    dataset.Dim(dim).NumElements(max_elements).Ids(ids).Float32Vectors(data);
+    hnsw->Build(dataset);
+
+    // Serialize(single-file)
+    {
+        if (auto bs = hnsw->Serialize(); bs.has_value()) {
+            hnsw = nullptr;
+            auto keys = bs->GetKeys();
+            std::vector<uint64_t> offsets;
+
+            std::ofstream file(tmp_dir + "hnsw.index", std::ios::binary);
+            uint64_t offset = 0;
+            for (auto key : keys) {
+                // [len][data...][len][data...]...
+                vsag::Binary b = bs->Get(key);
+                writeBinaryPOD(file, b.size);
+                file.write((const char*)b.data.get(), b.size);
+                offsets.push_back(offset);
+                offset += sizeof(b.size) + b.size;
+            }
+            // footer
+            for (uint64_t i = 0; i < keys.size(); ++i) {
+                // [len][key...][offset][len][key...][offset]...
+                const auto& key = keys[i];
+                int64_t len = key.length();
+                writeBinaryPOD(file, len);
+                file.write(key.c_str(), key.length());
+                writeBinaryPOD(file, offsets[i]);
+            }
+            // [num_keys][footer_offset]$
+            writeBinaryPOD(file, keys.size());
+            writeBinaryPOD(file, offset);
+            file.close();
+        } else if (bs.error().type == vsag::ErrorType::NO_ENOUGH_MEMORY) {
+            std::cerr << "no enough memory to serialize index" << std::endl;
+        }
+    }
+
+    // Deserialize(binaryset)
+    {
+        std::ifstream file(tmp_dir + "hnsw.index", std::ios::in);
+        file.seekg(-sizeof(uint64_t) * 2, std::ios::end);
+        uint64_t num_keys, footer_offset;
+        readBinaryPOD(file, num_keys);
+        readBinaryPOD(file, footer_offset);
+        // std::cout << "num_keys: " << num_keys << std::endl;
+        // std::cout << "footer_offset: " << footer_offset << std::endl;
+        file.seekg(footer_offset, std::ios::beg);
+
+        std::vector<std::string> keys;
+        std::vector<uint64_t> offsets;
+        for (uint64_t i = 0; i < num_keys; ++i) {
+            int64_t key_len;
+            readBinaryPOD(file, key_len);
+            // std::cout << "key_len: " << key_len << std::endl;
+            char key_buf[key_len + 1];
+            memset(key_buf, 0, key_len + 1);
+            file.read(key_buf, key_len);
+            // std::cout << "key: " << key_buf << std::endl;
+            keys.push_back(key_buf);
+
+            uint64_t offset;
+            readBinaryPOD(file, offset);
+            // std::cout << "offset: " << offset << std::endl;
+            offsets.push_back(offset);
+        }
+
+        vsag::BinarySet bs;
+        for (uint64_t i = 0; i < num_keys; ++i) {
+            file.seekg(offsets[i], std::ios::beg);
+            vsag::Binary b;
+            readBinaryPOD(file, b.size);
+            // std::cout << "len: " << b.size << std::endl;
+            b.data.reset(new int8_t[b.size]);
+            file.read((char*)b.data.get(), b.size);
+            bs.Set(keys[i], b);
+        }
+
+        if (auto index = vsag::Factory::CreateIndex("hnsw", index_parameters.dump());
+            index.has_value()) {
+            hnsw = index.value();
+        } else {
+            std::cout << "Build HNSW Error" << std::endl;
+            return;
+        }
+        hnsw->Deserialize(bs);
+    }
+
+    // Deserialize(readerset)
+    {
+        std::ifstream file(tmp_dir + "hnsw.index", std::ios::in);
+        file.seekg(-sizeof(uint64_t) * 2, std::ios::end);
+        uint64_t num_keys, footer_offset;
+        readBinaryPOD(file, num_keys);
+        readBinaryPOD(file, footer_offset);
+        // std::cout << "num_keys: " << num_keys << std::endl;
+        // std::cout << "footer_offset: " << footer_offset << std::endl;
+        file.seekg(footer_offset, std::ios::beg);
+
+        std::vector<std::string> keys;
+        std::vector<uint64_t> offsets;
+        for (uint64_t i = 0; i < num_keys; ++i) {
+            int64_t key_len;
+            readBinaryPOD(file, key_len);
+            // std::cout << "key_len: " << key_len << std::endl;
+            char key_buf[key_len + 1];
+            memset(key_buf, 0, key_len + 1);
+            file.read(key_buf, key_len);
+            // std::cout << "key: " << key_buf << std::endl;
+            keys.push_back(key_buf);
+
+            uint64_t offset;
+            readBinaryPOD(file, offset);
+            // std::cout << "offset: " << offset << std::endl;
+            offsets.push_back(offset);
+        }
+
+        vsag::ReaderSet rs;
+        for (uint64_t i = 0; i < num_keys; ++i) {
+            int64_t size = 0;
+            if (i + 1 == num_keys) {
+                size = footer_offset;
+            } else {
+                size = offsets[i + 1];
+            }
+            size -= (offsets[i] + sizeof(uint64_t));
+            auto file_reader = vsag::Factory::CreateLocalFileReader(
+                tmp_dir + "hnsw.index", offsets[i] + sizeof(uint64_t), size);
+            rs.Set(keys[i], file_reader);
+        }
+
+        if (auto index = vsag::Factory::CreateIndex("hnsw", index_parameters.dump());
+            index.has_value()) {
+            hnsw = index.value();
+        } else {
+            std::cout << "Build HNSW Error" << std::endl;
+            return;
+        }
+        hnsw->Deserialize(rs);
+    }
+
+    // Query the elements for themselves and measure recall 1@10
+    float correct = 0;
+    for (int i = 0; i < max_elements; i++) {
+        vsag::Dataset query;
+        query.NumElements(1).Dim(dim).Float32Vectors(data + i * dim).Owner(false);
+        nlohmann::json parameters{
+            {"hnsw", {{"ef_search", ef_search}}},
+        };
+        int64_t k = 10;
+        if (auto result = hnsw->KnnSearch(query, k, parameters.dump()); result.has_value()) {
+            correct += vsag::knn_search_recall(
+                data, ids, max_elements, data + i * dim, dim, result->GetIds(), result->GetDim());
+        } else if (result.error().type == vsag::ErrorType::INTERNAL_ERROR) {
+            std::cerr << "failed to perform search on index" << std::endl;
+        }
+    }
+    float recall = correct / max_elements;
+
     REQUIRE(recall == 1);
 }

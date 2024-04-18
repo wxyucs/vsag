@@ -21,7 +21,7 @@
 namespace vsag {
 
 const static int64_t EXPANSION_NUM = 1000000;
-const static int64_t DEFAULT_MAX_ELEMENT = 10000;
+const static int64_t DEFAULT_MAX_ELEMENT = 500;
 const static int MINIMAL_M = 8;
 const static int MAXIMAL_M = 64;
 
@@ -53,8 +53,11 @@ random_integer(int64_t lower_bound, int64_t upper_bound) {
     return distribution(generator);
 }
 
-HNSW::HNSW(std::shared_ptr<hnswlib::SpaceInterface> space_interface, int M, int ef_construction)
-    : space(std::move(space_interface)) {
+HNSW::HNSW(std::shared_ptr<hnswlib::SpaceInterface> space_interface,
+           int M,
+           int ef_construction,
+           bool is_static)
+    : space(std::move(space_interface)), static_(is_static) {
     dim_ = *((size_t*)space->get_dist_func_param());
 
     M = std::min(std::max(M, MINIMAL_M), MAXIMAL_M);
@@ -63,14 +66,20 @@ HNSW::HNSW(std::shared_ptr<hnswlib::SpaceInterface> space_interface, int M, int 
         throw std::runtime_error(MESSAGE_PARAMETER);
     }
 
-    alg_hnsw = std::make_shared<hnswlib::HierarchicalNSW>(
-        space.get(), DEFAULT_MAX_ELEMENT, M, ef_construction);
+    if (!static_) {
+        alg_hnsw = std::make_shared<hnswlib::HierarchicalNSW>(
+            space.get(), DEFAULT_MAX_ELEMENT, M, ef_construction);
+    } else {
+        if (dim_ % 4 != 0) {
+            throw std::runtime_error("cannot build static hnsw while dim % 4 != 0");
+        }
+        alg_hnsw = std::make_shared<hnswlib::StaticHierarchicalNSW>(
+            space.get(), DEFAULT_MAX_ELEMENT, M, ef_construction);
+    }
 }
 
 tl::expected<std::vector<int64_t>, Error>
 HNSW::build(const Dataset& base) {
-    SlowTaskTimer t("hnsw build");
-
     try {
         spdlog::debug("index.dim={}, base.dim={}", this->dim_, base.GetDim());
 
@@ -79,7 +88,8 @@ HNSW::build(const Dataset& base) {
                        fmt::format("base.dim({}) must be equal to index.dim({})", base_dim, dim_));
 
         int64_t num_elements = base.GetNumElements();
-        int64_t max_elements_ = alg_hnsw->getMaxElements();
+        int64_t max_elements_;
+        max_elements_ = alg_hnsw->getMaxElements();
         if (max_elements_ < num_elements) {
             spdlog::debug("max_elements_={}, num_elements={}", max_elements_, num_elements);
             max_elements_ = num_elements;
@@ -90,14 +100,22 @@ HNSW::build(const Dataset& base) {
         auto ids = base.GetIds();
         auto vectors = base.GetFloat32Vectors();
         std::vector<int64_t> failed_ids;
-        for (int64_t i = 0; i < num_elements; ++i) {
-            // noexcept runtime
-            if (!alg_hnsw->addPoint((const void*)(vectors + i * dim_), ids[i])) {
-                spdlog::debug("duplicate point: {}", ids[i]);
-                failed_ids.emplace_back(ids[i]);
+        {
+            SlowTaskTimer t("hnsw graph");
+            for (int64_t i = 0; i < num_elements; ++i) {
+                // noexcept runtime
+                if (!alg_hnsw->addPoint((const void*)(vectors + i * dim_), ids[i])) {
+                    spdlog::debug("duplicate point: {}", ids[i]);
+                    failed_ids.emplace_back(ids[i]);
+                }
             }
         }
 
+        if (static_) {
+            SlowTaskTimer t("hnsw pq", 1000);
+            auto* hnsw = static_cast<hnswlib::StaticHierarchicalNSW*>(alg_hnsw.get());
+            hnsw->encode_hnsw_data();
+        }
         return failed_ids;
     } catch (const std::invalid_argument& e) {
         LOG_ERROR_AND_RETURNS(
@@ -109,6 +127,10 @@ tl::expected<std::vector<int64_t>, Error>
 HNSW::add(const Dataset& base) {
     SlowTaskTimer t("hnsw add", 10);
 
+    if (static_) {
+        LOG_ERROR_AND_RETURNS(ErrorType::UNSUPPORTED_INDEX_OPERATION,
+                              "static index does not support add");
+    }
     try {
         auto base_dim = base.GetDim();
         CHECK_ARGUMENT(base_dim == dim_,
@@ -225,6 +247,11 @@ HNSW::range_search(const Dataset& query,
                    const std::string& parameters,
                    BitsetPtr invalid) const {
     SlowTaskTimer t("hnsw rangesearch", 10);
+
+    if (static_) {
+        LOG_ERROR_AND_RETURNS(ErrorType::UNSUPPORTED_INDEX_OPERATION,
+                              "static index does not support rangesearch");
+    }
 
     try {
         // check query vector
@@ -354,11 +381,6 @@ HNSW::deserialize(const ReaderSet& reader_set) {
     }
 
     return {};
-}
-
-void
-HNSW::SetEfRuntime(int64_t ef_runtime) {
-    alg_hnsw->setEf(ef_runtime);
 }
 
 std::string

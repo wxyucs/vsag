@@ -28,6 +28,8 @@ enum class ErrorType {
     INVALID_ARGUMENT,
     // the index to create is unsupported
     UNSUPPORTED_INDEX,
+    // the index does not support this function
+    UNSUPPORTED_INDEX_OPERATION,
     // unknown error
     UNKNOWN_ERROR
 };

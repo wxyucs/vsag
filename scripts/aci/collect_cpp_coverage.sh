@@ -18,6 +18,7 @@ lcov --rc branch_coverage=1 \
      --parallel 8 \
      --include "*/vsag/include/*" \
      --include "*/vsag/src/*" \
+     --include "*/vsag/extern/hnswlib/hnswlib/hnswalg_static.h" \
      --exclude "*_test.cpp" \
      --capture \
      --ignore-errors mismatch,mismatch \
