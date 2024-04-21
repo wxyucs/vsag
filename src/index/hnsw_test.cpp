@@ -303,9 +303,19 @@ TEST_CASE("serialize empty index", "[hnsw][ut]") {
     auto index = std::make_shared<vsag::HNSW>(
         std::make_shared<hnswlib::L2Space>(dim), max_degree, ef_construction);
 
-    auto result = index->Serialize();
-    REQUIRE_FALSE(result.has_value());
-    REQUIRE(result.error().type == vsag::ErrorType::INDEX_EMPTY);
+    SECTION("serialize to binaryset") {
+        auto result = index->Serialize();
+        REQUIRE_FALSE(result.has_value());
+        REQUIRE(result.error().type == vsag::ErrorType::INDEX_EMPTY);
+    }
+
+    SECTION("serialize to fstream") {
+        std::fstream out_stream("/tmp/vsagtest_serialize_empty_index.bin",
+                                std::ios::out | std::ios::binary);
+        auto result = index->Serialize(out_stream);
+        REQUIRE_FALSE(result.has_value());
+        REQUIRE(result.error().type == vsag::ErrorType::INDEX_EMPTY);
+    }
 }
 
 TEST_CASE("deserialize on not empty index", "[hnsw][ut]") {
@@ -324,12 +334,32 @@ TEST_CASE("deserialize on not empty index", "[hnsw][ut]") {
     auto result = index->Build(dataset);
     REQUIRE(result.has_value());
 
-    auto binary_set = index->Serialize();
-    REQUIRE(binary_set.has_value());
+    SECTION("serialize to binaryset") {
+        auto binary_set = index->Serialize();
+        REQUIRE(binary_set.has_value());
 
-    auto voidresult = index->Deserialize(binary_set.value());
-    REQUIRE_FALSE(voidresult.has_value());
-    REQUIRE(voidresult.error().type == vsag::ErrorType::INDEX_NOT_EMPTY);
+        auto voidresult = index->Deserialize(binary_set.value());
+        REQUIRE_FALSE(voidresult.has_value());
+        REQUIRE(voidresult.error().type == vsag::ErrorType::INDEX_NOT_EMPTY);
+    }
+
+    SECTION("serialize to fstream") {
+        std::fstream out_stream("/tmp/vsagtest_serialize_empty_index.bin",
+                                std::ios::out | std::ios::binary);
+        auto serialize_result = index->Serialize(out_stream);
+        REQUIRE(serialize_result.has_value());
+        out_stream.close();
+
+        std::fstream in_stream("/tmp/vsagtest_serialize_empty_index.bin",
+                               std::ios::in | std::ios::binary);
+        in_stream.seekg(0, std::ios::end);
+        auto length = in_stream.tellg();
+        in_stream.seekg(0, std::ios::beg);
+        auto voidresult = index->Deserialize(in_stream, length);
+        REQUIRE_FALSE(voidresult.has_value());
+        REQUIRE(voidresult.error().type == vsag::ErrorType::INDEX_NOT_EMPTY);
+        in_stream.close();
+    }
 }
 
 TEST_CASE("static hnsw", "[hnsw][ut]") {

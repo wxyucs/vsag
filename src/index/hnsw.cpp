@@ -5,6 +5,7 @@
 #include <hnswlib/hnswlib.h>
 #include <spdlog/spdlog.h>
 
+#include <cstdint>
 #include <exception>
 #include <new>
 #include <nlohmann/json.hpp>
@@ -341,6 +342,19 @@ HNSW::serialize() const {
 }
 
 tl::expected<void, Error>
+HNSW::serialize(std::ostream& out_stream) {
+    if (GetNumElements() == 0) {
+        LOG_ERROR_AND_RETURNS(ErrorType::INDEX_EMPTY, "failed to serialize: hnsw index is empty");
+    }
+    SlowTaskTimer t("hnsw serialize");
+
+    // no expected exception
+    alg_hnsw->saveIndex(out_stream);
+
+    return {};
+}
+
+tl::expected<void, Error>
 HNSW::deserialize(const BinarySet& binary_set) {
     SlowTaskTimer t("hnsw deserialize");
     if (this->alg_hnsw->getCurrentElementCount() > 0) {
@@ -376,6 +390,23 @@ HNSW::deserialize(const ReaderSet& reader_set) {
 
     try {
         alg_hnsw->loadIndex(func, this->space.get());
+    } catch (const std::runtime_error& e) {
+        LOG_ERROR_AND_RETURNS(ErrorType::READ_ERROR, "failed to deserialize: ", e.what());
+    }
+
+    return {};
+}
+
+tl::expected<void, Error>
+HNSW::deserialize(std::istream& in_stream, int64_t length) {
+    SlowTaskTimer t("hnsw deserialize");
+    if (this->alg_hnsw->getCurrentElementCount() > 0) {
+        LOG_ERROR_AND_RETURNS(ErrorType::INDEX_NOT_EMPTY,
+                              "failed to deserialize: index is not empty");
+    }
+
+    try {
+        alg_hnsw->loadIndex(in_stream, length, this->space.get());
     } catch (const std::runtime_error& e) {
         LOG_ERROR_AND_RETURNS(ErrorType::READ_ERROR, "failed to deserialize: ", e.what());
     }

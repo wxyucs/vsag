@@ -20,6 +20,8 @@ using IndexPtr = std::shared_ptr<Index>;
 
 class Index {
 public:
+    // [basic methods]
+
     /**
       * Building index with all vectors
       * 
@@ -76,6 +78,8 @@ public:
     }
 
 public:
+    // [serialize/deserialize with binaryset]
+
     /**
       * Serialize index to a set of byte array
       *
@@ -101,6 +105,33 @@ public:
     Deserialize(const ReaderSet& reader_set) = 0;
 
 public:
+    // [serialize/deserialize with file stream]
+
+    /**
+      * Serialize index to a file stream
+      *
+      * @param out_stream is a already opened file stream for outputing the serialized index
+      */
+    virtual tl::expected<void, Error>
+    Serialize(std::ostream& out_stream) {
+        throw std::runtime_error("Index not support serialize to a file stream");
+    }
+
+    /**
+      * Deserialize index from a file stream
+      * 
+      * @param in_stream is a already opened file stream contains serialized index
+      * @param length is the length of serialized index(may differ from the actual file size
+      *   if there is additional content in the file)
+      */
+    virtual tl::expected<void, Error>
+    Deserialize(std::istream& in_stream, int64_t length) {
+        throw std::runtime_error("Index not support deserialize from a file stream");
+    }
+
+public:
+    // [statstics methods]
+
     /**
       * Return the number of elements in the index
       *

@@ -48,7 +48,7 @@ float_hnsw() {
     nlohmann::json hnsw_parameters{{"max_degree", max_degree},
                                    {"ef_construction", ef_construction},
                                    {"ef_search", ef_search},
-                                   {"use_static", true}};
+                                   {"use_static", false}};
     nlohmann::json index_parameters{
         {"dtype", "float32"}, {"metric_type", "l2"}, {"dim", dim}, {"hnsw", hnsw_parameters}};
     std::shared_ptr<vsag::Index> hnsw;

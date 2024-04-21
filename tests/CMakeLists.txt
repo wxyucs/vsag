@@ -17,6 +17,7 @@ add_executable (tests
     test_index.cpp
     test_option.cpp
     test_multi_thread.cpp
+    fixtures/fixtures.cpp
 )
 target_include_directories (tests PRIVATE
     ${CMAKE_CURRENT_BINARY_DIR}/spdlog/install/include

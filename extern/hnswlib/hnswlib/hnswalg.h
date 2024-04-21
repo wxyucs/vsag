@@ -800,6 +800,33 @@ class HierarchicalNSW : public AlgorithmInterface<float> {
 	return size;
     }
 
+    // save index to a file stream
+    void saveIndex(std::ostream &out_stream) override {
+        writeBinaryPOD(out_stream, offsetLevel0_);
+        writeBinaryPOD(out_stream, max_elements_);
+        writeBinaryPOD(out_stream, cur_element_count);
+        writeBinaryPOD(out_stream, size_data_per_element_);
+        writeBinaryPOD(out_stream, label_offset_);
+        writeBinaryPOD(out_stream, offsetData_);
+        writeBinaryPOD(out_stream, maxlevel_);
+        writeBinaryPOD(out_stream, enterpoint_node_);
+        writeBinaryPOD(out_stream, maxM_);
+
+        writeBinaryPOD(out_stream, maxM0_);
+        writeBinaryPOD(out_stream, M_);
+        writeBinaryPOD(out_stream, mult_);
+        writeBinaryPOD(out_stream, ef_construction_);
+
+        out_stream.write(data_level0_memory_, cur_element_count * size_data_per_element_);
+
+        for (size_t i = 0; i < cur_element_count; i++) {
+            unsigned int linkListSize = element_levels_[i] > 0 ? size_links_per_element_ * element_levels_[i] : 0;
+            writeBinaryPOD(out_stream, linkListSize);
+            if (linkListSize) {
+                out_stream.write(linkLists_[i], linkListSize);
+            }
+        }
+    }
 
     void saveIndex(const std::string &location) override {
         std::ofstream output(location, std::ios::binary);
@@ -966,6 +993,108 @@ class HierarchicalNSW : public AlgorithmInterface<float> {
         return;
     }
 
+    // load index from a file stream
+    void loadIndex(std::istream &in_stream, int64_t length, SpaceInterface *s, size_t max_elements_i = 0) override {
+        auto beg_pos = in_stream.tellg();
+
+        readBinaryPOD(in_stream, offsetLevel0_);
+        readBinaryPOD(in_stream, max_elements_);
+        readBinaryPOD(in_stream, cur_element_count);
+
+        size_t max_elements = max_elements_i;
+        if (max_elements < cur_element_count)
+            max_elements = max_elements_;
+        max_elements_ = max_elements;
+        readBinaryPOD(in_stream, size_data_per_element_);
+        readBinaryPOD(in_stream, label_offset_);
+        readBinaryPOD(in_stream, offsetData_);
+        readBinaryPOD(in_stream, maxlevel_);
+        readBinaryPOD(in_stream, enterpoint_node_);
+
+        readBinaryPOD(in_stream, maxM_);
+        readBinaryPOD(in_stream, maxM0_);
+        readBinaryPOD(in_stream, M_);
+        readBinaryPOD(in_stream, mult_);
+        readBinaryPOD(in_stream, ef_construction_);
+
+        data_size_ = s->get_data_size();
+        fstdistfunc_ = s->get_dist_func();
+        dist_func_param_ = s->get_dist_func_param();
+
+        auto pos = in_stream.tellg();
+
+        /// Optional - check if index is ok:
+        in_stream.seekg(cur_element_count * size_data_per_element_, in_stream.cur);
+        for (size_t i = 0; i < cur_element_count; i++) {
+            if (in_stream.tellg() < 0 || in_stream.tellg() >= beg_pos + length) {
+                throw std::runtime_error("Index seems to be corrupted or unsupported");
+            }
+
+            unsigned int linkListSize;
+            readBinaryPOD(in_stream, linkListSize);
+            if (linkListSize != 0) {
+                in_stream.seekg(linkListSize, in_stream.cur);
+            }
+        }
+
+        // throw exception if it either corrupted or old index
+        if (in_stream.tellg() != beg_pos + length)
+            throw std::runtime_error("Index seems to be corrupted or unsupported");
+
+        in_stream.clear();
+        /// Optional check end
+
+        in_stream.seekg(pos, in_stream.beg);
+
+        free(data_level0_memory_);
+        data_level0_memory_ = (char *) malloc(max_elements * size_data_per_element_);
+        if (data_level0_memory_ == nullptr)
+            throw std::runtime_error("Not enough memory: loadIndex failed to allocate level0");
+        in_stream.read(data_level0_memory_, cur_element_count * size_data_per_element_);
+
+        size_links_per_element_ = maxM_ * sizeof(tableint) + sizeof(linklistsizeint);
+
+        size_links_level0_ = maxM0_ * sizeof(tableint) + sizeof(linklistsizeint);
+        std::vector<std::mutex>(max_elements).swap(link_list_locks_);
+        std::vector<std::mutex>(MAX_LABEL_OPERATION_LOCKS).swap(label_op_locks_);
+
+        delete visited_list_pool_;
+        visited_list_pool_ = new VisitedListPool(1, max_elements);
+
+        if (linkLists_ != nullptr) {
+            free(linkLists_);
+        }
+        linkLists_ = (char **) malloc(sizeof(void *) * max_elements);
+        if (linkLists_ == nullptr)
+            throw std::runtime_error("Not enough memory: loadIndex failed to allocate linklists");
+        element_levels_ = std::vector<int>(max_elements);
+        revSize_ = 1.0 / mult_;
+        ef_ = 10;
+        for (size_t i = 0; i < cur_element_count; i++) {
+            label_lookup_[getExternalLabel(i)] = i;
+            unsigned int linkListSize;
+            readBinaryPOD(in_stream, linkListSize);
+            if (linkListSize == 0) {
+                element_levels_[i] = 0;
+                linkLists_[i] = nullptr;
+            } else {
+                element_levels_[i] = linkListSize / size_links_per_element_;
+                linkLists_[i] = (char *) malloc(linkListSize);
+                if (linkLists_[i] == nullptr)
+                    throw std::runtime_error("Not enough memory: loadIndex failed to allocate linklist");
+                in_stream.read(linkLists_[i], linkListSize);
+            }
+        }
+
+        for (size_t i = 0; i < cur_element_count; i++) {
+            if (isMarkedDeleted(i)) {
+                num_deleted_ += 1;
+                if (allow_replace_deleted_) deleted_elements.insert(i);
+            }
+        }
+
+        return;
+    }
 
     // origin load function
     void loadIndex(const std::string &location, SpaceInterface *s, size_t max_elements_i = 0) {
@@ -1028,6 +1157,7 @@ class HierarchicalNSW : public AlgorithmInterface<float> {
 
         input.seekg(pos, input.beg);
 
+        free(data_level0_memory_);
         data_level0_memory_ = (char *) malloc(max_elements * size_data_per_element_);
         if (data_level0_memory_ == nullptr)
             throw std::runtime_error("Not enough memory: loadIndex failed to allocate level0");
@@ -1039,6 +1169,7 @@ class HierarchicalNSW : public AlgorithmInterface<float> {
         std::vector<std::mutex>(max_elements).swap(link_list_locks_);
         std::vector<std::mutex>(MAX_LABEL_OPERATION_LOCKS).swap(label_op_locks_);
 
+        delete visited_list_pool_;
         visited_list_pool_ = new VisitedListPool(1, max_elements);
 
         linkLists_ = (char **) malloc(sizeof(void *) * max_elements);

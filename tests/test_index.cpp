@@ -1,14 +1,14 @@
 
+#include <fstream>
+
 #include "catch2/catch_message.hpp"
 #include "catch2/catch_test_macros.hpp"
 #include "catch2/generators/catch_generators.hpp"
+#include "fixtures/fixtures.h"
 #include "nlohmann/json.hpp"
 #include "spdlog/common.h"
 #include "spdlog/spdlog.h"
-#include "vsag/dataset.h"
-#include "vsag/errors.h"
-#include "vsag/factory.h"
-#include "vsag/index.h"
+#include "vsag/vsag.h"
 
 TEST_CASE("check build parameters", "[index][test]") {
     auto json_string = R"(
@@ -101,25 +101,6 @@ TEST_CASE("generate build parameters with invalid dim", "[index][test]") {
     REQUIRE(parameters.error().type == vsag::ErrorType::INVALID_ARGUMENT);
 }
 
-namespace {
-std::tuple<std::vector<int64_t>, std::vector<float>>
-generate_ids_and_vectors(int64_t num_elements, int64_t dim) {
-    // Generate random data
-    std::mt19937 rng;
-    rng.seed(47);
-    std::uniform_real_distribution<> distrib_real;
-    std::vector<int64_t> ids(num_elements);
-    std::vector<float> vectors(dim * num_elements);
-    for (int64_t i = 0; i < num_elements; ++i) {
-        ids[i] = i;
-    }
-    for (int64_t i = 0; i < dim * num_elements; ++i) {
-        vectors[i] = distrib_real(rng);
-    }
-    return {ids, vectors};
-}
-};  // namespace
-
 TEST_CASE("build index with generated_build_parameters", "[index][test]") {
     spdlog::set_level(spdlog::level::debug);
 
@@ -130,7 +111,7 @@ TEST_CASE("build index with generated_build_parameters", "[index][test]") {
                      "hnsw", vsag::generate_build_parameters("l2", num_vectors, dim).value())
                      .value();
 
-    auto [ids, vectors] = ::generate_ids_and_vectors(num_vectors, dim);
+    auto [ids, vectors] = fixtures::generate_ids_and_vectors(num_vectors, dim);
 
     vsag::Dataset base;
     base.NumElements(num_vectors)
@@ -170,4 +151,137 @@ TEST_CASE("build index with generated_build_parameters", "[index][test]") {
     float recall = 1.0 * correct / num_vectors;
     spdlog::debug("recall: {}", recall);
     REQUIRE(recall > 0.95);
+}
+
+TEST_CASE("serialize/deserialize with file stream", "[index][test]") {
+    spdlog::set_level(spdlog::level::debug);
+
+    int64_t num_vectors = 10000;
+    int64_t dim = 64;
+    // auto index_name = GENERATE("hnsw", "diskann");
+    auto index_name = GENERATE("hnsw");
+    auto metric_type = GENERATE("l2", "ip");
+
+    auto [ids, vectors] = fixtures::generate_ids_and_vectors(num_vectors, dim);
+    auto index = fixtures::generate_index(index_name, metric_type, num_vectors, dim, ids, vectors);
+
+    auto search_parameters = R"(
+    {
+        "hnsw": {
+            "ef_search": 100
+        },
+        "diskann": {
+            "ef_search": 100,
+            "beam_search": 4,
+            "io_limit": 100,
+            "use_reorder": false
+        }
+    }
+    )";
+
+    {
+        fixtures::temp_dir dir("test_index_serialize_via_stream");
+
+        // serialize to file stream
+        std::fstream out_file(dir.path + "index.bin", std::ios::out | std::ios::binary);
+        REQUIRE(index->Serialize(out_file).has_value());
+        out_file.close();
+
+        // deserialize from file stream
+        std::fstream in_file(dir.path + "index.bin", std::ios::in | std::ios::binary);
+        in_file.seekg(0, std::ios::end);
+        int64_t length = in_file.tellg();
+        in_file.seekg(0, std::ios::beg);
+        auto new_index =
+            vsag::Factory::CreateIndex(
+                index_name, vsag::generate_build_parameters(metric_type, num_vectors, dim).value())
+                .value();
+        REQUIRE(new_index->Deserialize(in_file, length).has_value());
+
+        // compare recall
+        auto before_serialize_recall =
+            fixtures::test_knn_recall(index, search_parameters, num_vectors, dim, ids, vectors);
+        auto aftet_serialize_recall =
+            fixtures::test_knn_recall(new_index, search_parameters, num_vectors, dim, ids, vectors);
+
+        REQUIRE(before_serialize_recall == aftet_serialize_recall);
+    }
+}
+
+TEST_CASE("serialize/deserialize hnswstatic with file stream", "[index][test]") {
+    spdlog::set_level(spdlog::level::debug);
+
+    int64_t num_vectors = 10000;
+    int64_t dim = 64;
+    auto index_name = GENERATE("hnsw");
+    auto metric_type = GENERATE("l2", "ip");
+
+    auto build_parameters = R"(
+        {
+            "dtype": "float32",
+            "metric_type": "l2",
+            "dim": 64,
+            "hnsw": {
+                "max_degree": 16,
+                "ef_construction": 100,
+                "use_static": true
+            },
+            "diskann": {
+                "max_degree": 16,
+                "ef_construction": 200,
+                "pq_dims": 32,
+                "pq_sample_rate": 0.5
+            }
+        }
+        )";
+
+    auto index = vsag::Factory::CreateIndex(index_name, build_parameters).value();
+
+    auto [ids, vectors] = fixtures::generate_ids_and_vectors(num_vectors, dim);
+    vsag::Dataset base;
+    base.NumElements(num_vectors)
+        .Dim(dim)
+        .Ids(ids.data())
+        .Float32Vectors(vectors.data())
+        .Owner(false);
+    REQUIRE(index->Build(base).has_value());
+
+    auto search_parameters = R"(
+    {
+        "hnsw": {
+            "ef_search": 100
+        },
+        "diskann": {
+            "ef_search": 100,
+            "beam_search": 4,
+            "io_limit": 100,
+            "use_reorder": false
+        }
+    }
+    )";
+
+    {
+        fixtures::temp_dir dir("test_index_serialize_via_stream");
+
+        // serialize to file stream
+        std::fstream out_file(dir.path + "index.bin", std::ios::out | std::ios::binary);
+        REQUIRE(index->Serialize(out_file).has_value());
+        out_file.close();
+
+        // deserialize from file stream
+        std::fstream in_file(dir.path + "index.bin", std::ios::in | std::ios::binary);
+        in_file.seekg(0, std::ios::end);
+        int64_t length = in_file.tellg();
+        in_file.seekg(0, std::ios::beg);
+        auto new_index = vsag::Factory::CreateIndex(index_name, build_parameters).value();
+        REQUIRE(new_index->Deserialize(in_file, length).has_value());
+
+        // compare recall
+        auto before_serialize_recall =
+            fixtures::test_knn_recall(index, search_parameters, num_vectors, dim, ids, vectors);
+        auto aftet_serialize_recall =
+            fixtures::test_knn_recall(new_index, search_parameters, num_vectors, dim, ids, vectors);
+
+        REQUIRE(before_serialize_recall == aftet_serialize_recall);
+    }
 }
