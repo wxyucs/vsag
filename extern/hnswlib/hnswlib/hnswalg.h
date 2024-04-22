@@ -54,7 +54,7 @@ class HierarchicalNSW : public AlgorithmInterface<float> {
 
     char *data_level0_memory_{nullptr};
     char **linkLists_{nullptr};
-    std::vector<int> element_levels_;  // keeps level of each element
+    int *element_levels_;  // keeps level of each element
 
     size_t data_size_{0};
 
@@ -100,7 +100,6 @@ class HierarchicalNSW : public AlgorithmInterface<float> {
         bool allow_replace_deleted = false)
         : link_list_locks_(max_elements),
             label_op_locks_(MAX_LABEL_OPERATION_LOCKS),
-            element_levels_(max_elements),
             allow_replace_deleted_(allow_replace_deleted) {
         max_elements_ = max_elements;
         num_deleted_ = 0;
@@ -113,6 +112,8 @@ class HierarchicalNSW : public AlgorithmInterface<float> {
         ef_construction_ = std::max(ef_construction, M_);
         ef_ = 10;
 
+        element_levels_ = (int *) vsag::allocate(max_elements * sizeof(int));
+
         level_generator_.seed(random_seed);
         update_probability_generator_.seed(random_seed + 1);
 
@@ -122,7 +123,7 @@ class HierarchicalNSW : public AlgorithmInterface<float> {
         label_offset_ = size_links_level0_ + data_size_;
         offsetLevel0_ = 0;
 
-        data_level0_memory_ = (char *) malloc(max_elements_ * size_data_per_element_);
+        data_level0_memory_ = (char *) vsag::allocate(max_elements_ * size_data_per_element_);
         if (data_level0_memory_ == nullptr)
             throw std::runtime_error("Not enough memory");
 
@@ -134,7 +135,7 @@ class HierarchicalNSW : public AlgorithmInterface<float> {
         enterpoint_node_ = -1;
         maxlevel_ = -1;
 
-        linkLists_ = (char **) malloc(sizeof(void *) * max_elements_);
+        linkLists_ = (char **) vsag::allocate(sizeof(void *) * max_elements_);
         if (linkLists_ == nullptr)
             throw std::runtime_error("Not enough memory: HierarchicalNSW failed to allocate linklists");
         size_links_per_element_ = maxM_ * sizeof(tableint) + sizeof(linklistsizeint);
@@ -144,12 +145,13 @@ class HierarchicalNSW : public AlgorithmInterface<float> {
 
 
     ~HierarchicalNSW() {
-        free(data_level0_memory_);
+        vsag::deallocate(data_level0_memory_);
         for (tableint i = 0; i < cur_element_count; i++) {
             if (element_levels_[i] > 0)
-                free(linkLists_[i]);
+                vsag::deallocate(linkLists_[i]);
         }
-        free(linkLists_);
+        vsag::deallocate(element_levels_);
+        vsag::deallocate(linkLists_);
         delete visited_list_pool_;
     }
 
@@ -665,21 +667,22 @@ class HierarchicalNSW : public AlgorithmInterface<float> {
         if (new_max_elements < cur_element_count)
             throw std::runtime_error("Cannot resize, max element is less than the current number of elements");
 
-        delete visited_list_pool_;
+        if (visited_list_pool_ != nullptr) {
+            delete visited_list_pool_;
+        }
         visited_list_pool_ = new VisitedListPool(1, new_max_elements);
 
-        element_levels_.resize(new_max_elements);
-
+        element_levels_ = (int*) vsag::reallocate(element_levels_, new_max_elements * sizeof(int));
         std::vector<std::mutex>(new_max_elements).swap(link_list_locks_);
 
         // Reallocate base layer
-        char * data_level0_memory_new = (char *) realloc(data_level0_memory_, new_max_elements * size_data_per_element_);
+        char * data_level0_memory_new = (char *) vsag::reallocate(data_level0_memory_, new_max_elements * size_data_per_element_);
         if (data_level0_memory_new == nullptr)
             throw std::runtime_error("Not enough memory: resizeIndex failed to allocate base layer");
         data_level0_memory_ = data_level0_memory_new;
 
         // Reallocate all other layers
-        char ** linkLists_new = (char **) realloc(linkLists_, sizeof(void *) * new_max_elements);
+        char ** linkLists_new = (char **) vsag::reallocate(linkLists_, sizeof(void *) * new_max_elements);
         if (linkLists_new == nullptr)
             throw std::runtime_error("Not enough memory: resizeIndex failed to allocate other layers");
         linkLists_ = linkLists_new;
@@ -959,7 +962,7 @@ class HierarchicalNSW : public AlgorithmInterface<float> {
 
         if (linkLists_ == nullptr)
             throw std::runtime_error("Not enough memory: loadIndex failed to allocate linklists");
-        element_levels_ = std::vector<int>(max_elements);
+
         revSize_ = 1.0 / mult_;
         ef_ = 10;
         for (size_t i = 0; i < cur_element_count; i++) {
@@ -972,7 +975,7 @@ class HierarchicalNSW : public AlgorithmInterface<float> {
                 linkLists_[i] = nullptr;
             } else {
                 element_levels_[i] = linkListSize / size_links_per_element_;
-                linkLists_[i] = (char *) malloc(linkListSize);
+                linkLists_[i] = (char *) vsag::allocate(linkListSize);
                 if (linkLists_[i] == nullptr)
                     throw std::runtime_error("Not enough memory: loadIndex failed to allocate linklist");
                 // input.read(linkLists_[i], linkListSize);
@@ -1046,10 +1049,7 @@ class HierarchicalNSW : public AlgorithmInterface<float> {
 
         in_stream.seekg(pos, in_stream.beg);
 
-        free(data_level0_memory_);
-        data_level0_memory_ = (char *) malloc(max_elements * size_data_per_element_);
-        if (data_level0_memory_ == nullptr)
-            throw std::runtime_error("Not enough memory: loadIndex failed to allocate level0");
+        resizeIndex(max_elements);
         in_stream.read(data_level0_memory_, cur_element_count * size_data_per_element_);
 
         size_links_per_element_ = maxM_ * sizeof(tableint) + sizeof(linklistsizeint);
@@ -1058,16 +1058,7 @@ class HierarchicalNSW : public AlgorithmInterface<float> {
         std::vector<std::mutex>(max_elements).swap(link_list_locks_);
         std::vector<std::mutex>(MAX_LABEL_OPERATION_LOCKS).swap(label_op_locks_);
 
-        delete visited_list_pool_;
-        visited_list_pool_ = new VisitedListPool(1, max_elements);
 
-        if (linkLists_ != nullptr) {
-            free(linkLists_);
-        }
-        linkLists_ = (char **) malloc(sizeof(void *) * max_elements);
-        if (linkLists_ == nullptr)
-            throw std::runtime_error("Not enough memory: loadIndex failed to allocate linklists");
-        element_levels_ = std::vector<int>(max_elements);
         revSize_ = 1.0 / mult_;
         ef_ = 10;
         for (size_t i = 0; i < cur_element_count; i++) {
@@ -1175,7 +1166,7 @@ class HierarchicalNSW : public AlgorithmInterface<float> {
         linkLists_ = (char **) malloc(sizeof(void *) * max_elements);
         if (linkLists_ == nullptr)
             throw std::runtime_error("Not enough memory: loadIndex failed to allocate linklists");
-        element_levels_ = std::vector<int>(max_elements);
+
         revSize_ = 1.0 / mult_;
         ef_ = 10;
         for (size_t i = 0; i < cur_element_count; i++) {
@@ -1581,7 +1572,7 @@ class HierarchicalNSW : public AlgorithmInterface<float> {
         memcpy(getDataByInternalId(cur_c), data_point, data_size_);
 
         if (curlevel) {
-            linkLists_[cur_c] = (char *) malloc(size_links_per_element_ * curlevel + 1);
+            linkLists_[cur_c] = (char *) vsag::allocate(size_links_per_element_ * curlevel + 1);
             if (linkLists_[cur_c] == nullptr)
                 throw std::runtime_error("Not enough memory: addPoint failed to allocate linklist");
             memset(linkLists_[cur_c], 0, size_links_per_element_ * curlevel + 1);

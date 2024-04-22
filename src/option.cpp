@@ -4,6 +4,12 @@
 
 #include "vsag/option.h"
 
+#include <spdlog/spdlog.h>
+
+#include <utility>
+
+#include "default_allocator.h"
+
 namespace vsag {
 
 // Default value initialization
@@ -32,6 +38,24 @@ Option::GetSectorSize() const {
 void
 Option::SetSectorSize(size_t size) {
     sector_size_.store(size, std::memory_order_release);
+}
+
+bool
+Option::SetAllocator(std::unique_ptr<Allocator> allocator) {
+    if (global_allocator_) {
+        spdlog::warn("global allocator will only be set once.");
+        return false;
+    }
+    global_allocator_ = std::move(allocator);
+    return true;
+}
+
+Allocator*
+Option::GetAllocator() {
+    if (not global_allocator_) {
+        SetAllocator(std::make_unique<DefaultAllocator>());
+    }
+    return global_allocator_.get();
 }
 
 }  // namespace vsag

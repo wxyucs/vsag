@@ -4,6 +4,20 @@
 #include <string.h>
 #include <deque>
 
+namespace vsag {
+
+extern void*
+allocate(size_t size);
+
+extern void
+deallocate(void* p);
+
+extern void*
+reallocate(void* p, size_t size);
+
+} // namespace vsag
+
+
 namespace hnswlib {
 typedef unsigned short int vl_type;
 
@@ -16,7 +30,7 @@ class VisitedList {
     VisitedList(int numelements1) {
         curV = -1;
         numelements = numelements1;
-        mass = new vl_type[numelements];
+        mass = (vl_type *) vsag::allocate(numelements * sizeof(vl_type));
     }
 
     void reset() {
@@ -27,7 +41,7 @@ class VisitedList {
         }
     }
 
-    ~VisitedList() { delete[] mass; }
+    ~VisitedList() { vsag::deallocate(mass); }
 };
 ///////////////////////////////////////////////////////////
 //

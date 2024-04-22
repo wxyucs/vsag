@@ -1,7 +1,10 @@
 #pragma once
 
 #include <atomic>
+#include <memory>
 #include <string>
+
+#include "vsag/allocator.h"
 
 namespace vsag {
 
@@ -19,6 +22,9 @@ private:
     // In a single query, the space size used to store disk vectors.
     std::atomic<size_t> sector_size_;
 
+    // The allocator will only be set once.
+    std::unique_ptr<Allocator> global_allocator_;
+
 public:
     static Option&
     Instance();
@@ -28,6 +34,12 @@ public:
 
     void
     SetSectorSize(size_t size);
+
+    bool
+    SetAllocator(std::unique_ptr<Allocator> allocator);
+
+    Allocator*
+    GetAllocator();
 };
 
 }  // namespace vsag

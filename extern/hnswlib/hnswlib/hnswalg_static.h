@@ -54,7 +54,7 @@ public:
 
     char* data_level0_memory_{nullptr};
     char** linkLists_{nullptr};
-    std::vector<int> element_levels_;  // keeps level of each element
+    int* element_levels_;  // keeps level of each element
 
     size_t data_size_{0};
 
@@ -109,7 +109,6 @@ public:
                           bool allow_replace_deleted = false)
         : link_list_locks_(max_elements),
           label_op_locks_(MAX_LABEL_OPERATION_LOCKS),
-          element_levels_(max_elements),
           allow_replace_deleted_(allow_replace_deleted) {
         max_elements_ = max_elements;
         num_deleted_ = 0;
@@ -122,6 +121,8 @@ public:
         ef_construction_ = std::max(ef_construction, M_);
         ef_ = 10;
 
+        element_levels_ = (int *) vsag::allocate(max_elements * sizeof(int));
+
         level_generator_.seed(random_seed);
         update_probability_generator_.seed(random_seed + 1);
 
@@ -131,7 +132,7 @@ public:
         label_offset_ = size_links_level0_ + data_size_;
         offsetLevel0_ = 0;
 
-        data_level0_memory_ = (char*)malloc(max_elements_ * size_data_per_element_);
+        data_level0_memory_ = (char*) vsag::allocate(max_elements_ * size_data_per_element_);
         if (data_level0_memory_ == nullptr)
             throw std::runtime_error("Not enough memory");
 
@@ -143,7 +144,7 @@ public:
         enterpoint_node_ = -1;
         maxlevel_ = -1;
 
-        linkLists_ = (char**)malloc(sizeof(void*) * max_elements_);
+        linkLists_ = (char**) vsag::allocate(sizeof(void*) * max_elements_);
         if (linkLists_ == nullptr)
             throw std::runtime_error(
                 "Not enough memory: HierarchicalNSW failed to allocate linklists");
@@ -153,16 +154,17 @@ public:
     }
 
     ~StaticHierarchicalNSW() {
-        free(data_level0_memory_);
+        vsag::deallocate(data_level0_memory_);
         for (tableint i = 0; i < cur_element_count; i++) {
             if (element_levels_[i] > 0)
-                free(linkLists_[i]);
+                vsag::deallocate(linkLists_[i]);
         }
-        free(linkLists_);
+        vsag::deallocate(element_levels_);
+        vsag::deallocate(linkLists_);
         delete visited_list_pool_;
         CodeBook().swap(pq_book);
-        delete[] pq_map;
-        delete[] node_cluster_dist_;
+        vsag::deallocate(pq_map);
+        vsag::deallocate(node_cluster_dist_);
     }
 
     struct CompareByFirst {
@@ -874,20 +876,19 @@ public:
         delete visited_list_pool_;
         visited_list_pool_ = new VisitedListPool(1, new_max_elements);
 
-        element_levels_.resize(new_max_elements);
-
+        element_levels_ = (int *) vsag::reallocate(element_levels_, new_max_elements * sizeof(int));
         std::vector<std::mutex>(new_max_elements).swap(link_list_locks_);
 
         // Reallocate base layer
         char* data_level0_memory_new =
-            (char*)realloc(data_level0_memory_, new_max_elements * size_data_per_element_);
+            (char*) vsag::reallocate(data_level0_memory_, new_max_elements * size_data_per_element_);
         if (data_level0_memory_new == nullptr)
             throw std::runtime_error(
                 "Not enough memory: resizeIndex failed to allocate base layer");
         data_level0_memory_ = data_level0_memory_new;
 
         // Reallocate all other layers
-        char** linkLists_new = (char**)realloc(linkLists_, sizeof(void*) * new_max_elements);
+        char** linkLists_new = (char**) vsag::reallocate(linkLists_, sizeof(void*) * new_max_elements);
         if (linkLists_new == nullptr)
             throw std::runtime_error(
                 "Not enough memory: resizeIndex failed to allocate other layers");
@@ -1221,7 +1222,7 @@ public:
 
         if (linkLists_ == nullptr)
             throw std::runtime_error("Not enough memory: loadIndex failed to allocate linklists");
-        element_levels_ = std::vector<int>(max_elements);
+
         revSize_ = 1.0 / mult_;
         ef_ = 10;
         for (size_t i = 0; i < cur_element_count; i++) {
@@ -1234,7 +1235,7 @@ public:
                 linkLists_[i] = nullptr;
             } else {
                 element_levels_[i] = linkListSize / size_links_per_element_;
-                linkLists_[i] = (char*)malloc(linkListSize);
+                linkLists_[i] = (char*) vsag::allocate(linkListSize);
                 if (linkLists_[i] == nullptr)
                     throw std::runtime_error(
                         "Not enough memory: loadIndex failed to allocate linklist");
@@ -1251,7 +1252,7 @@ public:
                     deleted_elements.insert(i);
             }
         }
-        pq_map = new uint8_t[max_elements_ * pq_chunk];
+        pq_map = (uint8_t *) vsag::allocate(max_elements_ * pq_chunk * sizeof(uint8_t));
         read_func(cursor, max_elements_ * pq_chunk * sizeof(uint8_t), (char *) pq_map);
         cursor += max_elements_ * pq_chunk * sizeof(uint8_t);
 
@@ -1265,7 +1266,7 @@ public:
             }
         }
 
-        node_cluster_dist_ = new float[max_elements_];
+        node_cluster_dist_ = (float *) vsag::allocate(max_elements_ * sizeof(float));
         read_func(cursor, max_elements_ * sizeof(float), (char *)node_cluster_dist_);
         cursor += max_elements_ * sizeof(float);
         return;
@@ -1329,11 +1330,7 @@ public:
         /// Optional check end
 
         in_stream.seekg(pos, in_stream.beg);
-
-        free(data_level0_memory_);
-        data_level0_memory_ = (char *) malloc(max_elements * size_data_per_element_);
-        if (data_level0_memory_ == nullptr)
-            throw std::runtime_error("Not enough memory: loadIndex failed to allocate level0");
+        resizeIndex(max_elements);
         in_stream.read(data_level0_memory_, cur_element_count * size_data_per_element_);
 
         size_links_per_element_ = maxM_ * sizeof(tableint) + sizeof(linklistsizeint);
@@ -1342,14 +1339,7 @@ public:
         std::vector<std::mutex>(max_elements).swap(link_list_locks_);
         std::vector<std::mutex>(MAX_LABEL_OPERATION_LOCKS).swap(label_op_locks_);
 
-        delete visited_list_pool_;
-        visited_list_pool_ = new VisitedListPool(1, max_elements);
 
-        free(linkLists_);
-        linkLists_ = (char **) malloc(sizeof(void *) * max_elements);
-        if (linkLists_ == nullptr)
-            throw std::runtime_error("Not enough memory: loadIndex failed to allocate linklists");
-        element_levels_ = std::vector<int>(max_elements);
         revSize_ = 1.0 / mult_;
         ef_ = 10;
         for (size_t i = 0; i < cur_element_count; i++) {
@@ -1374,7 +1364,7 @@ public:
                 if (allow_replace_deleted_) deleted_elements.insert(i);
             }
         }
-        pq_map = new uint8_t[max_elements_ * pq_chunk];
+        pq_map = (uint8_t *) vsag::allocate(max_elements_ * pq_chunk * sizeof(uint8_t));;
         in_stream.read((char *) pq_map, max_elements_ * pq_chunk * sizeof(uint8_t));
 
         pq_book.resize(pq_chunk);
@@ -1386,7 +1376,7 @@ public:
             }
         }
 
-        node_cluster_dist_ = new float[max_elements_];
+        node_cluster_dist_ = (float *) vsag::allocate(max_elements_ * sizeof(float));
         in_stream.read((char *)node_cluster_dist_, max_elements_ * sizeof(float));
 
         return;
@@ -1473,7 +1463,7 @@ public:
         linkLists_ = (char**)malloc(sizeof(void*) * max_elements);
         if (linkLists_ == nullptr)
             throw std::runtime_error("Not enough memory: loadIndex failed to allocate linklists");
-        element_levels_ = std::vector<int>(max_elements);
+
         revSize_ = 1.0 / mult_;
         ef_ = 10;
         for (size_t i = 0; i < cur_element_count; i++) {
@@ -1646,7 +1636,7 @@ public:
         memcpy(getDataByInternalId(cur_c), data_point, data_size_);
 
         if (curlevel) {
-            linkLists_[cur_c] = (char*)malloc(size_links_per_element_ * curlevel + 1);
+            linkLists_[cur_c] = (char*) vsag::allocate(size_links_per_element_ * curlevel + 1);
             if (linkLists_[cur_c] == nullptr)
                 throw std::runtime_error("Not enough memory: addPoint failed to allocate linklist");
             memset(linkLists_[cur_c], 0, size_links_per_element_ * curlevel + 1);
@@ -2008,9 +1998,9 @@ public:
     encode_hnsw_data_with_codebook(int left_range, int right_range) {
         assert(is_trained_pq);
         is_trained_infer = true;
-        pq_map = new uint8_t[max_elements_ * pq_chunk];
+        pq_map = (uint8_t *) vsag::allocate(max_elements_ * pq_chunk * sizeof(uint8_t));
         if (use_node_centroid)
-            node_cluster_dist_ = new float[max_elements_];
+            node_cluster_dist_ = (float *) vsag::allocate(max_elements_ * sizeof(float));
         double ave_encode_loss = 0.0;
 #pragma omp parallel for
         for (int i = left_range; i < right_range; i++) {
@@ -2062,9 +2052,9 @@ public:
         pq_cluster = cluster_size;
         if (cur_element_count < pq_train_bound)
             pq_train_bound = cur_element_count;
-        auto* pq_training_data = new float[pq_train_bound * vec_dim];
+        auto pq_training_data = std::shared_ptr<float[]>(new float[pq_train_bound * vec_dim]);
         for (size_t i = 0; i < pq_train_bound; i++) {
-            memcpy(pq_training_data + i * vec_dim, getDataByInternalId(i), data_size_);
+            memcpy(pq_training_data.get() + i * vec_dim, getDataByInternalId(i), data_size_);
         }
         // generate code book;
         pq_book.resize(pq_chunk);
@@ -2076,11 +2066,9 @@ public:
         }
 
         diskann::generate_pq_pivots(
-            pq_training_data, pq_train_bound, vec_dim, pq_cluster, pq_chunk, 12, pq_book);
+            pq_training_data.get(), pq_train_bound, vec_dim, pq_cluster, pq_chunk, 12, pq_book);
         is_trained_pq = true;
         encode_hnsw_data_with_codebook(0, cur_element_count);
-
-        delete[] pq_training_data;
     }
 
     static __attribute__((always_inline)) inline float

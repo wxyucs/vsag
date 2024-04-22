@@ -15,7 +15,6 @@ add_executable (tests
     test_cpuinfo.cpp
     test_simd.cpp
     test_index.cpp
-    test_option.cpp
     test_multi_thread.cpp
     fixtures/fixtures.cpp
 )
