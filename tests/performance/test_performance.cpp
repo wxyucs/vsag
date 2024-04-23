@@ -204,8 +204,8 @@ public:
             .Float32Vectors(test_dataset->GetTrain().get())
             .Owner(false);
         auto build_start = std::chrono::steady_clock::now();
-        if (not index->Build(base).has_value()) {
-            std::cerr << "build error" << std::endl;
+        if (auto buildindex = index->Build(base); not buildindex.has_value()) {
+            std::cerr << "build error: " << buildindex.error().message << std::endl;
             exit(-1);
         }
         auto build_finish = std::chrono::steady_clock::now();
@@ -225,7 +225,7 @@ public:
 
             auto result = index->KnnSearch(query, 10, search_parameters);
             if (not result.has_value()) {
-                std::cerr << "query error" << std::endl;
+                std::cerr << "query error: " << result.error().message << std::endl;
                 exit(-1);
             }
             results.emplace_back(std::move(result.value()));
@@ -256,12 +256,14 @@ public:
             std::chrono::duration<double>(search_finish - search_start).count();
         output["search_time_in_second"] = search_time_in_second;
         output["correct"] = correct;
+        output["num_base"] = total_base;
+        output["num_query"] = total;
         // key results
         double build_time_in_second =
             std::chrono::duration<double>(build_finish - build_start).count();
         output["build_time_in_second"] = build_time_in_second;
         output["recall"] = recall;
-        output["tps"] = total / build_time_in_second;
+        output["tps"] = total_base / build_time_in_second;
         output["qps"] = total / search_time_in_second;
         return output;
     }
