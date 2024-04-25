@@ -29,6 +29,9 @@ test_knn_recall(const vsag::IndexPtr& index,
                 std::vector<int64_t>& ids,
                 std::vector<float>& vectors);
 
+std::string
+generate_hnsw_build_parameters_string(const std::string& metric_type, int64_t dim);
+
 struct temp_dir {
     temp_dir(const std::string& name) {
         auto epoch_time = std::chrono::system_clock::now().time_since_epoch();

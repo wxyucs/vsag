@@ -1,28 +1,21 @@
 
-# function regression and unittests
-file (GLOB_RECURSE SRC_TESTS "../src/*_test.cpp")
-add_executable (tests
-    ${SRC_TESTS}
-    test_json.cpp
-    test_log.cpp
-    test_hnsw.cpp
-    test_diskann.cpp
-    test_kmeans.cpp
-    test_factory.cpp
-    test_utils.cpp
-    test_bitset.cpp
-    test_random_index.cpp
-    test_cpuinfo.cpp
-    test_simd.cpp
-    test_index.cpp
-    test_multi_thread.cpp
+#  unittests
+file (GLOB_RECURSE UNIT_TESTS "../src/*_test.cpp")
+add_executable (unittests ${UNIT_TESTS})
+target_link_libraries (unittests PRIVATE Catch2::Catch2WithMain vsag simd)
+add_dependencies (unittests spdlog Catch2)
+
+# function tests
+file (GLOB FUNCTION_TESTS "*.cpp")
+add_executable (functests
+    ${FUNCTION_TESTS}
     fixtures/fixtures.cpp
 )
-target_include_directories (tests PRIVATE
+target_include_directories (functests PRIVATE
     ${CMAKE_CURRENT_BINARY_DIR}/spdlog/install/include
     ${HDF5_INCLUDE_DIRS})
-target_link_libraries (tests PRIVATE Catch2::Catch2WithMain vsag simd)
-add_dependencies (tests spdlog Catch2)
+target_link_libraries (functests PRIVATE Catch2::Catch2WithMain vsag simd)
+add_dependencies (functests spdlog Catch2)
 
 # test performance tool
 add_executable (test_performance performance/test_performance.cpp)

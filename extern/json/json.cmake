@@ -1,5 +1,4 @@
 
-
 include(FetchContent)
 
 FetchContent_Declare(
@@ -9,5 +8,4 @@ FetchContent_Declare(
 )
 
 FetchContent_MakeAvailable(nlohmann_json)
-
-include_directories(${nlohmann_json_SOURCE_DIR}/single_include)
+include_directories(${nlohmann_json_SOURCE_DIR}/include)

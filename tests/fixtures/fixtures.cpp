@@ -1,19 +1,40 @@
 
 #include "fixtures.h"
 
+#include <cstdint>
+#include <string>
+
+#include "fmt/format.h"
 #include "vsag/dataset.h"
 
 namespace fixtures {
 
+void
+normalize(float* input_vector, int64_t dim) {
+    float magnitude = 0.0f;
+    for (int64_t i = 0; i < dim; ++i) {
+        magnitude += input_vector[i] * input_vector[i];
+    }
+    magnitude = std::sqrt(magnitude);
+
+    for (int64_t i = 0; i < dim; ++i) {
+        input_vector[i] = input_vector[i] / magnitude;
+    }
+}
+
 std::vector<float>
-generate_vectors(int64_t num_elements, int64_t dim) {
+generate_vectors(int64_t num_vectors, int64_t dim) {
     std::mt19937 rng;
     rng.seed(47);
     std::uniform_real_distribution<> distrib_real;
-    std::vector<float> vectors(dim * num_elements);
-    for (int64_t i = 0; i < dim * num_elements; ++i) {
+    std::vector<float> vectors(dim * num_vectors);
+    for (int64_t i = 0; i < dim * num_vectors; ++i) {
         vectors[i] = distrib_real(rng);
     }
+    for (int64_t i = 0; i < num_vectors; ++i) {
+        normalize(vectors.data() + i * dim, dim);
+    }
+
     return vectors;
 }
 
@@ -73,6 +94,23 @@ test_knn_recall(const vsag::IndexPtr& index,
 
     float recall = 1.0 * correct / num_vectors;
     return recall;
+}
+
+std::string
+generate_hnsw_build_parameters_string(const std::string& metric_type, int64_t dim) {
+    auto parameter_temp = R"(
+    {{
+        "dtype": "float32",
+        "metric_type": "{}",
+        "dim": {},
+        "hnsw": {{
+            "max_degree": 64,
+            "ef_construction": 500
+        }}
+    }}
+    )";
+    auto build_parameters = fmt::format(parameter_temp, metric_type, dim);
+    return build_parameters;
 }
 
 }  // namespace fixtures

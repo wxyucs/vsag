@@ -6,6 +6,7 @@
 #include <random>
 
 #include "vsag/vsag.h"
+
 namespace vsag {
 
 typedef float (*DistanceFunc)(const void* pVect1, const void* pVect2, const void* qty_ptr);

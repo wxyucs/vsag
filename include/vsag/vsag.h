@@ -12,6 +12,14 @@ namespace vsag {
 extern std::string
 version();
 
+/**
+  * Init the vsag library
+  * 
+  * @return true always
+  */
+extern bool
+init();
+
 }  // namespace vsag
 
 #include "binaryset.h"
