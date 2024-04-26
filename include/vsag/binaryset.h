@@ -41,6 +41,11 @@ public:
         return keys;
     }
 
+    bool
+    Contains(const std::string& key) const {
+        return data_.find(key) != data_.end();
+    }
+
 private:
     std::unordered_map<std::string, Binary> data_;
 };

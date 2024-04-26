@@ -286,6 +286,59 @@ TEST_CASE("serialize/deserialize hnswstatic with file stream", "[ft][index]") {
     }
 }
 
+TEST_CASE("search on a deserialized empty index", "[ft][index]") {
+    spdlog::set_level(spdlog::level::debug);
+
+    int64_t num_vectors = 10000;
+    int64_t dim = 64;
+    auto index_name = GENERATE("hnsw", "diskann");
+    auto metric_type = GENERATE("l2", "ip");
+
+    auto index =
+        vsag::Factory::CreateIndex(
+            index_name, vsag::generate_build_parameters(metric_type, num_vectors, dim).value())
+            .value();
+    auto serializeindex = index->Serialize();
+    REQUIRE(serializeindex.has_value());
+
+    auto bs = serializeindex.value();
+
+    index = nullptr;
+    index = vsag::Factory::CreateIndex(
+                index_name, vsag::generate_build_parameters(metric_type, num_vectors, dim).value())
+                .value();
+    auto deserializeindex = index->Deserialize(bs);
+    REQUIRE(deserializeindex.has_value());
+
+    auto [ids, vectors] = fixtures::generate_ids_and_vectors(1, dim);
+    vsag::Dataset one_vector;
+    one_vector.NumElements(1).Dim(dim).Ids(ids.data()).Float32Vectors(vectors.data()).Owner(false);
+
+    auto search_parameters = R"(
+    {
+        "hnsw": {
+            "ef_search": 100
+        },
+        "diskann": {
+            "ef_search": 100, 
+            "beam_search": 4, 
+            "io_limit": 100,
+            "use_reorder": false
+        }
+    }
+    )";
+
+    auto knnsearch = index->KnnSearch(one_vector, 10, search_parameters);
+    REQUIRE(knnsearch.has_value());
+    REQUIRE(knnsearch.value().GetNumElements() == 1);
+    REQUIRE(knnsearch.value().GetDim() == 0);
+
+    auto rangesearch = index->KnnSearch(one_vector, 10, search_parameters);
+    REQUIRE(rangesearch.has_value());
+    REQUIRE(rangesearch.value().GetNumElements() == 1);
+    REQUIRE(rangesearch.value().GetDim() == 0);
+}
+
 /////////////////////////////////////////////////////////
 // utility functions
 /////////////////////////////////////////////////////////

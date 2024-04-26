@@ -14,6 +14,7 @@
 
 #include "../common.h"
 #include "../utils.h"
+#include "vsag/binaryset.h"
 #include "vsag/errors.h"
 #include "vsag/index.h"
 #include "vsag/readerset.h"
@@ -127,12 +128,16 @@ private:
     tl::expected<void, Error>
     deserialize(std::istream& in_stream, int64_t length);
 
+    BinarySet
+    empty_binaryset() const;
+
 private:
     std::shared_ptr<hnswlib::AlgorithmInterface<float>> alg_hnsw;
     std::shared_ptr<hnswlib::SpaceInterface> space;
 
     int64_t dim_;
     bool static_ = false;
+    bool empty_index_ = false;
 
     mutable std::mutex stats_mutex_;
     mutable std::map<std::string, WindowResultQueue> result_queues_;

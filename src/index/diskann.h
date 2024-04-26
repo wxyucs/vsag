@@ -154,6 +154,9 @@ private:
     tl::expected<void, Error>
     load_disk_index(const BinarySet& binary_set);
 
+    BinarySet
+    empty_binaryset() const;
+
 private:
     std::shared_ptr<AlignedFileReader> reader_;
     std::shared_ptr<diskann::PQFlashIndex<float, int64_t>> index_;
@@ -183,6 +186,7 @@ private:
     bool use_opq_ = false;
     bool preload_;
     IndexStatus status_;
+    bool empty_index_ = false;
 
 private:  // Request Statistics
     mutable std::mutex stats_mutex_;

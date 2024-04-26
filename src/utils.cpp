@@ -1,6 +1,7 @@
 #include "./utils.h"
 
 #include <cstdint>
+#include <unordered_set>
 
 namespace vsag {
 

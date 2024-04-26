@@ -21,6 +21,7 @@ constexpr const char* SIMPLEFLAT_IDS = "simpleflat_ids";
 constexpr const char* METRIC_L2 = "l2";
 constexpr const char* METRIC_IP = "ip";
 constexpr const char* DATATYPE_FLOAT32 = "float32";
+constexpr const char* BLANK_INDEX = "blank_index";
 
 // parameters
 constexpr const char* PARAMETER_DTYPE = "dtype";

@@ -332,8 +332,7 @@ TEST_CASE("serialize empty index", "[diskann][ut]") {
                                                  false);
 
     auto result = index->Serialize();
-    REQUIRE_FALSE(result.has_value());
-    REQUIRE(result.error().type == vsag::ErrorType::INDEX_EMPTY);
+    REQUIRE(result.has_value());
 }
 
 TEST_CASE("deserialize on not empty index", "[diskann][ut]") {

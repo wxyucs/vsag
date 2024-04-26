@@ -245,6 +245,14 @@ DiskANN::knn_search(const Dataset& query,
                     const std::string& parameters,
                     BitsetPtr invalid) const {
     SlowTaskTimer t("diskann knnsearch", 100);
+
+    // cannot perform search on empty index
+    if (empty_index_) {
+        Dataset ret;
+        ret.Dim(0).NumElements(1);
+        return ret;
+    }
+
     try {
         if (!index_) {
             LOG_ERROR_AND_RETURNS(ErrorType::INDEX_EMPTY,
@@ -372,6 +380,14 @@ DiskANN::range_search(const Dataset& query,
                       const std::string& parameters,
                       BitsetPtr invalid) const {
     SlowTaskTimer t("diskann rangesearch", 100);
+
+    // cannot perform search on empty index
+    if (empty_index_) {
+        Dataset ret;
+        ret.Dim(0).NumElements(1);
+        return ret;
+    }
+
     try {
         if (!index_) {
             LOG_ERROR_AND_RETURNS(
@@ -482,12 +498,31 @@ DiskANN::range_search(const Dataset& query,
     }
 }
 
+BinarySet
+DiskANN::empty_binaryset() const {
+    // version 0 pairs:
+    // - hnsw_blank: b"EMPTY_DISKANN"
+    const std::string empty_str = "EMPTY_DISKANN";
+    size_t num_bytes = empty_str.length();
+    std::shared_ptr<int8_t[]> bin(new int8_t[num_bytes]);
+    memcpy(bin.get(), empty_str.c_str(), empty_str.length());
+    Binary b{
+        .data = bin,
+        .size = num_bytes,
+    };
+    BinarySet bs;
+    bs.Set(BLANK_INDEX, b);
+
+    return bs;
+}
+
 tl::expected<BinarySet, Error>
 DiskANN::serialize() const {
     if (status_ == IndexStatus::EMPTY) {
-        LOG_ERROR_AND_RETURNS(ErrorType::INDEX_EMPTY,
-                              fmt::format("failed to serialize: {} index is empty", INDEX_DISKANN))
+        // return a special binaryset means empty
+        return empty_binaryset();
     }
+
     SlowTaskTimer t("diskann serialize");
     try {
         BinarySet bs;
@@ -512,6 +547,13 @@ DiskANN::deserialize(const BinarySet& binary_set) {
         LOG_ERROR_AND_RETURNS(ErrorType::INDEX_NOT_EMPTY,
                               "failed to deserialize: index is not empty")
     }
+
+    // check if binaryset is a empty index
+    if (binary_set.Contains(BLANK_INDEX)) {
+        empty_index_ = true;
+        return {};
+    }
+
     convert_binary_to_stream(binary_set.Get(DISKANN_LAYOUT_FILE), disk_layout_stream_);
     auto graph = binary_set.Get(DISKANN_GRAPH);
     if (preload_) {
@@ -540,6 +582,12 @@ DiskANN::deserialize(const ReaderSet& reader_set) {
     if (this->index_) {
         LOG_ERROR_AND_RETURNS(ErrorType::INDEX_NOT_EMPTY,
                               fmt::format("failed to deserialize: {} is not empty", INDEX_DISKANN));
+    }
+
+    // check if readerset is a empty index
+    if (reader_set.Contains(BLANK_INDEX)) {
+        empty_index_ = true;
+        return {};
     }
 
     std::stringstream pq_pivots_stream, disk_pq_compressed_vectors, graph, tag_stream;
@@ -869,4 +917,5 @@ DiskANN::load_disk_index(const BinarySet& binary_set) {
     }
     return tl::expected<void, Error>();
 }
+
 }  // namespace vsag

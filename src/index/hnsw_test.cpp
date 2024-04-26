@@ -305,8 +305,8 @@ TEST_CASE("serialize empty index", "[hnsw][ut]") {
 
     SECTION("serialize to binaryset") {
         auto result = index->Serialize();
-        REQUIRE_FALSE(result.has_value());
-        REQUIRE(result.error().type == vsag::ErrorType::INDEX_EMPTY);
+        REQUIRE(result.has_value());
+        REQUIRE(result.value().Contains(vsag::BLANK_INDEX));
     }
 
     SECTION("serialize to fstream") {

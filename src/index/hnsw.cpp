@@ -178,6 +178,13 @@ HNSW::knn_search(const Dataset& query,
                  BitsetPtr invalid) const {
     SlowTaskTimer t("hnsw knnsearch", 10);
 
+    // cannot perform search on empty index
+    if (empty_index_) {
+        Dataset ret;
+        ret.Dim(0).NumElements(1);
+        return ret;
+    }
+
     try {
         // check query vector
         CHECK_ARGUMENT(query.GetNumElements() == 1, "query dataset should contain 1 vector only");
@@ -249,6 +256,13 @@ HNSW::range_search(const Dataset& query,
                    BitsetPtr invalid) const {
     SlowTaskTimer t("hnsw rangesearch", 10);
 
+    // cannot perform search on empty index
+    if (empty_index_) {
+        Dataset ret;
+        ret.Dim(0).NumElements(1);
+        return ret;
+    }
+
     if (static_) {
         LOG_ERROR_AND_RETURNS(ErrorType::UNSUPPORTED_INDEX_OPERATION,
                               "static index does not support rangesearch");
@@ -317,11 +331,31 @@ HNSW::range_search(const Dataset& query,
     }
 }
 
+BinarySet
+HNSW::empty_binaryset() const {
+    // version 0 pairs:
+    // - hnsw_blank: b"EMPTY_HNSW"
+    const std::string empty_str = "EMPTY_HNSW";
+    size_t num_bytes = empty_str.length();
+    std::shared_ptr<int8_t[]> bin(new int8_t[num_bytes]);
+    memcpy(bin.get(), empty_str.c_str(), empty_str.length());
+    Binary b{
+        .data = bin,
+        .size = num_bytes,
+    };
+    BinarySet bs;
+    bs.Set(BLANK_INDEX, b);
+
+    return bs;
+}
+
 tl::expected<BinarySet, Error>
 HNSW::serialize() const {
     if (GetNumElements() == 0) {
-        LOG_ERROR_AND_RETURNS(ErrorType::INDEX_EMPTY, "failed to serialize: hnsw index is empty");
+        // return a special binaryset means empty
+        return empty_binaryset();
     }
+
     SlowTaskTimer t("hnsw serialize");
     size_t num_bytes = alg_hnsw->calcSerializeSize();
     try {
@@ -345,7 +379,16 @@ tl::expected<void, Error>
 HNSW::serialize(std::ostream& out_stream) {
     if (GetNumElements() == 0) {
         LOG_ERROR_AND_RETURNS(ErrorType::INDEX_EMPTY, "failed to serialize: hnsw index is empty");
+
+        // FIXME(wxyu): cannot support serialize empty index by stream
+        // auto bs = empty_binaryset();
+        // for (const auto& key : bs.GetKeys()) {
+        //     auto b = bs.Get(key);
+        //     out_stream.write((char*)b.data.get(), b.size);
+        // }
+        // return {};
     }
+
     SlowTaskTimer t("hnsw serialize");
 
     // no expected exception
@@ -360,6 +403,12 @@ HNSW::deserialize(const BinarySet& binary_set) {
     if (this->alg_hnsw->getCurrentElementCount() > 0) {
         LOG_ERROR_AND_RETURNS(ErrorType::INDEX_NOT_EMPTY,
                               "failed to deserialize: index is not empty");
+    }
+
+    // check if binaryset is a empty index
+    if (binary_set.Contains(BLANK_INDEX)) {
+        empty_index_ = true;
+        return {};
     }
 
     Binary b = binary_set.Get(HNSW_DATA);
@@ -382,6 +431,12 @@ HNSW::deserialize(const ReaderSet& reader_set) {
     if (this->alg_hnsw->getCurrentElementCount() > 0) {
         LOG_ERROR_AND_RETURNS(ErrorType::INDEX_NOT_EMPTY,
                               "failed to deserialize: index is not empty");
+    }
+
+    // check if readerset is a empty index
+    if (reader_set.Contains(BLANK_INDEX)) {
+        empty_index_ = true;
+        return {};
     }
 
     auto func = [&](uint64_t offset, uint64_t len, void* dest) -> void {
