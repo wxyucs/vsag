@@ -160,13 +160,14 @@ DiskANN::DiskANN(diskann::Metric metric,
 tl::expected<std::vector<int64_t>, Error>
 DiskANN::build(const Dataset& base) {
     try {
+        if (base.GetNumElements() == 0) {
+            empty_index_ = true;
+            return std::vector<int64_t>();
+        }
+
         auto data_dim = base.GetDim();
         CHECK_ARGUMENT(data_dim == dim_,
                        fmt::format("base.dim({}) must be equal to index.dim({})", data_dim, dim_));
-
-        CHECK_ARGUMENT(
-            base.GetNumElements() >= DATA_LIMIT,
-            "number of elements must be greater equal than " + std::to_string(DATA_LIMIT));
 
         if (this->index_) {
             LOG_ERROR_AND_RETURNS(ErrorType::BUILD_TWICE, "failed to build index: build twice");

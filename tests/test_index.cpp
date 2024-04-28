@@ -298,6 +298,10 @@ TEST_CASE("search on a deserialized empty index", "[ft][index]") {
         vsag::Factory::CreateIndex(
             index_name, vsag::generate_build_parameters(metric_type, num_vectors, dim).value())
             .value();
+
+    vsag::Dataset base;
+    REQUIRE(index->Build(base).has_value());
+
     auto serializeindex = index->Serialize();
     REQUIRE(serializeindex.has_value());
 
@@ -333,7 +337,7 @@ TEST_CASE("search on a deserialized empty index", "[ft][index]") {
     REQUIRE(knnsearch.value().GetNumElements() == 1);
     REQUIRE(knnsearch.value().GetDim() == 0);
 
-    auto rangesearch = index->KnnSearch(one_vector, 10, search_parameters);
+    auto rangesearch = index->RangeSearch(one_vector, 10, search_parameters);
     REQUIRE(rangesearch.has_value());
     REQUIRE(rangesearch.value().GetNumElements() == 1);
     REQUIRE(rangesearch.value().GetDim() == 0);

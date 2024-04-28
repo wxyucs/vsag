@@ -61,14 +61,6 @@ TEST_CASE("build", "[diskann][ut]") {
         REQUIRE(result.error().type == vsag::ErrorType::INVALID_ARGUMENT);
     }
 
-    SECTION("number of elements less than 2") {
-        vsag::Dataset dataset;
-        dataset.Dim(dim).NumElements(1).Ids(ids.data()).Float32Vectors(vectors.data()).Owner(false);
-        auto result = index->Build(dataset);
-        REQUIRE_FALSE(result.has_value());
-        REQUIRE(result.error().type == vsag::ErrorType::INVALID_ARGUMENT);
-    }
-
     SECTION("build twice") {
         vsag::Dataset dataset;
         dataset.Dim(dim)
@@ -82,6 +74,54 @@ TEST_CASE("build", "[diskann][ut]") {
         REQUIRE_FALSE(result.has_value());
         REQUIRE(result.error().type == vsag::ErrorType::BUILD_TWICE);
     }
+}
+
+TEST_CASE("build & search empty index", "[diskann][ut]") {
+    spdlog::set_level(spdlog::level::debug);
+    int64_t dim = 128;
+    int64_t ef_construction = 100;
+    int64_t max_degree = 12;
+    float pq_sample_rate = 1.0f;
+    size_t pq_dims = 16;
+    auto index = std::make_shared<vsag::DiskANN>(diskann::Metric::L2,
+                                                 "float32",
+                                                 ef_construction,
+                                                 max_degree,
+                                                 pq_sample_rate,
+                                                 pq_dims,
+                                                 dim,
+                                                 false,
+                                                 false,
+                                                 false);
+
+    vsag::Dataset dataset;
+    dataset.NumElements(0);
+    auto result = index->Build(dataset);
+    REQUIRE(result.has_value());
+
+    auto [ids, vectors] = generate_ids_and_vectors(1, dim);
+    vsag::Dataset one_vector;
+    one_vector.NumElements(1).Dim(dim).Ids(ids.data()).Float32Vectors(vectors.data()).Owner(false);
+    auto search_parameters = R"(
+    {
+        "diskann": {
+            "ef_search": 100, 
+            "beam_search": 4, 
+            "io_limit": 100,
+            "use_reorder": false
+        }
+    }
+    )";
+
+    auto knnsearch = index->KnnSearch(one_vector, 10, search_parameters);
+    REQUIRE(knnsearch.has_value());
+    REQUIRE(knnsearch.value().GetNumElements() == 1);
+    REQUIRE(knnsearch.value().GetDim() == 0);
+
+    auto rangesearch = index->RangeSearch(one_vector, 10, search_parameters);
+    REQUIRE(rangesearch.has_value());
+    REQUIRE(rangesearch.value().GetNumElements() == 1);
+    REQUIRE(rangesearch.value().GetDim() == 0);
 }
 
 TEST_CASE("knn_search", "[diskann][ut]") {

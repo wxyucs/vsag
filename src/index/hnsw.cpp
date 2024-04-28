@@ -82,6 +82,11 @@ HNSW::HNSW(std::shared_ptr<hnswlib::SpaceInterface> space_interface,
 tl::expected<std::vector<int64_t>, Error>
 HNSW::build(const Dataset& base) {
     try {
+        if (base.GetNumElements() == 0) {
+            empty_index_ = true;
+            return std::vector<int64_t>();
+        }
+
         spdlog::debug("index.dim={}, base.dim={}", this->dim_, base.GetDim());
 
         auto base_dim = base.GetDim();
