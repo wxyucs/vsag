@@ -78,4 +78,5 @@ knn_search_recall(const float* base,
     }
     return 0;
 }
+
 }  // namespace vsag

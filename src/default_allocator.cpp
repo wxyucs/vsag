@@ -27,6 +27,7 @@ void*
 DefaultAllocator::Allocate(size_t size) {
     return malloc(size);
 }
+
 void
 DefaultAllocator::Deallocate(void* p) {
     free(p);

@@ -4,6 +4,7 @@
 #include <string>
 
 #include "vsag/allocator.h"
+
 namespace vsag {
 
 class DefaultAllocator : public Allocator {

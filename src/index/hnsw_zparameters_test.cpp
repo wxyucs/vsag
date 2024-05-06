@@ -3,7 +3,7 @@
 
 #include <catch2/catch_test_macros.hpp>
 
-TEST_CASE("create hnsw with invalid metric type", "[ut]") {
+TEST_CASE("create hnsw with invalid metric type", "[ut][hnsw]") {
     auto json_string = R"(
         {
             "dtype": "float32",

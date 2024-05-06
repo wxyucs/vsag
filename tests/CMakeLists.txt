@@ -1,7 +1,10 @@
 
 #  unittests
 file (GLOB_RECURSE UNIT_TESTS "../src/*_test.cpp")
-add_executable (unittests ${UNIT_TESTS})
+add_executable (unittests ${UNIT_TESTS}
+    fixtures/fixtures.cpp
+)
+target_include_directories (unittests PRIVATE "./fixtures")
 target_link_libraries (unittests PRIVATE Catch2::Catch2WithMain vsag simd)
 add_dependencies (unittests spdlog Catch2)
 

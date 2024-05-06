@@ -6,26 +6,8 @@
 #include <vector>
 
 #include "distance.h"
+#include "fixtures.h"
 #include "vsag/errors.h"
-
-namespace {
-std::tuple<std::vector<int64_t>, std::vector<float>>
-generate_ids_and_vectors(int64_t num_elements, int64_t dim) {
-    // Generate random data
-    std::mt19937 rng;
-    rng.seed(47);
-    std::uniform_real_distribution<> distrib_real;
-    std::vector<int64_t> ids(num_elements);
-    std::vector<float> vectors(dim * num_elements);
-    for (int64_t i = 0; i < num_elements; ++i) {
-        ids[i] = i;
-    }
-    for (int64_t i = 0; i < dim * num_elements; ++i) {
-        vectors[i] = distrib_real(rng);
-    }
-    return {ids, vectors};
-}
-};  // namespace
 
 TEST_CASE("build", "[diskann][ut]") {
     spdlog::set_level(spdlog::level::debug);
@@ -46,7 +28,7 @@ TEST_CASE("build", "[diskann][ut]") {
                                                  false);
 
     int64_t num_elements = 10;
-    auto [ids, vectors] = generate_ids_and_vectors(num_elements, dim);
+    auto [ids, vectors] = fixtures::generate_ids_and_vectors(num_elements, dim);
 
     SECTION("build with incorrect dim") {
         int64_t incorrect_dim = dim - 1;
@@ -99,7 +81,7 @@ TEST_CASE("build & search empty index", "[diskann][ut]") {
     auto result = index->Build(dataset);
     REQUIRE(result.has_value());
 
-    auto [ids, vectors] = generate_ids_and_vectors(1, dim);
+    auto [ids, vectors] = fixtures::generate_ids_and_vectors(1, dim);
     vsag::Dataset one_vector;
     one_vector.NumElements(1).Dim(dim).Ids(ids.data()).Float32Vectors(vectors.data()).Owner(false);
     auto search_parameters = R"(
@@ -143,7 +125,7 @@ TEST_CASE("knn_search", "[diskann][ut]") {
                                                  false);
 
     int64_t num_elements = 100;
-    auto [ids, vectors] = generate_ids_and_vectors(num_elements, dim);
+    auto [ids, vectors] = fixtures::generate_ids_and_vectors(num_elements, dim);
 
     vsag::Dataset dataset;
     dataset.Dim(dim)
@@ -252,7 +234,7 @@ TEST_CASE("range_search", "[diskann][ut]") {
                                                  false);
 
     int64_t num_elements = 100;
-    auto [ids, vectors] = generate_ids_and_vectors(num_elements, dim);
+    auto [ids, vectors] = fixtures::generate_ids_and_vectors(num_elements, dim);
 
     vsag::Dataset dataset;
     dataset.Dim(dim)
@@ -394,7 +376,7 @@ TEST_CASE("deserialize on not empty index", "[diskann][ut]") {
                                                  false);
 
     int64_t num_elements = 100;
-    auto [ids, vectors] = generate_ids_and_vectors(num_elements, dim);
+    auto [ids, vectors] = fixtures::generate_ids_and_vectors(num_elements, dim);
 
     vsag::Dataset dataset;
     dataset.Dim(dim)
@@ -422,7 +404,7 @@ TEST_CASE("split building process", "[diskann][ut]") {
     size_t pq_dims = 16;
 
     int64_t num_elements = 1000;
-    auto [ids, vectors] = generate_ids_and_vectors(num_elements, dim);
+    auto [ids, vectors] = fixtures::generate_ids_and_vectors(num_elements, dim);
 
     vsag::Dataset dataset;
     dataset.Dim(dim)

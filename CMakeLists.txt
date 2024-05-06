@@ -118,6 +118,10 @@ install (DIRECTORY include/
 	 DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}")
 install (TARGETS vsag
 	 LIBRARY DESTINATION "${CMAKE_INSTALL_LIBDIR}")
+install (TARGETS vsag_static
+	 LIBRARY DESTINATION "${CMAKE_INSTALL_LIBDIR}")
+install (TARGETS test_performance
+	 LIBRARY DESTINATION "${CMAKE_INSTALL_BINDIR}")
 
 # version
 find_package (Git)

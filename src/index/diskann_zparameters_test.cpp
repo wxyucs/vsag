@@ -3,7 +3,7 @@
 
 #include <catch2/catch_test_macros.hpp>
 
-TEST_CASE("create diskann with invalid metric type", "[ut]") {
+TEST_CASE("create diskann with invalid metric type", "[ut][diskann]") {
     auto json_string = R"(
         {
             "dtype": "float32",

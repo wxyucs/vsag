@@ -9,6 +9,7 @@ ifdef CASE
   UT_FILTER = $(CASE)
 endif
 
+
 .PHONY: help
 help:                   ## Show the help.
 	@echo "Usage: make <target>"
@@ -73,5 +74,5 @@ clean:                  ## Clear build/ directory.
 	rm -rf build/*
 
 .PHONY: install
-install: debug          ## Build and install the debug version of vsag.
+install: release          ## Build and install the release version of vsag.
 	cmake --install build/
