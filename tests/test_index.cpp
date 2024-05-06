@@ -214,26 +214,27 @@ TEST_CASE("serialize/deserialize hnswstatic with file stream", "[ft][index]") {
     int64_t num_vectors = 10000;
     int64_t dim = 64;
     auto index_name = GENERATE("hnsw");
-    auto metric_type = GENERATE("l2", "ip");
+    auto metric_type = GENERATE("l2");  // hnswstatic does not support ip
 
-    auto build_parameters = R"(
-        {
+    auto build_parameters = fmt::format(R"(
+        {{
             "dtype": "float32",
-            "metric_type": "l2",
+            "metric_type": "{}",
             "dim": 64,
-            "hnsw": {
+            "hnsw": {{
                 "max_degree": 16,
                 "ef_construction": 100,
                 "use_static": true
-            },
-            "diskann": {
+            }},
+            "diskann": {{
                 "max_degree": 16,
                 "ef_construction": 200,
                 "pq_dims": 32,
                 "pq_sample_rate": 0.5
-            }
-        }
-        )";
+            }}
+        }}
+        )",
+                                        metric_type);
 
     auto index = vsag::Factory::CreateIndex(index_name, build_parameters).value();
 
@@ -341,6 +342,61 @@ TEST_CASE("search on a deserialized empty index", "[ft][index]") {
     REQUIRE(rangesearch.has_value());
     REQUIRE(rangesearch.value().GetNumElements() == 1);
     REQUIRE(rangesearch.value().GetDim() == 0);
+}
+
+TEST_CASE("remove vectors from the index", "[ft][index]") {
+    spdlog::set_level(spdlog::level::debug);
+    int64_t num_vectors = 1000;
+    int64_t dim = 64;
+    auto index_name = GENERATE("hnsw", "diskann");
+    auto metric_type = GENERATE("l2", "ip");
+
+    auto [ids, vectors] = fixtures::generate_ids_and_vectors(num_vectors, dim);
+    auto index = fixtures::generate_index(index_name, metric_type, num_vectors, dim, ids, vectors);
+
+    auto search_parameters = R"(
+    {
+        "hnsw": {
+            "ef_search": 100
+        },
+        "diskann": {
+            "ef_search": 100,
+            "beam_search": 4,
+            "io_limit": 100,
+            "use_reorder": false
+        }
+    }
+    )";
+
+    if (index_name == "hnsw") {  // index that supports remove
+        for (int i = 0; i < num_vectors / 2; ++i) {
+            auto result = index->Remove(i);
+            REQUIRE(result.has_value());
+            REQUIRE(result.value());
+        }
+        auto wrong_result = index->Remove(-1);
+        REQUIRE(wrong_result.has_value());
+        REQUIRE_FALSE(wrong_result.value());
+
+        REQUIRE(index->GetNumElements() == num_vectors / 2);
+
+        for (int i = 0; i < num_vectors; i++) {
+            vsag::Dataset query;
+            query.NumElements(1).Dim(dim).Float32Vectors(vectors.data() + i * dim).Owner(false);
+
+            int64_t k = 10;
+
+            auto result = index->KnnSearch(query, k, search_parameters);
+            REQUIRE(result.has_value());
+            if (i < num_vectors / 2) {
+                REQUIRE(result->GetIds()[0] != ids[i]);
+            } else {
+                REQUIRE(result->GetIds()[0] == ids[i]);
+            }
+        }
+    } else {  // index that does not supports remove
+        REQUIRE_THROWS(index->Remove(-1));
+    }
 }
 
 /////////////////////////////////////////////////////////

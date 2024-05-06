@@ -284,4 +284,8 @@ TEST_CASE("static hnsw", "[ut][hnsw]") {
 
     REQUIRE_THROWS(std::make_shared<vsag::HNSW>(
         std::make_shared<hnswlib::L2Space>(127), max_degree, ef_construction, true));
+
+    auto remove_result = index->Remove(ids[0]);
+    REQUIRE_FALSE(remove_result.has_value());
+    REQUIRE(remove_result.error().type == vsag::ErrorType::UNSUPPORTED_INDEX_OPERATION);
 }

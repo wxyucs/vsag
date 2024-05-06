@@ -46,14 +46,6 @@ private:
     BitsetPtr bitset_;
 };
 
-inline int64_t
-random_integer(int64_t lower_bound, int64_t upper_bound) {
-    std::random_device rd;
-    std::mt19937 generator(rd());
-    std::uniform_int_distribution<int> distribution(lower_bound, upper_bound);
-    return distribution(generator);
-}
-
 HNSW::HNSW(std::shared_ptr<hnswlib::SpaceInterface> space_interface,
            int M,
            int ef_construction,
@@ -488,6 +480,23 @@ HNSW::GetStats() const {
         }
     }
     return j.dump();
+}
+
+tl::expected<bool, Error>
+HNSW::remove(int64_t id) {
+    if (static_) {
+        LOG_ERROR_AND_RETURNS(ErrorType::UNSUPPORTED_INDEX_OPERATION,
+                              "static hnsw does not support remove");
+    }
+
+    try {
+        std::reinterpret_pointer_cast<hnswlib::HierarchicalNSW>(alg_hnsw)->markDelete(id);
+    } catch (const std::runtime_error& e) {
+        spdlog::warn("mark delete error for id {}: {}", id, e.what());
+        return false;
+    }
+
+    return true;
 }
 
 }  // namespace vsag

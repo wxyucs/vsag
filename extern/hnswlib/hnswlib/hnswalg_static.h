@@ -232,7 +232,7 @@ public:
     }
 
     size_t
-    getDeletedCount() {
+    getDeletedCount() override {
         return num_deleted_;
     }
 

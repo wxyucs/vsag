@@ -7,6 +7,7 @@
 #include <numeric>
 #include <random>
 
+#include "catch2/generators/catch_generators.hpp"
 #include "vsag/errors.h"
 #include "vsag/vsag.h"
 

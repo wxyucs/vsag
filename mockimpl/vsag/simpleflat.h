@@ -17,6 +17,9 @@ public:
     virtual tl::expected<std::vector<int64_t>, Error>
     Add(const Dataset& base) override;
 
+    tl::expected<bool, Error>
+    Remove(int64_t id) override;
+
     tl::expected<Dataset, Error>
     KnnSearch(const Dataset& query,
               int64_t k,

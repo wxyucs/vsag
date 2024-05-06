@@ -190,6 +190,8 @@ class AlgorithmInterface {
 
     virtual size_t getCurrentElementCount() = 0;
 
+    virtual size_t getDeletedCount() = 0;
+
     virtual ~AlgorithmInterface(){
     }
 };

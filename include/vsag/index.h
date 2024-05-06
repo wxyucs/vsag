@@ -43,6 +43,17 @@ public:
     }
 
     /**
+      * Remove the vector corresponding to the given ID from the index
+      *
+      * @param id of the vector that need to be removed from the index
+      * @return result indicates whether the remove operation is successful.
+      */
+    virtual tl::expected<bool, Error>
+    Remove(int64_t id) {
+        throw std::runtime_error("Index not support delete vector");
+    }
+
+    /**
       * Performing single KNN search on index
       * 
       * @param query should contains dim, num_elements and vectors

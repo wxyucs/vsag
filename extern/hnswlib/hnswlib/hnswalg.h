@@ -212,7 +212,7 @@ class HierarchicalNSW : public AlgorithmInterface<float> {
         return cur_element_count;
     }
 
-    size_t getDeletedCount() {
+    size_t getDeletedCount() override {
         return num_deleted_;
     }
 

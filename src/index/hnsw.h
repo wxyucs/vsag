@@ -38,6 +38,11 @@ public:
         SAFE_CALL(return this->add(base));
     }
 
+    tl::expected<bool, Error>
+    Remove(int64_t id) override {
+        SAFE_CALL(return this->remove(id));
+    }
+
     tl::expected<Dataset, Error>
     KnnSearch(const Dataset& query,
               int64_t k,
@@ -83,7 +88,7 @@ public:
 public:
     int64_t
     GetNumElements() const override {
-        return alg_hnsw->getCurrentElementCount();
+        return alg_hnsw->getCurrentElementCount() - alg_hnsw->getDeletedCount();
     }
 
     int64_t
@@ -100,6 +105,9 @@ private:
 
     tl::expected<std::vector<int64_t>, Error>
     add(const Dataset& base);
+
+    tl::expected<bool, Error>
+    remove(int64_t id);
 
     tl::expected<Dataset, Error>
     knn_search(const Dataset& query,

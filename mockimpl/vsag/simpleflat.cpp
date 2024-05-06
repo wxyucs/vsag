@@ -362,4 +362,22 @@ SimpleFlat::GetStats() const {
     return j.dump();
 }
 
+tl::expected<bool, Error>
+SimpleFlat::Remove(int64_t id) {
+    auto iter = std::find(ids_.begin(), ids_.end(), id);
+    if (iter != ids_.end()) {
+        int index = iter - ids_.begin();
+        num_elements_--;
+        ids_[index] = ids_[num_elements_];
+        std::memcpy(
+            data_.data() + index * dim_, data_.data() + num_elements_ * dim_, dim_ * sizeof(float));
+        ids_.resize(num_elements_);
+        data_.resize(num_elements_ * dim_);
+    } else {
+        return false;
+    }
+
+    return true;
+}
+
 }  // namespace vsag
