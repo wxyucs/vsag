@@ -5,12 +5,13 @@
 #include <tuple>
 #include <vector>
 
+#include "../logger.h"
 #include "distance.h"
 #include "fixtures.h"
 #include "vsag/errors.h"
 
 TEST_CASE("build", "[diskann][ut]") {
-    spdlog::set_level(spdlog::level::debug);
+    vsag::logger::set_level(vsag::logger::level::debug);
     int64_t dim = 128;
     int64_t ef_construction = 100;
     int64_t max_degree = 12;
@@ -59,7 +60,7 @@ TEST_CASE("build", "[diskann][ut]") {
 }
 
 TEST_CASE("build & search empty index", "[diskann][ut]") {
-    spdlog::set_level(spdlog::level::debug);
+    vsag::logger::set_level(vsag::logger::level::debug);
     int64_t dim = 128;
     int64_t ef_construction = 100;
     int64_t max_degree = 12;
@@ -107,7 +108,7 @@ TEST_CASE("build & search empty index", "[diskann][ut]") {
 }
 
 TEST_CASE("knn_search", "[diskann][ut]") {
-    spdlog::set_level(spdlog::level::debug);
+    vsag::logger::set_level(vsag::logger::level::debug);
     int64_t dim = 128;
     int64_t ef_construction = 100;
     int64_t max_degree = 12;
@@ -216,7 +217,7 @@ TEST_CASE("knn_search", "[diskann][ut]") {
 }
 
 TEST_CASE("range_search", "[diskann][ut]") {
-    spdlog::set_level(spdlog::level::debug);
+    vsag::logger::set_level(vsag::logger::level::debug);
     int64_t dim = 128;
     int64_t ef_construction = 100;
     int64_t max_degree = 12;
@@ -336,7 +337,7 @@ TEST_CASE("range_search", "[diskann][ut]") {
 }
 
 TEST_CASE("serialize empty index", "[diskann][ut]") {
-    spdlog::set_level(spdlog::level::debug);
+    vsag::logger::set_level(vsag::logger::level::debug);
     int64_t dim = 128;
     int64_t ef_construction = 100;
     int64_t max_degree = 12;
@@ -358,7 +359,7 @@ TEST_CASE("serialize empty index", "[diskann][ut]") {
 }
 
 TEST_CASE("deserialize on not empty index", "[diskann][ut]") {
-    spdlog::set_level(spdlog::level::debug);
+    vsag::logger::set_level(vsag::logger::level::debug);
     int64_t dim = 128;
     int64_t ef_construction = 100;
     int64_t max_degree = 12;
@@ -396,7 +397,7 @@ TEST_CASE("deserialize on not empty index", "[diskann][ut]") {
 }
 
 TEST_CASE("split building process", "[diskann][ut]") {
-    spdlog::set_level(spdlog::level::debug);
+    vsag::logger::set_level(vsag::logger::level::debug);
     int64_t dim = 128;
     int64_t ef_construction = 100;
     int64_t max_degree = 12;

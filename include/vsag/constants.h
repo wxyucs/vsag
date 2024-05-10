@@ -47,7 +47,6 @@ constexpr const char* HNSW_PARAMETER_CONSTRUCTION = "ef_construction";
 constexpr const char* HNSW_PARAMETER_USE_STATIC = "use_static";
 
 // statstic key
-
 constexpr const char* STATSTIC_MEMORY = "memory";
 constexpr const char* STATSTIC_INDEX_NAME = "index_name";
 constexpr const char* STATSTIC_DATA_NUM = "data_num";
@@ -64,7 +63,6 @@ constexpr const char* STATSTIC_RANGE_CACHE_HIT = "range_cache_hit";
 constexpr const char* STATSTIC_RANGE_IO_TIME = "range_io_time";
 
 //Error message
-
 constexpr const char* MESSAGE_PARAMETER = "invalid parameter";
 
 }  // namespace vsag

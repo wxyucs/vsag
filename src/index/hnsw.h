@@ -13,6 +13,7 @@
 #include <vector>
 
 #include "../common.h"
+#include "../logger.h"
 #include "../utils.h"
 #include "vsag/binaryset.h"
 #include "vsag/errors.h"

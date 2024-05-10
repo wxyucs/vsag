@@ -3,6 +3,8 @@
 #include <cstdint>
 #include <unordered_set>
 
+#include "./logger.h"
+
 namespace vsag {
 
 const static int64_t DEFAULT_WATCH_WINDOW_SIZE = 20;
@@ -17,9 +19,9 @@ SlowTaskTimer::~SlowTaskTimer() {
     std::chrono::duration<double, std::milli> duration = finish - start;
     if (duration.count() > threshold) {
         if (duration.count() >= 1000) {
-            spdlog::info("{0} cost {1:.3f}s", name, duration.count() / 1000);
+            logger::info("{0} cost {1:.3f}s", name, duration.count() / 1000);
         } else {
-            spdlog::info("{0} cost {1:.3f}ms", name, duration.count());
+            logger::info("{0} cost {1:.3f}ms", name, duration.count());
         }
     }
 }

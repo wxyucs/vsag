@@ -22,6 +22,7 @@ init();
 
 }  // namespace vsag
 
+#include "allocator.h"
 #include "binaryset.h"
 #include "bitset.h"
 #include "constants.h"
@@ -30,6 +31,7 @@ init();
 #include "expected.hpp"
 #include "factory.h"
 #include "index.h"
-#include "option.h"
+#include "logger.h"
+#include "options.h"
 #include "readerset.h"
 #include "utils.h"

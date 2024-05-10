@@ -58,7 +58,7 @@ _concate(std::stringstream& ss, const T& value, const Args&... args) {
 #define LOG_ERROR_AND_RETURNS(t, ...) \
     std::stringstream ss;             \
     _concate(ss, __VA_ARGS__);        \
-    spdlog::error(ss.str());          \
+    logger::error(ss.str());          \
     return tl::unexpected(Error(t, ss.str()));
 
 }  //namespace vsag

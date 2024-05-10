@@ -5,7 +5,6 @@
 #include "diskann.h"
 
 #include <local_file_reader.h>
-#include <spdlog/spdlog.h>
 
 #include <algorithm>
 #include <exception>
@@ -17,6 +16,7 @@
 #include <utility>
 
 #include "../common.h"
+#include "../logger.h"
 #include "../utils.h"
 #include "./diskann_zparameters.h"
 #include "vsag/constants.h"
@@ -224,7 +224,7 @@ DiskANN::build(const Dataset& base) {
         disk_layout_reader_ = std::make_shared<LocalMemoryReader>(disk_layout_stream_);
         reader_.reset(new LocalFileReader(batch_read_));
         index_.reset(new diskann::PQFlashIndex<float, int64_t>(reader_, metric_, sector_len_));
-        index_->set_sector_size(Option::Instance().GetSectorSize());
+        index_->set_sector_size(Option::Instance().sector_size());
         index_->load_from_separate_paths(
             omp_get_num_procs(), pq_pivots_stream_, disk_pq_compressed_vectors_, tag_stream_);
         if (preload_) {
@@ -284,7 +284,7 @@ DiskANN::knn_search(const Dataset& query,
             filter_ = [&](int64_t offset) -> bool {
                 int64_t bit_index = offset & ROW_ID_MASK;
                 if (bit_index >= invalid->Capacity()) {
-                    spdlog::error("id {} is greater than the capacity {} of bitset ",
+                    logger::error("id {} is greater than the capacity {} of bitset ",
                                   bit_index,
                                   invalid->Capacity());
                     return false;
@@ -297,7 +297,7 @@ DiskANN::knn_search(const Dataset& query,
         ef_search = std::max(ef_search, k);
         io_limit = std::min(MAX_IO_LIMIT, std::max(io_limit, k));
         if (reorder && preload_) {
-            io_limit = std::min((int64_t)Option::Instance().GetSectorSize(), io_limit);
+            io_limit = std::min((int64_t)Option::Instance().sector_size(), io_limit);
         }
         beam_search = std::min(beam_search, MAXIMAL_BEAM_SEARCH);
         beam_search = std::max(beam_search, MINIMAL_BEAM_SEARCH);
@@ -420,7 +420,7 @@ DiskANN::range_search(const Dataset& query,
             filter = [&](int64_t offset) -> bool {
                 int64_t bit_index = offset & ROW_ID_MASK;
                 if (bit_index >= invalid->Capacity()) {
-                    spdlog::error("id {} is greater than the capacity {} of bitset ",
+                    logger::error("id {} is greater than the capacity {} of bitset ",
                                   bit_index,
                                   invalid->Capacity());
                     return false;
@@ -434,7 +434,7 @@ DiskANN::range_search(const Dataset& query,
 
         io_limit = std::min(MAX_IO_LIMIT, io_limit);
         if (reorder && preload_) {
-            io_limit = std::min((int64_t)Option::Instance().GetSectorSize(), io_limit);
+            io_limit = std::min((int64_t)Option::Instance().sector_size(), io_limit);
         }
 
         beam_search = std::min(beam_search, MAXIMAL_BEAM_SEARCH);
@@ -567,7 +567,7 @@ DiskANN::deserialize(const BinarySet& binary_set) {
         }
     } else {
         if (graph.data) {
-            spdlog::warn("serialize without using file: {} ", DISKANN_GRAPH);
+            logger::warn("serialize without using file: {} ", DISKANN_GRAPH);
         }
     }
     load_disk_index(binary_set);
@@ -622,7 +622,7 @@ DiskANN::deserialize(const ReaderSet& reader_set) {
     disk_layout_reader_ = reader_set.Get(DISKANN_LAYOUT_FILE);
     reader_.reset(new LocalFileReader(batch_read_));
     index_.reset(new diskann::PQFlashIndex<float, int64_t>(reader_, metric_, sector_len_));
-    index_->set_sector_size(Option::Instance().GetSectorSize());
+    index_->set_sector_size(Option::Instance().sector_size());
     index_->load_from_separate_paths(
         omp_get_num_procs(), pq_pivots_stream, disk_pq_compressed_vectors, tag_stream);
 
@@ -641,7 +641,7 @@ DiskANN::deserialize(const ReaderSet& reader_set) {
         }
     } else {
         if (graph_reader) {
-            spdlog::warn("serialize without using file: {} ", DISKANN_GRAPH);
+            logger::warn("serialize without using file: {} ", DISKANN_GRAPH);
         }
     }
     status_ = IndexStatus::HYBRID;
@@ -847,7 +847,7 @@ DiskANN::continue_build(const Dataset& base, const BinarySet& binary_set) {
                 break;
             }
             case FINISH:
-                spdlog::warn("build process is finished");
+                logger::warn("build process is finished");
         }
         after_binary_set.Set(BUILD_STATUS, to_binary<BuildStatus>(build_status));
         Checkpoint checkpoint{.data = after_binary_set,
@@ -909,7 +909,7 @@ DiskANN::load_disk_index(const BinarySet& binary_set) {
     disk_layout_reader_ = std::make_shared<LocalMemoryReader>(disk_layout_stream_);
     reader_.reset(new LocalFileReader(batch_read_));
     index_.reset(new diskann::PQFlashIndex<float, int64_t>(reader_, metric_, sector_len_));
-    index_->set_sector_size(Option::Instance().GetSectorSize());
+    index_->set_sector_size(Option::Instance().sector_size());
 
     convert_binary_to_stream(binary_set.Get(DISKANN_COMPRESSED_VECTOR),
                              disk_pq_compressed_vectors_);

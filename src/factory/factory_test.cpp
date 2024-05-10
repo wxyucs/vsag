@@ -6,10 +6,11 @@
 #include <catch2/catch_test_macros.hpp>
 #include <nlohmann/json.hpp>
 
+#include "../logger.h"
 #include "vsag/errors.h"
 
 TEST_CASE("create index with full parameters", "[factory][ut]") {
-    spdlog::set_level(spdlog::level::debug);
+    vsag::logger::set_level(vsag::logger::level::debug);
 
     SECTION("hnsw") {
         auto parameters = nlohmann::json::parse(R"(
@@ -49,7 +50,7 @@ TEST_CASE("create index with full parameters", "[factory][ut]") {
 }
 
 TEST_CASE("create hnsw with incomplete parameters", "[factory][ut]") {
-    spdlog::set_level(spdlog::level::debug);
+    vsag::logger::set_level(vsag::logger::level::debug);
 
     auto standard_parameters = nlohmann::json::parse(R"(
             {
@@ -107,7 +108,7 @@ TEST_CASE("create hnsw with incomplete parameters", "[factory][ut]") {
 }
 
 TEST_CASE("create diskann with incomplete parameters", "[factory][ut]") {
-    spdlog::set_level(spdlog::level::debug);
+    vsag::logger::set_level(vsag::logger::level::debug);
 
     auto standard_parameters = nlohmann::json::parse(R"(
             {

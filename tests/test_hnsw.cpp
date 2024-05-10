@@ -1,3 +1,4 @@
+
 #include <spdlog/spdlog.h>
 
 #include <catch2/catch_test_macros.hpp>
@@ -29,6 +30,7 @@ const std::string tmp_dir = "/tmp/";
 
 TEST_CASE("HNSW range search", "[hnsw][test]") {
     spdlog::set_level(spdlog::level::debug);
+
     int dim = 71;
     int max_elements = 10000;
     int max_degree = 16;
@@ -100,6 +102,7 @@ TEST_CASE("HNSW range search", "[hnsw][test]") {
 
 TEST_CASE("HNSW filtering knn search", "[hnsw][test]") {
     spdlog::set_level(spdlog::level::debug);
+
     int dim = 17;
     int max_elements = 1000;
     int label_num = 100;
@@ -121,8 +124,7 @@ TEST_CASE("HNSW filtering knn search", "[hnsw][test]") {
     hnsw = index.value();
 
     // Generate random data
-    std::random_device rd;
-    std::mt19937 rng(rd());
+    std::mt19937 rng(47);
     std::uniform_real_distribution<> distrib_real;
     int64_t* ids = new int64_t[max_elements];
     float* data = new float[dim * max_elements];
@@ -167,6 +169,7 @@ TEST_CASE("HNSW filtering knn search", "[hnsw][test]") {
 
 TEST_CASE("HNSW Filtering Test", "[hnsw][test]") {
     spdlog::set_level(spdlog::level::debug);
+
     int dim = 17;
     int max_elements = 1000;
     int max_degree = 16;
@@ -304,6 +307,7 @@ TEST_CASE("HNSW Filtering Test", "[hnsw][test]") {
 
 TEST_CASE("HNSW small dimension", "[hnsw][test]") {
     spdlog::set_level(spdlog::level::debug);
+
     int dim = 3;
     int max_elements = 1000;
     int max_degree = 24;
@@ -366,6 +370,7 @@ TEST_CASE("HNSW small dimension", "[hnsw][test]") {
 
 TEST_CASE("HNSW Random Id", "[hnsw][test]") {
     spdlog::set_level(spdlog::level::debug);
+
     int dim = 128;
     int max_elements = 1000;
     int max_degree = 64;
@@ -448,6 +453,7 @@ TEST_CASE("HNSW Random Id", "[hnsw][test]") {
 
 TEST_CASE("pq infer knn search time recall", "[hnsw][test]") {
     spdlog::set_level(spdlog::level::debug);
+
     int dim = 128;
     int max_elements = 1000;
     int max_degree = 64;
@@ -509,6 +515,7 @@ TEST_CASE("pq infer knn search time recall", "[hnsw][test]") {
 
 TEST_CASE("hnsw serialize", "[hnsw][test]") {
     spdlog::set_level(spdlog::level::debug);
+
     int dim = 128;
     int max_elements = 1000;
     int max_degree = 64;

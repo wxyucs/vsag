@@ -19,9 +19,10 @@
 #include <string>
 
 #include "../common.h"
+#include "../logger.h"
 #include "../utils.h"
 #include "vsag/index.h"
-#include "vsag/option.h"
+#include "vsag/options.h"
 
 namespace vsag {
 

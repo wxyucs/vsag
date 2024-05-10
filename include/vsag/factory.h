@@ -16,7 +16,7 @@ public:
      *    - dim: integer, required
      *    - hnsw.max_degree: integer, required
      *    - hnsw.ef_construction: integer, required
-     *  e.g.
+     *  e.g.,
      *  {
      *      "dtype": "float32",
      *      "metric_type": "l2",
@@ -35,7 +35,7 @@ public:
      *    - diskann.ef_construction: integer, required
      *    - diskann.pq_dims: integer, required
      *    - diskann.pq_sample_rate: floating number, required, in range (0.0, 1.0]
-     *    e.g.
+     *    e.g.,
      *    {
      *        "dtype": "float32",
      *        "metric_type": "l2",

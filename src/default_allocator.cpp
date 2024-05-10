@@ -4,23 +4,23 @@
 
 #include "default_allocator.h"
 
-#include "vsag/option.h"
+#include "vsag/options.h"
 
 namespace vsag {
 
 void*
 allocate(size_t size) {
-    return Option::Instance().GetAllocator()->Allocate(size);
+    return Options::Instance().allocator()->Allocate(size);
 }
 
 void
 deallocate(void* p) {
-    Option::Instance().GetAllocator()->Deallocate(p);
+    Options::Instance().allocator()->Deallocate(p);
 }
 
 void*
 reallocate(void* p, size_t size) {
-    return Option::Instance().GetAllocator()->Reallocate(p, size);
+    return Options::Instance().allocator()->Reallocate(p, size);
 }
 
 void*

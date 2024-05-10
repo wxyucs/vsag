@@ -1,7 +1,7 @@
 
 #include <sstream>
 
-#include "spdlog/spdlog.h"
+#include "logger.h"
 #include "utils.h"
 #include "vsag/errors.h"
 #include "vsag/expected.hpp"
@@ -53,7 +53,7 @@ parameter_string(const std::string& metric_type,
 
 tl::expected<std::string, Error>
 generate_build_parameters(std::string metric_type, int64_t num_elements, int64_t dim) {
-    spdlog::debug("metric_type: {}, num_elements: {}, dim: {}", metric_type, num_elements, dim);
+    logger::debug("metric_type: {}, num_elements: {}, dim: {}", metric_type, num_elements, dim);
 
     // check metric_type
     std::transform(
@@ -77,7 +77,7 @@ generate_build_parameters(std::string metric_type, int64_t num_elements, int64_t
     // compression ratio: 1/16
     // dim*FP32 -> pq_dims*INT8
     int64_t pq_dims = dim / 4;
-    spdlog::debug("pq_dims: {}", pq_dims);
+    logger::debug("pq_dims: {}", pq_dims);
 
     // rule-based parameters
     if (Number(num_elements).in_range(1, 2'000'000)) {

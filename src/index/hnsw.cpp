@@ -3,15 +3,14 @@
 
 #include <fmt/format-inl.h>
 #include <hnswlib/hnswlib.h>
-#include <spdlog/spdlog.h>
 
 #include <cstdint>
 #include <exception>
-#include <new>
 #include <nlohmann/json.hpp>
 #include <stdexcept>
 
 #include "../common.h"
+#include "../logger.h"
 #include "../utils.h"
 #include "./hnsw_zparameters.h"
 #include "vsag/binaryset.h"
@@ -35,7 +34,7 @@ public:
     operator()(hnswlib::labeltype id) override {
         int64_t bit_index = id & ROW_ID_MASK;
         if (bit_index >= bitset_->Capacity()) {
-            spdlog::error(
+            logger::error(
                 "id {} is greater than the capacity {} of bitset ", bit_index, bitset_->Capacity());
             return false;  // FIXME: throwing an error directly here would lead to a memory leak within the HNSW internals.
         }
@@ -79,7 +78,7 @@ HNSW::build(const Dataset& base) {
             return std::vector<int64_t>();
         }
 
-        spdlog::debug("index.dim={}, base.dim={}", this->dim_, base.GetDim());
+        logger::debug("index.dim={}, base.dim={}", this->dim_, base.GetDim());
 
         auto base_dim = base.GetDim();
         CHECK_ARGUMENT(base_dim == dim_,
@@ -89,7 +88,7 @@ HNSW::build(const Dataset& base) {
         int64_t max_elements_;
         max_elements_ = alg_hnsw->getMaxElements();
         if (max_elements_ < num_elements) {
-            spdlog::debug("max_elements_={}, num_elements={}", max_elements_, num_elements);
+            logger::debug("max_elements_={}, num_elements={}", max_elements_, num_elements);
             max_elements_ = num_elements;
             // noexcept even cannot alloc memory
             alg_hnsw->resizeIndex(max_elements_);
@@ -103,7 +102,7 @@ HNSW::build(const Dataset& base) {
             for (int64_t i = 0; i < num_elements; ++i) {
                 // noexcept runtime
                 if (!alg_hnsw->addPoint((const void*)(vectors + i * dim_), ids[i])) {
-                    spdlog::debug("duplicate point: {}", ids[i]);
+                    logger::debug("duplicate point: {}", ids[i]);
                     failed_ids.emplace_back(ids[i]);
                 }
             }
@@ -137,7 +136,7 @@ HNSW::add(const Dataset& base) {
         int64_t num_elements = base.GetNumElements();
         int64_t max_elements_ = alg_hnsw->getMaxElements();
         if (num_elements + GetNumElements() > max_elements_) {
-            spdlog::debug("num_elements={}, index.num_elements, max_elements_={}",
+            logger::debug("num_elements={}, index.num_elements, max_elements_={}",
                           num_elements,
                           GetNumElements(),
                           max_elements_);
@@ -156,7 +155,7 @@ HNSW::add(const Dataset& base) {
         for (int64_t i = 0; i < num_elements; ++i) {
             // noexcept runtime
             if (!alg_hnsw->addPoint((const void*)(vectors + i * dim_), ids[i])) {
-                spdlog::debug("duplicate point: {}", i);
+                logger::debug("duplicate point: {}", i);
                 failed_ids.push_back(ids[i]);
             }
         }

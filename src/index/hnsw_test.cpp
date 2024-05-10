@@ -5,13 +5,14 @@
 #include <nlohmann/json.hpp>
 #include <vector>
 
+#include "../logger.h"
 #include "fixtures.h"
-#include "spdlog/spdlog.h"
 #include "vsag/bitset.h"
 #include "vsag/errors.h"
 
 TEST_CASE("build & add", "[ut][hnsw]") {
-    spdlog::set_level(spdlog::level::debug);
+    vsag::logger::set_level(vsag::logger::level::debug);
+
     int64_t dim = 128;
     int64_t max_degree = 12;
     int64_t ef_construction = 100;
@@ -43,7 +44,8 @@ TEST_CASE("build & add", "[ut][hnsw]") {
 }
 
 TEST_CASE("knn_search", "[ut][hnsw]") {
-    spdlog::set_level(spdlog::level::debug);
+    vsag::logger::set_level(vsag::logger::level::debug);
+
     int64_t dim = 128;
     int64_t max_degree = 12;
     int64_t ef_construction = 100;
@@ -117,7 +119,8 @@ TEST_CASE("knn_search", "[ut][hnsw]") {
 }
 
 TEST_CASE("range_search", "[ut][hnsw]") {
-    spdlog::set_level(spdlog::level::debug);
+    vsag::logger::set_level(vsag::logger::level::debug);
+
     int64_t dim = 128;
     int64_t max_degree = 12;
     int64_t ef_construction = 100;
@@ -180,7 +183,8 @@ TEST_CASE("range_search", "[ut][hnsw]") {
 }
 
 TEST_CASE("serialize empty index", "[ut][hnsw]") {
-    spdlog::set_level(spdlog::level::debug);
+    vsag::logger::set_level(vsag::logger::level::debug);
+
     int64_t dim = 128;
     int64_t max_degree = 12;
     int64_t ef_construction = 100;
@@ -203,7 +207,8 @@ TEST_CASE("serialize empty index", "[ut][hnsw]") {
 }
 
 TEST_CASE("deserialize on not empty index", "[ut][hnsw]") {
-    spdlog::set_level(spdlog::level::debug);
+    vsag::logger::set_level(vsag::logger::level::debug);
+
     int64_t dim = 128;
     int64_t max_degree = 12;
     int64_t ef_construction = 100;
@@ -246,7 +251,8 @@ TEST_CASE("deserialize on not empty index", "[ut][hnsw]") {
 }
 
 TEST_CASE("static hnsw", "[ut][hnsw]") {
-    spdlog::set_level(spdlog::level::debug);
+    vsag::logger::set_level(vsag::logger::level::debug);
+
     int64_t dim = 128;
     int64_t max_degree = 12;
     int64_t ef_construction = 100;
@@ -288,4 +294,32 @@ TEST_CASE("static hnsw", "[ut][hnsw]") {
     auto remove_result = index->Remove(ids[0]);
     REQUIRE_FALSE(remove_result.has_value());
     REQUIRE(remove_result.error().type == vsag::ErrorType::UNSUPPORTED_INDEX_OPERATION);
+}
+
+TEST_CASE("hnsw add vector with duplicated id", "[ut][hnsw]") {
+    vsag::logger::set_level(vsag::logger::level::debug);
+
+    int64_t dim = 128;
+    int64_t max_degree = 12;
+    int64_t ef_construction = 100;
+    auto index = std::make_shared<vsag::HNSW>(
+        std::make_shared<hnswlib::L2Space>(dim), max_degree, ef_construction);
+
+    std::vector<int64_t> ids{1};
+    std::vector<float> vectors(dim);
+
+    vsag::Dataset first_time;
+    first_time.Dim(dim).NumElements(1).Ids(ids.data()).Float32Vectors(vectors.data()).Owner(false);
+    auto result = index->Add(first_time);
+    REQUIRE(result.has_value());
+    // expect failed id list emtpy
+    REQUIRE(result.value().empty());
+
+    vsag::Dataset second_time;
+    second_time.Dim(dim).NumElements(1).Ids(ids.data()).Float32Vectors(vectors.data()).Owner(false);
+    auto result2 = index->Add(second_time);
+    REQUIRE(result2.has_value());
+    // expected failed id list == {1}
+    REQUIRE(result2.value().size() == 1);
+    REQUIRE(result2.value()[0] == ids[0]);
 }

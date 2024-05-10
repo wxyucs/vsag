@@ -1,6 +1,19 @@
+
+#include "./logger.h"
+
 #include <catch2/catch_test_macros.hpp>
 
 #include "spdlog/spdlog.h"
+
+TEST_CASE("test logger", "[ut][logger]") {
+    vsag::logger::set_level(vsag::logger::level::trace);
+    vsag::logger::trace("this is a trace level message");
+    vsag::logger::debug("this is a debug level message");
+    vsag::logger::info("this is a info level message");
+    vsag::logger::warn("this is a warn level message");
+    vsag::logger::error("this is a error level message");
+    vsag::logger::critical("this is a critical level message");
+}
 
 TEST_CASE("spdlog usage", "[log][test]") {
     spdlog::info("Welcome to spdlog!");

@@ -21,6 +21,9 @@ public:
     // Reallocate the previously allocated block with long size.
     virtual void*
     Reallocate(void* p, size_t size) = 0;
+
+public:
+    virtual ~Allocator() = default;
 };
 
 }  // namespace vsag

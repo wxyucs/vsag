@@ -1,10 +1,10 @@
 #include "vsag/vsag.h"
 
 #include <cpuinfo.h>
-#include <spdlog/spdlog.h>
 
 #include <sstream>
 
+#include "logger.h"
 #include "simd/simd.h"
 #include "version.h"
 
@@ -32,7 +32,7 @@ init() {
     ss << "\navx512bw: " << cpuinfo_has_x86_avx512bw();
     ss << "\navx512vl: " << cpuinfo_has_x86_avx512vl();
     ss << "\n====vsag init done====";
-    spdlog::debug(ss.str());
+    logger::debug(ss.str());
 
     setup_simd();
 

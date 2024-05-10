@@ -6,9 +6,9 @@
 #include "catch2/generators/catch_generators.hpp"
 #include "fixtures/fixtures.h"
 #include "nlohmann/json.hpp"
-#include "spdlog/common.h"
-#include "spdlog/spdlog.h"
 #include "vsag/dataset.h"
+#include "vsag/logger.h"
+#include "vsag/options.h"
 #include "vsag/vsag.h"
 
 /////////////////////////////////////////////////////////
@@ -16,7 +16,7 @@
 /////////////////////////////////////////////////////////
 
 TEST_CASE("hnsw build test", "[ft][index][hnsw]") {
-    spdlog::set_level(spdlog::level::debug);
+    vsag::Options::Instance().logger()->SetLevel(vsag::Logger::Level::DEBUG);
 
     int64_t num_vectors = 10000;
     int64_t dim = 57;
@@ -61,7 +61,7 @@ TEST_CASE("hnsw build test", "[ft][index][hnsw]") {
 /////////////////////////////////////////////////////////
 
 TEST_CASE("hnsw float32 recall", "[ft][index][hnsw]") {
-    spdlog::set_level(spdlog::level::debug);
+    vsag::Options::Instance().logger()->SetLevel(vsag::Logger::Level::DEBUG);
 
     int64_t num_vectors = 10000;
     int64_t dim = 104;
@@ -97,7 +97,7 @@ TEST_CASE("hnsw float32 recall", "[ft][index][hnsw]") {
 }
 
 TEST_CASE("create two hnsw index in the same time", "[ft][index][hnsw]") {
-    spdlog::set_level(spdlog::level::debug);
+    vsag::Options::Instance().logger()->SetLevel(vsag::Logger::Level::DEBUG);
 
     int64_t num_vectors = 10000;
     int64_t dim = 49;
@@ -155,7 +155,7 @@ TEST_CASE("create two hnsw index in the same time", "[ft][index][hnsw]") {
 /////////////////////////////////////////////////////////
 
 TEST_CASE("serialize/deserialize with file stream", "[ft][index]") {
-    spdlog::set_level(spdlog::level::debug);
+    vsag::Options::Instance().logger()->SetLevel(vsag::Logger::Level::DEBUG);
 
     int64_t num_vectors = 10000;
     int64_t dim = 64;
@@ -209,7 +209,7 @@ TEST_CASE("serialize/deserialize with file stream", "[ft][index]") {
 }
 
 TEST_CASE("serialize/deserialize hnswstatic with file stream", "[ft][index]") {
-    spdlog::set_level(spdlog::level::debug);
+    vsag::Options::Instance().logger()->SetLevel(vsag::Logger::Level::DEBUG);
 
     int64_t num_vectors = 10000;
     int64_t dim = 64;
@@ -288,7 +288,7 @@ TEST_CASE("serialize/deserialize hnswstatic with file stream", "[ft][index]") {
 }
 
 TEST_CASE("search on a deserialized empty index", "[ft][index]") {
-    spdlog::set_level(spdlog::level::debug);
+    vsag::Options::Instance().logger()->SetLevel(vsag::Logger::Level::DEBUG);
 
     int64_t num_vectors = 10000;
     int64_t dim = 64;
@@ -404,7 +404,7 @@ TEST_CASE("remove vectors from the index", "[ft][index]") {
 /////////////////////////////////////////////////////////
 
 TEST_CASE("check build parameters", "[ft][index]") {
-    spdlog::set_level(spdlog::level::debug);
+    vsag::Options::Instance().logger()->SetLevel(vsag::Logger::Level::DEBUG);
 
     auto json_string = R"(
         {
@@ -428,7 +428,7 @@ TEST_CASE("check build parameters", "[ft][index]") {
 }
 
 TEST_CASE("check search parameters", "[ft][index]") {
-    spdlog::set_level(spdlog::level::debug);
+    vsag::Options::Instance().logger()->SetLevel(vsag::Logger::Level::DEBUG);
 
     auto json_string = R"(
         {
@@ -448,7 +448,7 @@ TEST_CASE("check search parameters", "[ft][index]") {
 }
 
 TEST_CASE("generate build parameters", "[ft][index]") {
-    spdlog::set_level(spdlog::level::debug);
+    vsag::Options::Instance().logger()->SetLevel(vsag::Logger::Level::DEBUG);
 
     auto metric_type = GENERATE("l2", "IP");
     auto num_elements = GENERATE(1'000'000,
@@ -473,7 +473,7 @@ TEST_CASE("generate build parameters", "[ft][index]") {
 }
 
 TEST_CASE("generate build parameters with invalid num_elements", "[ft][index]") {
-    spdlog::set_level(spdlog::level::debug);
+    vsag::Options::Instance().logger()->SetLevel(vsag::Logger::Level::DEBUG);
 
     auto metric_type = GENERATE("l2", "IP");
     auto num_elements = GENERATE(-1'000'000, -1, 0, 17'000'001, 1'000'000'000);
@@ -486,7 +486,7 @@ TEST_CASE("generate build parameters with invalid num_elements", "[ft][index]") 
 }
 
 TEST_CASE("generate build parameters with invalid dim", "[ft][index]") {
-    spdlog::set_level(spdlog::level::debug);
+    vsag::Options::Instance().logger()->SetLevel(vsag::Logger::Level::DEBUG);
 
     auto metric_type = GENERATE("l2", "IP");
     int64_t num_elements = 1'000'000;
@@ -499,7 +499,7 @@ TEST_CASE("generate build parameters with invalid dim", "[ft][index]") {
 }
 
 TEST_CASE("build index with generated_build_parameters", "[ft][index]") {
-    spdlog::set_level(spdlog::level::debug);
+    vsag::Options::Instance().logger()->SetLevel(vsag::Logger::Level::DEBUG);
 
     int64_t num_vectors = 10000;
     int64_t dim = 64;
@@ -546,6 +546,6 @@ TEST_CASE("build index with generated_build_parameters", "[ft][index]") {
     }
 
     float recall = 1.0 * correct / num_vectors;
-    spdlog::debug("recall: {}", recall);
+    std::cout << "recall: " << recall << std::endl;
     REQUIRE(recall > 0.95);
 }

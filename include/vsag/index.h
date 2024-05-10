@@ -180,7 +180,6 @@ public:
       * Return the estimated memory required during building
       *
       * @param num_elements denotes the amount of data used to build the index.
-      *
       * @return estimated memory required during building.
       */
     virtual int64_t
@@ -197,6 +196,9 @@ public:
     GetStats() const {
         throw std::runtime_error("Index not support range search");
     }
+
+public:
+    virtual ~Index() = default;
 };
 
 /**
