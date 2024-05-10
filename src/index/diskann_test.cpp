@@ -87,8 +87,8 @@ TEST_CASE("build & search empty index", "[diskann][ut]") {
     auto search_parameters = R"(
     {
         "diskann": {
-            "ef_search": 100, 
-            "beam_search": 4, 
+            "ef_search": 100,
+            "beam_search": 4,
             "io_limit": 100,
             "use_reorder": false
         }
@@ -413,13 +413,12 @@ TEST_CASE("split building process", "[diskann][ut]") {
         .Float32Vectors(vectors.data())
         .Owner(false);
 
-    vsag::BinarySet binary_set;
-    vsag::BuildStatus status;
+    vsag::Index::Checkpoint checkpoint;
     std::shared_ptr<vsag::DiskANN> partial_index;
     double partial_time = 0;
     {
         vsag::Timer timer(partial_time);
-        do {
+        while (not checkpoint.finish) {
             partial_index = std::make_shared<vsag::DiskANN>(diskann::Metric::L2,
                                                             "float32",
                                                             ef_construction,
@@ -430,10 +429,8 @@ TEST_CASE("split building process", "[diskann][ut]") {
                                                             false,
                                                             false,
                                                             false);
-            binary_set = partial_index->ContinueBuild(dataset, binary_set).value();
-            vsag::Binary status_binary = binary_set.Get("status");
-            memcpy(&status, status_binary.data.get(), status_binary.size);
-        } while (status != vsag::BuildStatus::FINISH);
+            checkpoint = partial_index->ContinueBuild(dataset, checkpoint.data).value();
+        }
     }
 
     nlohmann::json parameters{

@@ -896,3 +896,114 @@ TEST_CASE("DiskANN small dimension", "[diskann][test][diskann-ci-part4]") {
 
     REQUIRE(recall > 0.85);
 }
+
+TEST_CASE("split building process", "[diskann][test][diskann-ci-part4]") {
+    int64_t dim = 128;
+    int64_t ef_construction = 100;
+    int64_t max_degree = 12;
+    float pq_sample_rate = 1.0f;
+    size_t pq_dims = 16;
+
+    int64_t max_elements = 1000;
+    // Initing index
+    nlohmann::json diskann_parameters{
+        {"max_degree", max_degree},
+        {"ef_construction", ef_construction},
+        {"pq_sample_rate", pq_sample_rate},
+        {"pq_dims", pq_dims},
+    };
+    nlohmann::json index_parameters{
+        {"dtype", "float32"},
+        {"metric_type", "l2"},
+        {"dim", dim},
+        {"diskann", diskann_parameters},
+    };
+
+    // Generate random data
+    std::mt19937 rng;
+    rng.seed(47);
+    std::uniform_real_distribution<> distrib_real;
+    int64_t* ids = new int64_t[max_elements];
+    float* data = new float[dim * max_elements];
+    for (int i = 0; i < max_elements; i++) {
+        ids[i] = i;
+    }
+    for (int i = 0; i < dim * max_elements; i++) {
+        data[i] = distrib_real(rng);
+    }
+
+    vsag::Dataset dataset;
+    dataset.Dim(dim).NumElements(max_elements).Ids(ids).Float32Vectors(data);
+
+    std::shared_ptr<vsag::Index> partial_index;
+    auto result_index = vsag::Factory::CreateIndex("diskann", index_parameters.dump());
+    REQUIRE(result_index.has_value());
+    partial_index = result_index.value();
+
+    // Build DiskANN index using a single object continuously.
+    vsag::Index::Checkpoint checkpoint1;
+    while (not checkpoint1.finish) {
+        checkpoint1 = partial_index->ContinueBuild(dataset, checkpoint1.data).value();
+    }
+
+    // Build the DiskANN index in multi-object.
+    vsag::Index::Checkpoint checkpoint2;
+    while (not checkpoint2.finish) {
+        auto result_index = vsag::Factory::CreateIndex("diskann", index_parameters.dump());
+        REQUIRE(result_index.has_value());
+        partial_index = result_index.value();
+        checkpoint2 = partial_index->ContinueBuild(dataset, checkpoint2.data).value();
+    }
+
+    // Verify the consistency of recall rates between segmented index building and complete index building.
+    nlohmann::json parameters{
+        {"diskann", {{"ef_search", 10}, {"beam_search", 4}, {"io_limit", 20}}}};
+    float correct = 0;
+    for (int i = 0; i < max_elements; i++) {
+        vsag::Dataset query;
+        query.NumElements(1).Dim(dim).Float32Vectors(data + i * dim).Owner(false);
+        int64_t k = 2;
+        if (auto result = partial_index->KnnSearch(query, k, parameters.dump());
+            result.has_value()) {
+            if (result->GetNumElements() == 1) {
+                REQUIRE(!std::isinf(result->GetDistances()[0]));
+                if (result->GetIds()[0] == i) {
+                    correct++;
+                }
+            }
+        } else if (result.error().type == vsag::ErrorType::INTERNAL_ERROR) {
+            std::cerr << "failed to search on index: internalError" << std::endl;
+            exit(-1);
+        }
+    }
+    float recall_partial = correct / max_elements;
+
+    std::shared_ptr<vsag::Index> full_index;
+    {
+        auto result_index = vsag::Factory::CreateIndex("diskann", index_parameters.dump());
+        REQUIRE(result_index.has_value());
+        full_index = result_index.value();
+        full_index->Build(dataset);
+    }
+    correct = 0;
+    for (int i = 0; i < max_elements; i++) {
+        vsag::Dataset query;
+        query.NumElements(1).Dim(dim).Float32Vectors(data + i * dim).Owner(false);
+        int64_t k = 2;
+        if (auto result = partial_index->KnnSearch(query, k, parameters.dump());
+            result.has_value()) {
+            if (result->GetNumElements() == 1) {
+                REQUIRE(!std::isinf(result->GetDistances()[0]));
+                if (result->GetIds()[0] == i) {
+                    correct++;
+                }
+            }
+        } else if (result.error().type == vsag::ErrorType::INTERNAL_ERROR) {
+            std::cerr << "failed to search on index: internalError" << std::endl;
+            exit(-1);
+        }
+    }
+    float recall_full = correct / max_elements;
+    std::cout << "Recall: " << recall_full << std::endl;
+    REQUIRE(recall_full == recall_partial);
+}

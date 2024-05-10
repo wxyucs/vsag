@@ -104,7 +104,7 @@ convert_stream_to_binary(const std::stringstream& stream) {
 
 void
 convert_binary_to_stream(const Binary& binary, std::stringstream& stream) {
-    stream.clear();
+    stream.str("");
     if (binary.data && binary.size > 0) {
         stream.write((const char*)binary.data.get(), binary.size);
     }
@@ -732,6 +732,9 @@ deserialize_from_binary(const Binary& binary_data) {
 template <typename T>
 Binary
 serialize_vector_to_binary(std::vector<T> data) {
+    if (data.empty()) {
+        return Binary();
+    }
     size_t total_size = data.size() * sizeof(T);
     std::shared_ptr<int8_t[]> raw_data(new int8_t[total_size], std::default_delete<int8_t[]>());
     int8_t* data_ptr = raw_data.get();
@@ -744,6 +747,9 @@ template <typename T>
 std::vector<T>
 deserialize_vector_from_binary(const Binary& binary_data) {
     std::vector<T> deserialized_container;
+    if (binary_data.size == 0) {
+        return std::move(deserialized_container);
+    }
     const int8_t* data_ptr = binary_data.data.get();
     size_t num_elements = binary_data.size / sizeof(T);
     deserialized_container.resize(num_elements);
@@ -751,15 +757,13 @@ deserialize_vector_from_binary(const Binary& binary_data) {
     return std::move(deserialized_container);
 }
 
-tl::expected<BinarySet, Error>
+tl::expected<Index::Checkpoint, Error>
 DiskANN::continue_build(const Dataset& base, const BinarySet& binary_set) {
     try {
         BuildStatus build_status = BuildStatus::BEGIN;
         if (not binary_set.GetKeys().empty()) {
             Binary status_binary = binary_set.Get(BUILD_STATUS);
-            CHECK_ARGUMENT(
-                status_binary.data != nullptr,
-                "number of elements must be greater equal than " + std::to_string(DATA_LIMIT));
+            CHECK_ARGUMENT(status_binary.data != nullptr, "missing status while partial building");
             build_status = from_binary<BuildStatus>(status_binary);
         }
         CHECK_ARGUMENT(
@@ -768,7 +772,7 @@ DiskANN::continue_build(const Dataset& base, const BinarySet& binary_set) {
         CHECK_ARGUMENT(
             base.GetNumElements() >= DATA_LIMIT,
             "number of elements must be greater equal than " + std::to_string(DATA_LIMIT));
-        if (this->index_) {
+        if (this->index_ && status_ != IndexStatus::BUILDING) {
             LOG_ERROR_AND_RETURNS(ErrorType::BUILD_TWICE, "failed to build index: build twice");
         }
         status_ = IndexStatus::BUILDING;
@@ -846,7 +850,9 @@ DiskANN::continue_build(const Dataset& base, const BinarySet& binary_set) {
                 spdlog::warn("build process is finished");
         }
         after_binary_set.Set(BUILD_STATUS, to_binary<BuildStatus>(build_status));
-        return after_binary_set;
+        Checkpoint checkpoint{.data = after_binary_set,
+                              .finish = build_status == BuildStatus::FINISH};
+        return checkpoint;
     } catch (const std::invalid_argument& e) {
         LOG_ERROR_AND_RETURNS(
             ErrorType::INVALID_ARGUMENT, "failed to build(invalid argument): ", e.what());
@@ -914,7 +920,7 @@ DiskANN::load_disk_index(const BinarySet& binary_set) {
     if (preload_) {
         index_->load_graph(graph_stream_);
     } else {
-        graph_stream_.clear();
+        graph_stream_.str("");
     }
     return tl::expected<void, Error>();
 }

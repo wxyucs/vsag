@@ -54,8 +54,8 @@ public:
         SAFE_CALL(return this->build(base));
     }
 
-    tl::expected<BinarySet, Error>
-    ContinueBuild(const Dataset& base, const BinarySet& binary_set) {
+    tl::expected<Checkpoint, Error>
+    ContinueBuild(const Dataset& base, const BinarySet& binary_set) override {
         SAFE_CALL(return this->continue_build(base, binary_set));
     }
 
@@ -121,7 +121,7 @@ private:
     tl::expected<std::vector<int64_t>, Error>
     build(const Dataset& base);
 
-    tl::expected<BinarySet, Error>
+    tl::expected<Checkpoint, Error>
     continue_build(const Dataset& base, const BinarySet& binary_set);
 
     tl::expected<Dataset, Error>

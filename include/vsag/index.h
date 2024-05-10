@@ -31,6 +31,23 @@ public:
     virtual tl::expected<std::vector<int64_t>, Error>
     Build(const Dataset& base) = 0;
 
+    struct Checkpoint {
+        BinarySet data;
+        bool finish = false;
+    };
+
+    /**
+      * Provide dynamism for indexes that do not support insertions
+      *
+      * @param base should contains dim, num_elements, ids and vectors
+      * @param binary_set contains intermediate data from the last checkpoint
+      * @return intermediate data of the current checkpoint
+      */
+    virtual tl::expected<Checkpoint, Error>
+    ContinueBuild(const Dataset& base, const BinarySet& binary_set) {
+        throw std::runtime_error("Index not support partial build");
+    }
+
     /**
       * Adding vectors into a built index, only HNSW supported now, called on other index will cause exception
       * 
