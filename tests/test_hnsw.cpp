@@ -710,3 +710,73 @@ TEST_CASE("hnsw serialize", "[hnsw][test]") {
 
     REQUIRE(recall == 1);
 }
+
+TEST_CASE("HNSW delete", "[hnsw][test]") {
+    spdlog::set_level(spdlog::level::debug);
+    int dim = 72;
+    int max_elements = 1000;
+    int max_degree = 16;
+    int ef_construction = 100;
+    int ef_search = 100;
+    // Initing index
+    nlohmann::json hnsw_parameters{
+        {"max_elements", max_elements},
+        {"max_degree", max_degree},
+        {"ef_construction", ef_construction},
+        {"ef_search", ef_search},
+    };
+    nlohmann::json index_parameters{
+        {"dtype", "float32"}, {"metric_type", "l2"}, {"dim", dim}, {"hnsw", hnsw_parameters}};
+
+    std::shared_ptr<vsag::Index> hnsw;
+    auto index = vsag::Factory::CreateIndex("hnsw", index_parameters.dump());
+    REQUIRE(index.has_value());
+    hnsw = index.value();
+
+    // Generate random data
+    std::random_device rd;
+    std::mt19937 rng(rd());
+    std::uniform_real_distribution<> distrib_real;
+    int64_t* ids = new int64_t[max_elements];
+    float* data = new float[dim * max_elements];
+    for (int64_t i = 0; i < max_elements; i++) {
+        ids[i] = i;
+    }
+    for (int64_t i = 0; i < dim * max_elements; ++i) {
+        data[i] = distrib_real(rng);
+    }
+
+    vsag::Dataset dataset;
+    dataset.Dim(dim).NumElements(max_elements).Ids(ids).Float32Vectors(data);
+    hnsw->Build(dataset);
+
+    REQUIRE(hnsw->GetNumElements() == max_elements);
+
+    nlohmann::json parameters{
+        {"hnsw", {{"ef_search", ef_search}}},
+    };
+
+    for (int i = 0; i < max_elements / 2; ++i) {
+        hnsw->Remove(i);
+    }
+
+    REQUIRE(hnsw->GetNumElements() == max_elements / 2);
+
+    for (int i = 0; i < max_elements; i++) {
+        vsag::Dataset query;
+        query.NumElements(1).Dim(dim).Float32Vectors(data + i * dim).Owner(false);
+
+        nlohmann::json parameters{
+            {"hnsw", {{"ef_search", ef_search}}},
+        };
+        int64_t k = 10;
+
+        auto result = hnsw->KnnSearch(query, k, parameters.dump());
+        REQUIRE(result.has_value());
+        if (i < max_elements / 2) {
+            REQUIRE(result->GetIds()[0] != ids[i]);
+        } else {
+            REQUIRE(result->GetIds()[0] == ids[i]);
+        }
+    }
+}

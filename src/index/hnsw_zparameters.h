@@ -17,7 +17,8 @@ public:
     std::shared_ptr<hnswlib::SpaceInterface> space;
     int64_t max_degree;
     int64_t ef_construction;
-    int64_t use_static;
+    bool use_static;
+    bool use_reversed_edges;
 
 private:
     CreateHnswParameters() = default;

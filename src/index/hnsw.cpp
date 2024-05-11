@@ -48,8 +48,11 @@ private:
 HNSW::HNSW(std::shared_ptr<hnswlib::SpaceInterface> space_interface,
            int M,
            int ef_construction,
-           bool is_static)
-    : space(std::move(space_interface)), static_(is_static) {
+           bool use_static,
+           bool use_reversed_edges)
+    : space(std::move(space_interface)),
+      use_static_(use_static),
+      use_reversed_edges_(use_reversed_edges) {
     dim_ = *((size_t*)space->get_dist_func_param());
 
     M = std::min(std::max(M, MINIMAL_M), MAXIMAL_M);
@@ -58,9 +61,9 @@ HNSW::HNSW(std::shared_ptr<hnswlib::SpaceInterface> space_interface,
         throw std::runtime_error(MESSAGE_PARAMETER);
     }
 
-    if (!static_) {
+    if (!use_static_) {
         alg_hnsw = std::make_shared<hnswlib::HierarchicalNSW>(
-            space.get(), DEFAULT_MAX_ELEMENT, M, ef_construction);
+            space.get(), DEFAULT_MAX_ELEMENT, M, ef_construction, use_reversed_edges_);
     } else {
         if (dim_ % 4 != 0) {
             throw std::runtime_error("cannot build static hnsw while dim % 4 != 0");
@@ -108,11 +111,12 @@ HNSW::build(const Dataset& base) {
             }
         }
 
-        if (static_) {
+        if (use_static_) {
             SlowTaskTimer t("hnsw pq", 1000);
             auto* hnsw = static_cast<hnswlib::StaticHierarchicalNSW*>(alg_hnsw.get());
             hnsw->encode_hnsw_data();
         }
+
         return failed_ids;
     } catch (const std::invalid_argument& e) {
         LOG_ERROR_AND_RETURNS(
@@ -124,7 +128,7 @@ tl::expected<std::vector<int64_t>, Error>
 HNSW::add(const Dataset& base) {
     SlowTaskTimer t("hnsw add", 10);
 
-    if (static_) {
+    if (use_static_) {
         LOG_ERROR_AND_RETURNS(ErrorType::UNSUPPORTED_INDEX_OPERATION,
                               "static index does not support add");
     }
@@ -259,7 +263,7 @@ HNSW::range_search(const Dataset& query,
         return ret;
     }
 
-    if (static_) {
+    if (use_static_) {
         LOG_ERROR_AND_RETURNS(ErrorType::UNSUPPORTED_INDEX_OPERATION,
                               "static index does not support rangesearch");
     }
@@ -483,7 +487,7 @@ HNSW::GetStats() const {
 
 tl::expected<bool, Error>
 HNSW::remove(int64_t id) {
-    if (static_) {
+    if (use_static_) {
         LOG_ERROR_AND_RETURNS(ErrorType::UNSUPPORTED_INDEX_OPERATION,
                               "static hnsw does not support remove");
     }
@@ -496,6 +500,12 @@ HNSW::remove(int64_t id) {
     }
 
     return true;
+}
+
+bool
+HNSW::CheckGraphIntegrity() const {
+    auto* hnsw = static_cast<hnswlib::HierarchicalNSW*>(alg_hnsw.get());
+    return hnsw->checkReverseConnection();
 }
 
 }  // namespace vsag

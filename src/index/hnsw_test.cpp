@@ -323,3 +323,93 @@ TEST_CASE("hnsw add vector with duplicated id", "[ut][hnsw]") {
     REQUIRE(result2.value().size() == 1);
     REQUIRE(result2.value()[0] == ids[0]);
 }
+
+TEST_CASE("build with reversed edges", "[ut][hnsw]") {
+    vsag::logger::set_level(vsag::logger::level::debug);
+    int64_t dim = 128;
+    int64_t max_degree = 12;
+    int64_t ef_construction = 100;
+    auto index = std::make_shared<vsag::HNSW>(
+        std::make_shared<hnswlib::L2Space>(dim), max_degree, ef_construction, false, true);
+
+    const int64_t num_elements = 1000;
+    auto [ids, vectors] = fixtures::generate_ids_and_vectors(num_elements, dim);
+
+    vsag::Dataset dataset;
+    dataset.Dim(dim)
+        .NumElements(num_elements)
+        .Ids(ids.data())
+        .Float32Vectors(vectors.data())
+        .Owner(false);
+
+    auto result = index->Build(dataset);
+    REQUIRE(result.has_value());
+
+    REQUIRE(index->CheckGraphIntegrity());
+
+    {
+        fixtures::temp_dir dir("test_index_serialize_via_stream");
+
+        // serialize to file stream
+        std::fstream out_file(dir.path + "index.bin", std::ios::out | std::ios::binary);
+        REQUIRE(index->Serialize(out_file).has_value());
+        out_file.close();
+
+        // deserialize from file stream
+        std::fstream in_file(dir.path + "index.bin", std::ios::in | std::ios::binary);
+        in_file.seekg(0, std::ios::end);
+        int64_t length = in_file.tellg();
+        in_file.seekg(0, std::ios::beg);
+        auto new_index = std::make_shared<vsag::HNSW>(
+            std::make_shared<hnswlib::L2Space>(dim), max_degree, ef_construction, false, true);
+        REQUIRE(new_index->Deserialize(in_file, length).has_value());
+        REQUIRE(new_index->CheckGraphIntegrity());
+    }
+
+    // Serialize(multi-file)
+    {
+        fixtures::temp_dir dir("test_index_serialize_via_stream");
+
+        if (auto bs = index->Serialize(); bs.has_value()) {
+            auto keys = bs->GetKeys();
+            for (auto key : keys) {
+                vsag::Binary b = bs->Get(key);
+                std::ofstream file(dir.path + "hnsw.index." + key, std::ios::binary);
+                file.write((const char*)b.data.get(), b.size);
+                file.close();
+            }
+            std::ofstream metafile(dir.path + "hnsw.index._meta", std::ios::out);
+            for (auto key : keys) {
+                metafile << key << std::endl;
+            }
+            metafile.close();
+        } else if (bs.error().type == vsag::ErrorType::NO_ENOUGH_MEMORY) {
+            std::cerr << "no enough memory to serialize index" << std::endl;
+        }
+
+        std::ifstream metafile(dir.path + "hnsw.index._meta", std::ios::in);
+        std::vector<std::string> keys;
+        std::string line;
+        while (std::getline(metafile, line)) {
+            keys.push_back(line);
+        }
+        metafile.close();
+
+        vsag::BinarySet bs;
+        for (auto key : keys) {
+            std::ifstream file(dir.path + "hnsw.index." + key, std::ios::in);
+            file.seekg(0, std::ios::end);
+            vsag::Binary b;
+            b.size = file.tellg();
+            b.data.reset(new int8_t[b.size]);
+            file.seekg(0, std::ios::beg);
+            file.read((char*)b.data.get(), b.size);
+            bs.Set(key, b);
+        }
+
+        auto new_index = std::make_shared<vsag::HNSW>(
+            std::make_shared<hnswlib::L2Space>(dim), max_degree, ef_construction, false, true);
+        REQUIRE(new_index->Deserialize(bs).has_value());
+        REQUIRE(new_index->CheckGraphIntegrity());
+    }
+}

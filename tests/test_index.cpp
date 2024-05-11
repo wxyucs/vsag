@@ -5,6 +5,7 @@
 #include "catch2/catch_test_macros.hpp"
 #include "catch2/generators/catch_generators.hpp"
 #include "fixtures/fixtures.h"
+#include "fmt/format.h"
 #include "nlohmann/json.hpp"
 #include "vsag/dataset.h"
 #include "vsag/logger.h"
@@ -345,7 +346,7 @@ TEST_CASE("search on a deserialized empty index", "[ft][index]") {
 }
 
 TEST_CASE("remove vectors from the index", "[ft][index]") {
-    spdlog::set_level(spdlog::level::debug);
+    vsag::Options::Instance().logger()->SetLevel(vsag::Logger::Level::DEBUG);
     int64_t num_vectors = 1000;
     int64_t dim = 64;
     auto index_name = GENERATE("hnsw", "diskann");

@@ -1525,7 +1525,7 @@ public:
     * Marks an element with the given label deleted, does NOT really change the current graph.
     */
     void
-    markDelete(labeltype label) {
+    markDelete(labeltype label) override {
         // lock all operations with element by label
         std::unique_lock<std::mutex> lock_label(getLabelOpMutex(label));
 

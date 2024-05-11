@@ -27,7 +27,8 @@ public:
     HNSW(std::shared_ptr<hnswlib::SpaceInterface> space_interface,
          int M,
          int ef_construction,
-         bool is_static = false);
+         bool use_static = false,
+         bool use_reversed_edges = false);
 
     tl::expected<std::vector<int64_t>, Error>
     Build(const Dataset& base) override {
@@ -100,6 +101,10 @@ public:
     std::string
     GetStats() const override;
 
+    // used to test the integrity of graphs, used only in UT.
+    bool
+    CheckGraphIntegrity() const;
+
 private:
     tl::expected<std::vector<int64_t>, Error>
     build(const Dataset& base);
@@ -145,8 +150,9 @@ private:
     std::shared_ptr<hnswlib::SpaceInterface> space;
 
     int64_t dim_;
-    bool static_ = false;
+    bool use_static_ = false;
     bool empty_index_ = false;
+    bool use_reversed_edges_ = false;
 
     mutable std::mutex stats_mutex_;
     mutable std::map<std::string, WindowResultQueue> result_queues_;

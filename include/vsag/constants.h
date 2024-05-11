@@ -45,6 +45,7 @@ constexpr const char* HNSW_PARAMETER_EF_RUNTIME = "ef_search";
 constexpr const char* HNSW_PARAMETER_M = "max_degree";
 constexpr const char* HNSW_PARAMETER_CONSTRUCTION = "ef_construction";
 constexpr const char* HNSW_PARAMETER_USE_STATIC = "use_static";
+constexpr const char* HNSW_PARAMETER_REVERSED_EDGES = "use_reversed_edges";
 
 // statstic key
 constexpr const char* STATSTIC_MEMORY = "memory";

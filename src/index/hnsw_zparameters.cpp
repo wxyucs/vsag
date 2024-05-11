@@ -62,6 +62,10 @@ CreateHnswParameters::FromJson(const std::string& json_string) {
     obj.use_static = params[INDEX_HNSW].contains(HNSW_PARAMETER_USE_STATIC) &&
                      params[INDEX_HNSW][HNSW_PARAMETER_USE_STATIC];
 
+    // set obj.use_reversed_edges
+    obj.use_reversed_edges = params[INDEX_HNSW].contains(HNSW_PARAMETER_REVERSED_EDGES) &&
+                             params[INDEX_HNSW][HNSW_PARAMETER_REVERSED_EDGES];
+
     return obj;
 }
 
