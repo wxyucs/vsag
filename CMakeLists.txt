@@ -120,8 +120,10 @@ install (TARGETS vsag
 	 LIBRARY DESTINATION "${CMAKE_INSTALL_LIBDIR}")
 install (TARGETS vsag_static
 	 LIBRARY DESTINATION "${CMAKE_INSTALL_LIBDIR}")
-install (TARGETS test_performance
-	 LIBRARY DESTINATION "${CMAKE_INSTALL_BINDIR}")
+if (ENABLE_TESTS)
+    install (TARGETS test_performance
+    	 LIBRARY DESTINATION "${CMAKE_INSTALL_BINDIR}")
+endif ()
 
 # version
 find_package (Git)
