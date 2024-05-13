@@ -112,6 +112,7 @@ static bool AVX512Capable() {
 #include <vector>
 #include <iostream>
 #include <string.h>
+#include <functional>
 
 namespace hnswlib {
 typedef size_t labeltype;
