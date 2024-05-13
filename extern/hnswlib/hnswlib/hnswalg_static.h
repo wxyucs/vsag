@@ -52,7 +52,7 @@ public:
     size_t size_links_level0_{0};
     size_t offsetData_{0}, offsetLevel0_{0}, label_offset_{0};
 
-    char* data_level0_memory_{nullptr};
+    BlockManager* data_level0_memory_{nullptr};
     char** linkLists_{nullptr};
     int* element_levels_;  // keeps level of each element
 
@@ -132,9 +132,7 @@ public:
         label_offset_ = size_links_level0_ + data_size_;
         offsetLevel0_ = 0;
 
-        data_level0_memory_ = (char*) vsag::allocate(max_elements_ * size_data_per_element_);
-        if (data_level0_memory_ == nullptr)
-            throw std::runtime_error("Not enough memory");
+        data_level0_memory_ = new BlockManager(max_elements_, size_data_per_element_);
 
         cur_element_count = 0;
 
@@ -154,7 +152,7 @@ public:
     }
 
     ~StaticHierarchicalNSW() {
-        vsag::deallocate(data_level0_memory_);
+        delete data_level0_memory_;
         for (tableint i = 0; i < cur_element_count; i++) {
             if (element_levels_[i] > 0)
                 vsag::deallocate(linkLists_[i]);
@@ -191,27 +189,26 @@ public:
     getExternalLabel(tableint internal_id) const {
         labeltype return_label;
         memcpy(&return_label,
-               (data_level0_memory_ + internal_id * size_data_per_element_ + label_offset_),
+               (data_level0_memory_->getElementPtr(internal_id, label_offset_)),
                sizeof(labeltype));
         return return_label;
     }
 
     inline void
     setExternalLabel(tableint internal_id, labeltype label) const {
-        memcpy((data_level0_memory_ + internal_id * size_data_per_element_ + label_offset_),
+        memcpy((data_level0_memory_->getElementPtr(internal_id, label_offset_)),
                &label,
                sizeof(labeltype));
     }
 
     inline labeltype*
     getExternalLabeLp(tableint internal_id) const {
-        return (labeltype*)(data_level0_memory_ + internal_id * size_data_per_element_ +
-                            label_offset_);
+        return (labeltype*)(data_level0_memory_->getElementPtr(internal_id, label_offset_));
     }
 
     inline char*
     getDataByInternalId(tableint internal_id) const {
-        return (data_level0_memory_ + internal_id * size_data_per_element_ + offsetData_);
+        return (data_level0_memory_->getElementPtr(internal_id, offsetData_));
     }
 
     int
@@ -285,20 +282,23 @@ public:
             }
             size_t size = getListCount((linklistsizeint*)data);
             tableint* datal = (tableint*)(data + 1);
+            auto tmp_data_ptr = getDataByInternalId(*datal);
+            auto tmp_data_ptr2 = getDataByInternalId(*datal + 1);
 #ifdef USE_SSE
             _mm_prefetch((char*)(visited_array + *(data + 1)), _MM_HINT_T0);
             _mm_prefetch((char*)(visited_array + *(data + 1) + 64), _MM_HINT_T0);
-            _mm_prefetch(getDataByInternalId(*datal), _MM_HINT_T0);
-            _mm_prefetch(getDataByInternalId(*(datal + 1)), _MM_HINT_T0);
+            _mm_prefetch(tmp_data_ptr, _MM_HINT_T0);
+            _mm_prefetch(tmp_data_ptr2, _MM_HINT_T0);
 #endif
 
             for (size_t j = 0; j < size; j++) {
                 tableint candidate_id = *(datal + j);
 //                    if (candidate_id == 0) continue;
-#ifdef USE_SSE
                 size_t pre_l = std::min(j, size - 2);
+                auto tmp_data_ptr3 = getDataByInternalId(*(datal + pre_l + 1));
+#ifdef USE_SSE
                 _mm_prefetch((char*)(visited_array + *(datal + pre_l + 1)), _MM_HINT_T0);
-                _mm_prefetch(getDataByInternalId(*(datal + pre_l + 1)), _MM_HINT_T0);
+                _mm_prefetch(tmp_data_ptr3, _MM_HINT_T0);
 #endif
                 if (visited_array[candidate_id] == visited_array_tag)
                     continue;
@@ -308,8 +308,9 @@ public:
                 float dist1 = fstdistfunc_(data_point, currObj1, dist_func_param_);
                 if (top_candidates.size() < ef_construction_ || lowerBound > dist1) {
                     candidateSet.emplace(-dist1, candidate_id);
+                    auto tmp_data_ptr4 = getDataByInternalId(candidateSet.top().second);
 #ifdef USE_SSE
-                    _mm_prefetch(getDataByInternalId(candidateSet.top().second), _MM_HINT_T0);
+                    _mm_prefetch(tmp_data_ptr4, _MM_HINT_T0);
 #endif
 
                     if (!isMarkedDeleted(candidate_id))
@@ -718,8 +719,7 @@ public:
 
     linklistsizeint*
     get_linklist0(tableint internal_id) const {
-        return (linklistsizeint*)(data_level0_memory_ + internal_id * size_data_per_element_ +
-                                  offsetLevel0_);
+        return (linklistsizeint*)(data_level0_memory_->getElementPtr(internal_id, offsetLevel0_));
     }
 
 
@@ -880,12 +880,7 @@ public:
         std::vector<std::mutex>(new_max_elements).swap(link_list_locks_);
 
         // Reallocate base layer
-        char* data_level0_memory_new =
-            (char*) vsag::reallocate(data_level0_memory_, new_max_elements * size_data_per_element_);
-        if (data_level0_memory_new == nullptr)
-            throw std::runtime_error(
-                "Not enough memory: resizeIndex failed to allocate base layer");
-        data_level0_memory_ = data_level0_memory_new;
+        data_level0_memory_->resize(new_max_elements);
 
         // Reallocate all other layers
         char** linkLists_new = (char**) vsag::reallocate(linkLists_, sizeof(void*) * new_max_elements);
@@ -951,7 +946,7 @@ public:
         writeVarToMem(dest, pq_sub_dim);
 
         // output.write(data_level0_memory_, cur_element_count * size_data_per_element_);
-        writeBinaryToMem(dest, data_level0_memory_, cur_element_count * size_data_per_element_);
+        data_level0_memory_->serialize(dest);
 
         for (size_t i = 0; i < cur_element_count; i++) {
             unsigned int linkListSize =
@@ -1017,7 +1012,7 @@ public:
         size += sizeof(pq_sub_dim);
 
         // output.write(data_level0_memory_, cur_element_count * size_data_per_element_);
-        size += cur_element_count * size_data_per_element_;
+        size += data_level0_memory_->getSize();
 
         for (size_t i = 0; i < cur_element_count; i++) {
             unsigned int linkListSize =
@@ -1060,7 +1055,7 @@ public:
         writeBinaryPOD(out_stream, pq_cluster);
         writeBinaryPOD(out_stream, pq_sub_dim);
 
-        out_stream.write(data_level0_memory_, cur_element_count * size_data_per_element_);
+        data_level0_memory_->serialize(out_stream);
 
         for (size_t i = 0; i < cur_element_count; i++) {
             unsigned int linkListSize = element_levels_[i] > 0 ? size_links_per_element_ * element_levels_[i] : 0;
@@ -1208,11 +1203,9 @@ public:
         // input.seekg(pos, input.beg);
 
         resizeIndex(max_elements);
-        if (data_level0_memory_ == nullptr)
-            throw std::runtime_error("Not enough memory: loadIndex failed to allocate level0");
-        // input.read(data_level0_memory_, cur_element_count * size_data_per_element_);
-        read_func(cursor, cur_element_count * size_data_per_element_, data_level0_memory_);
-        cursor += cur_element_count * size_data_per_element_;
+
+        data_level0_memory_->deserialize(read_func, cursor);
+        cursor += data_level0_memory_->getSize();
 
         size_links_per_element_ = maxM_ * sizeof(tableint) + sizeof(linklistsizeint);
 
@@ -1331,7 +1324,7 @@ public:
 
         in_stream.seekg(pos, in_stream.beg);
         resizeIndex(max_elements);
-        in_stream.read(data_level0_memory_, cur_element_count * size_data_per_element_);
+        data_level0_memory_->deserialize(in_stream);
 
         size_links_per_element_ = maxM_ * sizeof(tableint) + sizeof(linklistsizeint);
 
@@ -1444,11 +1437,7 @@ public:
 
         input.seekg(pos, input.beg);
 
-	free(data_level0_memory_);
-        data_level0_memory_ = (char*)malloc(max_elements * size_data_per_element_);
-        if (data_level0_memory_ == nullptr)
-            throw std::runtime_error("Not enough memory: loadIndex failed to allocate level0");
-        input.read(data_level0_memory_, cur_element_count * size_data_per_element_);
+        data_level0_memory_->deserialize(input);
 
         size_links_per_element_ = maxM_ * sizeof(tableint) + sizeof(linklistsizeint);
 
@@ -1456,10 +1445,10 @@ public:
         std::vector<std::mutex>(max_elements).swap(link_list_locks_);
         std::vector<std::mutex>(MAX_LABEL_OPERATION_LOCKS).swap(label_op_locks_);
 
-	delete visited_list_pool_;
+        delete visited_list_pool_;
         visited_list_pool_ = new VisitedListPool(1, max_elements);
 
-	free(linkLists_);
+        free(linkLists_);
         linkLists_ = (char**)malloc(sizeof(void*) * max_elements);
         if (linkLists_ == nullptr)
             throw std::runtime_error("Not enough memory: loadIndex failed to allocate linklists");
@@ -1627,7 +1616,8 @@ public:
         tableint currObj = enterpoint_node_;
         tableint enterpoint_copy = enterpoint_node_;
 
-        memset(data_level0_memory_ + cur_c * size_data_per_element_ + offsetLevel0_,
+        memset(
+            data_level0_memory_->getElementPtr(cur_c, offsetLevel0_),
                0,
                size_data_per_element_);
 
