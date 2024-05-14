@@ -8,7 +8,6 @@ project (VSAG
   LANGUAGES CXX
 )
 
-set (NUM_BUILDING_JOBS 4)
 set (CMAKE_CXX_STANDARD 17)
 message ("CPU ARCH: ${CMAKE_HOST_SYSTEM_PROCESSOR}")
 
@@ -50,15 +49,15 @@ endif ()
 if (ENABLE_ASAN)
   if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang" OR (CMAKE_CXX_COMPILER_ID STREQUAL "GNU" AND NOT CMAKE_CXX_COMPILER_VERSION VERSION_LESS 7.0))
     message(STATUS "Compiling with AddressSanitizer and UndefinedBehaviorSanitizer")
-    set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g -fsanitize=address,undefined -fno-omit-frame-pointer -fno-optimize-sibling-calls -fsanitize-recover=address -fno-sanitize=vptr")
-    set (CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -g -fsanitize=address,undefined -fno-omit-frame-pointer -fno-optimize-sibling-calls -fsanitize-recover=address -fno-sanitize=vptr")
-    set (CMAKE_LD_FLAGS "${CMAKE_LD_FLAGS} -g -fsanitize=address,undefined -fno-omit-frame-pointer -fno-optimize-sibling-calls -fsanitize-recover=address -fno-sanitize=vptr")
+    set (ASAN_FLAGS "-g -fsanitize=address,undefined -fno-omit-frame-pointer -fno-optimize-sibling-calls -fsanitize-recover=address -fno-sanitize=vptr")
   else ()
     message(STATUS "Compiling with AddressSanitizer")
-    set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g -fsanitize=address -fno-omit-frame-pointer -static-libasan")
-    set (CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -g -fsanitize=address -fno-omit-frame-pointer -static-libasan")
-    set (CMAKE_LD_FLAGS "${CMAKE_LD_FLAGS} -g -fsanitize=address -fno-omit-frame-pointer -static-libasan")
+    set (ASAN_FLAGS "-g -fsanitize=address -fno-omit-frame-pointer -static-libasan")
   endif ()
+
+  set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${ASAN_FLAGS}")
+  set (CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${ASAN_FLAGS}")
+  set (CMAKE_LD_FLAGS "${CMAKE_LD_FLAGS} ${ASAN_FLAGS}")
 endif ()
 
 # tsan
