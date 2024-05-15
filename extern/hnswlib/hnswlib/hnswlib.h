@@ -180,6 +180,10 @@ class AlgorithmInterface {
 
     virtual void setEf(size_t ef) = 0;
 
+    virtual float getDistanceByLabel(labeltype label, const void *data_point) = 0;
+
+    virtual std::priority_queue<std::pair<float, labeltype>> bruteForce(const void* data_point, int64_t k) = 0;
+
     virtual void resizeIndex(size_t new_max_elements) = 0;
 
     virtual size_t calcSerializeSize() = 0;
@@ -194,6 +198,8 @@ class AlgorithmInterface {
     virtual void markDelete(labeltype label) = 0;
 
     virtual size_t getDeletedCount() = 0;
+
+    virtual bool isValidLabel(labeltype label) = 0;
 
     virtual ~AlgorithmInterface(){
     }

@@ -413,3 +413,195 @@ TEST_CASE("build with reversed edges", "[ut][hnsw]") {
         REQUIRE(new_index->CheckGraphIntegrity());
     }
 }
+
+TEST_CASE("feedback with invalid argument", "[ut][hnsw]") {
+    vsag::Options::Instance().logger()->SetLevel(vsag::Logger::Level::DEBUG);
+    // parameters
+    int dim = 128;
+    int max_degree = 16;
+    int ef_construction = 200;
+    int64_t num_vectors = 1000;
+    int64_t k = 10;
+
+    auto index = std::make_shared<vsag::HNSW>(
+        std::make_shared<hnswlib::L2Space>(dim), max_degree, ef_construction, false, false, true);
+
+    nlohmann::json search_parameters{
+        {"hnsw", {{"ef_search", 200}}},
+    };
+
+    auto [ids, vectors] = fixtures::generate_ids_and_vectors(num_vectors, dim);
+    vsag::Dataset query;
+    query.NumElements(1).Dim(dim).Float32Vectors(vectors.data()).Owner(false);
+
+    SECTION("index feedback with k = 0") {
+        REQUIRE(index->Feedback(query, 0, search_parameters.dump(), -1).error().type ==
+                vsag::ErrorType::INVALID_ARGUMENT);
+        REQUIRE(index->Feedback(query, 0, search_parameters.dump()).error().type ==
+                vsag::ErrorType::INVALID_ARGUMENT);
+    }
+
+    SECTION("index feedback with invalid global optimum tag id") {
+        auto feedback_result = index->Feedback(query, k, search_parameters.dump(), -1000);
+        REQUIRE(feedback_result.error().type == vsag::ErrorType::INVALID_ARGUMENT);
+    }
+}
+
+TEST_CASE("redundant feedback and empty enhancement", "[ut][hnsw]") {
+    vsag::Options::Instance().logger()->SetLevel(vsag::Logger::Level::DEBUG);
+
+    // parameters
+    int dim = 128;
+    int max_degree = 16;
+    int ef_construction = 200;
+    int64_t num_base = 10;
+    int64_t num_query = 1;
+    int64_t k = 10;
+
+    auto index = std::make_shared<vsag::HNSW>(
+        std::make_shared<hnswlib::L2Space>(dim), max_degree, ef_construction, false, false, true);
+
+    auto [base_ids, base_vectors] = fixtures::generate_ids_and_vectors(num_base, dim);
+    vsag::Dataset base;
+    base.NumElements(num_base)
+        .Dim(dim)
+        .Ids(base_ids.data())
+        .Float32Vectors(base_vectors.data())
+        .Owner(false);
+    // build index
+    auto buildindex = index->Build(base);
+    REQUIRE(buildindex.has_value());
+
+    nlohmann::json search_parameters{
+        {"hnsw", {{"ef_search", 200}}},
+    };
+
+    auto [ids, vectors] = fixtures::generate_ids_and_vectors(num_query, dim);
+    vsag::Dataset query;
+    query.NumElements(1).Dim(dim).Float32Vectors(vectors.data()).Owner(false);
+
+    auto search_result = index->KnnSearch(query, k, search_parameters.dump());
+    REQUIRE(search_result.has_value());
+
+    SECTION("index redundant feedback") {
+        auto feedback_result =
+            index->Feedback(query, k, search_parameters.dump(), search_result->GetIds()[0]);
+        REQUIRE(*feedback_result == 1);
+
+        auto redundant_feedback_result =
+            index->Feedback(query, k, search_parameters.dump(), search_result->GetIds()[0]);
+        REQUIRE(*redundant_feedback_result == 0);
+    }
+
+    SECTION("index search with empty enhancement") {
+        auto enhanced_search_result = index->KnnSearch(query, k, search_parameters.dump());
+        REQUIRE(enhanced_search_result.has_value());
+        for (int i = 0; i < search_result->GetNumElements(); i++) {
+            REQUIRE(search_result->GetIds()[i] == enhanced_search_result->GetIds()[i]);
+        }
+    }
+}
+
+TEST_CASE("feedback without use conjugate graph", "[ut][hnsw]") {
+    vsag::Options::Instance().logger()->SetLevel(vsag::Logger::Level::DEBUG);
+
+    // parameters
+    int dim = 128;
+    int max_degree = 16;
+    int ef_construction = 200;
+    int64_t num_base = 10;
+    int64_t num_query = 1;
+    int64_t k = 10;
+
+    auto index = std::make_shared<vsag::HNSW>(
+        std::make_shared<hnswlib::L2Space>(dim), max_degree, ef_construction);
+
+    auto [base_ids, base_vectors] = fixtures::generate_ids_and_vectors(num_base, dim);
+    vsag::Dataset base;
+    base.NumElements(num_base)
+        .Dim(dim)
+        .Ids(base_ids.data())
+        .Float32Vectors(base_vectors.data())
+        .Owner(false);
+    // build index
+    auto buildindex = index->Build(base);
+    REQUIRE(buildindex.has_value());
+
+    nlohmann::json search_parameters{
+        {"hnsw", {{"ef_search", 200}}},
+    };
+
+    auto [ids, vectors] = fixtures::generate_ids_and_vectors(num_query, dim);
+    vsag::Dataset query;
+    query.NumElements(1).Dim(dim).Float32Vectors(vectors.data()).Owner(false);
+
+    auto feedback_result = index->Feedback(query, k, search_parameters.dump());
+    REQUIRE(feedback_result.error().type == vsag::ErrorType::UNSUPPORTED_INDEX_OPERATION);
+}
+
+TEST_CASE("feedback on empty index", "[ut][hnsw]") {
+    vsag::Options::Instance().logger()->SetLevel(vsag::Logger::Level::DEBUG);
+
+    // parameters
+    int dim = 128;
+    int max_degree = 16;
+    int ef_construction = 200;
+    int64_t num_base = 0;
+    int64_t num_query = 1;
+    int64_t k = 100;
+
+    auto index = std::make_shared<vsag::HNSW>(
+        std::make_shared<hnswlib::L2Space>(dim), max_degree, ef_construction, false, false, true);
+
+    auto [base_ids, base_vectors] = fixtures::generate_ids_and_vectors(num_base, dim);
+    vsag::Dataset base;
+    base.NumElements(num_base)
+        .Dim(dim)
+        .Ids(base_ids.data())
+        .Float32Vectors(base_vectors.data())
+        .Owner(false);
+    // build index
+    auto buildindex = index->Build(base);
+    REQUIRE(buildindex.has_value());
+
+    nlohmann::json search_parameters{
+        {"hnsw", {{"ef_search", 200}}},
+    };
+
+    auto [ids, vectors] = fixtures::generate_ids_and_vectors(num_query, dim);
+    vsag::Dataset query;
+    query.NumElements(1).Dim(dim).Float32Vectors(vectors.data()).Owner(false);
+
+    auto feedback_result = index->Feedback(query, k, search_parameters.dump());
+    REQUIRE(*feedback_result == 0);
+}
+
+TEST_CASE("get distance by label", "[ut][hnsw]") {
+    vsag::Options::Instance().logger()->SetLevel(vsag::Logger::Level::DEBUG);
+
+    // parameters
+    int dim = 128;
+    int64_t num_base = 1;
+
+    // data
+    auto [base_ids, base_vectors] = fixtures::generate_ids_and_vectors(num_base, dim);
+
+    // hnsw index
+    hnswlib::L2Space space(dim);
+
+    SECTION("hnsw test") {
+        auto* alg_hnsw = new hnswlib::HierarchicalNSW(&space, 100);
+        alg_hnsw->addPoint(base_vectors.data(), 0);
+        REQUIRE(alg_hnsw->getDistanceByLabel(0, base_vectors.data()) < 1e-7);
+        REQUIRE_THROWS(alg_hnsw->getDistanceByLabel(-1, base_vectors.data()));
+        delete alg_hnsw;
+    }
+
+    SECTION("hnsw test") {
+        auto* alg_hnsw_static = new hnswlib::StaticHierarchicalNSW(&space, 100);
+        alg_hnsw_static->addPoint(base_vectors.data(), 0);
+        REQUIRE(alg_hnsw_static->getDistanceByLabel(0, base_vectors.data()) < 1e-7);
+        REQUIRE_THROWS(alg_hnsw_static->getDistanceByLabel(-1, base_vectors.data()));
+        delete alg_hnsw_static;
+    }
+}

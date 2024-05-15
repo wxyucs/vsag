@@ -105,6 +105,34 @@ public:
         throw std::runtime_error("Index not support range search");
     }
 
+    /**
+     * Pretraining the conjugate graph involves searching with generated queries and providing feedback.
+     *
+     * @param base_tag_ids is the label of choosen base vectors that need to be enhanced
+     * @param k is the number of edges inserted into conjugate graph
+     * @return result is the number of successful insertions into conjugate graph
+     */
+    virtual tl::expected<uint32_t, Error>
+    Pretrain(const std::vector<int64_t>& base_tag_ids, uint32_t k, const std::string& parameters) {
+        throw std::runtime_error("Index doesn't support pretrain");
+    };
+
+    /**
+     * Performing feedback on conjugate graph
+     *
+     * @param query should contains dim, num_elements and vectors
+     * @param k is the number of edges inserted into conjugate graph
+     * @param global_optimum_tag_id is the label of exact nearest neighbor
+     * @return result is the number of successful insertions into conjugate graph
+     */
+    virtual tl::expected<uint32_t, Error>
+    Feedback(const Dataset& query,
+             int64_t k,
+             const std::string& parameters,
+             int64_t global_optimum_tag_id = std::numeric_limits<int64_t>::max()) {
+        throw std::runtime_error("Index doesn't support feedback");
+    };
+
 public:
     // [serialize/deserialize with binaryset]
 

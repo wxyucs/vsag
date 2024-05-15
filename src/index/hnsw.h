@@ -13,6 +13,7 @@
 #include <vector>
 
 #include "../common.h"
+#include "../conjugate_graph/conjugate_graph.h"
 #include "../logger.h"
 #include "../utils.h"
 #include "vsag/binaryset.h"
@@ -28,7 +29,8 @@ public:
          int M,
          int ef_construction,
          bool use_static = false,
-         bool use_reversed_edges = false);
+         bool use_reversed_edges = false,
+         bool use_conjugate_graph = false);
 
     tl::expected<std::vector<int64_t>, Error>
     Build(const Dataset& base) override {
@@ -60,6 +62,14 @@ public:
                 BitsetPtr invalid = nullptr) const override {
         SAFE_CALL(return this->range_search(query, radius, parameters, invalid));
     }
+
+    tl::expected<uint32_t, Error>
+    Feedback(const Dataset& query,
+             int64_t k,
+             const std::string& parameters,
+             int64_t global_optimum_tag_id = std::numeric_limits<int64_t>::max()) override {
+        SAFE_CALL(return this->feedback(query, k, parameters, global_optimum_tag_id));
+    };
 
 public:
     tl::expected<BinarySet, Error>
@@ -95,7 +105,10 @@ public:
 
     int64_t
     GetMemoryUsage() const override {
-        return alg_hnsw->calcSerializeSize();
+        if (use_conjugate_graph_)
+            return alg_hnsw->calcSerializeSize() + conjugate_graph_->GetMemoryUsage();
+        else
+            return alg_hnsw->calcSerializeSize();
     }
 
     std::string
@@ -127,6 +140,18 @@ private:
                  const std::string& parameters,
                  BitsetPtr invalid = nullptr) const;
 
+    tl::expected<uint32_t, Error>
+    feedback(const Dataset& query,
+             int64_t k,
+             const std::string& parameters,
+             int64_t global_optimum_tag_id);
+
+    tl::expected<uint32_t, Error>
+    feedback(const Dataset& result, int64_t global_optimum_tag_id, int64_t k);
+
+    tl::expected<Dataset, Error>
+    brute_force(const Dataset& query, int64_t k);
+
     tl::expected<BinarySet, Error>
     serialize() const;
 
@@ -148,6 +173,9 @@ private:
 private:
     std::shared_ptr<hnswlib::AlgorithmInterface<float>> alg_hnsw;
     std::shared_ptr<hnswlib::SpaceInterface> space;
+
+    bool use_conjugate_graph_;
+    std::shared_ptr<ConjugateGraph> conjugate_graph_;
 
     int64_t dim_;
     bool use_static_ = false;

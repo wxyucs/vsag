@@ -17,6 +17,7 @@ public:
     std::shared_ptr<hnswlib::SpaceInterface> space;
     int64_t max_degree;
     int64_t ef_construction;
+    bool use_conjugate_graph;
     bool use_static;
     bool use_reversed_edges;
 
@@ -32,6 +33,7 @@ public:
 public:
     // required vars
     int64_t ef_search;
+    bool use_conjugate_graph_search;
 
 private:
     HnswSearchParameters() = default;

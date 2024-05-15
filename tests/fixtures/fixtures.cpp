@@ -4,6 +4,7 @@
 #include <cstdint>
 #include <string>
 
+#include "../extern/hnswlib/hnswlib/hnswlib.h"
 #include "fmt/format.h"
 #include "vsag/dataset.h"
 
@@ -113,4 +114,45 @@ generate_hnsw_build_parameters_string(const std::string& metric_type, int64_t di
     return build_parameters;
 }
 
+vsag::Dataset
+brute_force(const vsag::Dataset& query,
+            const vsag::Dataset& base,
+            int64_t k,
+            const std::string& metric_type) {
+    assert(metric_type == "l2");
+    assert(query.GetDim() == base.GetDim());
+    assert(query.GetNumElements() == 1);
+
+    hnswlib::L2Space space(base.GetDim());
+    auto fstdistfunc_ = space.get_dist_func();
+
+    vsag::Dataset result;
+    int64_t* ids = new int64_t[k];
+    float* dists = new float[k];
+    result.Ids(ids).Distances(dists).NumElements(k);
+
+    std::priority_queue<std::pair<float, int64_t>> bf_result;
+
+    for (uint32_t i = 0; i < base.GetNumElements(); i++) {
+        float dist = fstdistfunc_(query.GetFloat32Vectors(),
+                                  base.GetFloat32Vectors() + i * base.GetDim(),
+                                  space.get_dist_func_param());
+        if (bf_result.size() < k) {
+            bf_result.push({dist, base.GetIds()[i]});
+        } else {
+            if (dist < bf_result.top().first) {
+                bf_result.pop();
+                bf_result.push({dist, base.GetIds()[i]});
+            }
+        }
+    }
+
+    for (int i = k - 1; i >= 0; i--) {
+        ids[i] = bf_result.top().second;
+        dists[i] = bf_result.top().first;
+        bf_result.pop();
+    }
+
+    return std::move(result);
+}
 }  // namespace fixtures

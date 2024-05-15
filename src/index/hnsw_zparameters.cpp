@@ -62,6 +62,12 @@ CreateHnswParameters::FromJson(const std::string& json_string) {
     obj.use_static = params[INDEX_HNSW].contains(HNSW_PARAMETER_USE_STATIC) &&
                      params[INDEX_HNSW][HNSW_PARAMETER_USE_STATIC];
 
+    // set obj.use_conjugate_graph
+    if (params[INDEX_HNSW].contains(PARAMETER_USE_CONJUGATE_GRAPH)) {
+        obj.use_conjugate_graph = params[INDEX_HNSW][PARAMETER_USE_CONJUGATE_GRAPH];
+    } else {
+        obj.use_conjugate_graph = false;
+    }
     // set obj.use_reversed_edges
     obj.use_reversed_edges = params[INDEX_HNSW].contains(HNSW_PARAMETER_REVERSED_EDGES) &&
                              params[INDEX_HNSW][HNSW_PARAMETER_REVERSED_EDGES];
@@ -85,6 +91,13 @@ HnswSearchParameters::FromJson(const std::string& json_string) {
     obj.ef_search = params[INDEX_HNSW][HNSW_PARAMETER_EF_RUNTIME];
     CHECK_ARGUMENT((1 <= obj.ef_search) and (obj.ef_search <= 1000),
                    fmt::format("ef_search({}) must in range[1, 1000]", obj.ef_search));
+
+    // set obj.use_conjugate_graph search
+    if (params[INDEX_HNSW].contains(PARAMETER_USE_CONJUGATE_GRAPH_SEARCH)) {
+        obj.use_conjugate_graph_search = params[INDEX_HNSW][PARAMETER_USE_CONJUGATE_GRAPH_SEARCH];
+    } else {
+        obj.use_conjugate_graph_search = true;
+    }
 
     return obj;
 }

@@ -27,6 +27,8 @@ constexpr const char* BLANK_INDEX = "blank_index";
 constexpr const char* PARAMETER_DTYPE = "dtype";
 constexpr const char* PARAMETER_DIM = "dim";
 constexpr const char* PARAMETER_METRIC_TYPE = "metric_type";
+constexpr const char* PARAMETER_USE_CONJUGATE_GRAPH = "use_conjugate_graph";
+constexpr const char* PARAMETER_USE_CONJUGATE_GRAPH_SEARCH = "use_conjugate_graph_search";
 
 constexpr const char* DISKANN_PARAMETER_L = "ef_construction";
 constexpr const char* DISKANN_PARAMETER_R = "max_degree";

@@ -26,7 +26,7 @@ public:
     static const unsigned char DELETE_MARK = 0x01;
 
     size_t max_elements_{0};
-    mutable std::atomic<size_t> cur_element_count{0};  // current number of elements
+    mutable std::atomic<size_t> cur_element_count_{0};  // current number of elements
     size_t size_data_per_element_{0};
     size_t size_links_per_element_{0};
     mutable std::atomic<size_t> num_deleted_{0};  // number of deleted elements
@@ -134,7 +134,7 @@ public:
 
         data_level0_memory_ = new BlockManager(max_elements_, size_data_per_element_);
 
-        cur_element_count = 0;
+        cur_element_count_ = 0;
 
         visited_list_pool_ = new VisitedListPool(1, max_elements);
 
@@ -153,7 +153,7 @@ public:
 
     ~StaticHierarchicalNSW() {
         delete data_level0_memory_;
-        for (tableint i = 0; i < cur_element_count; i++) {
+        for (tableint i = 0; i < cur_element_count_; i++) {
             if (element_levels_[i] > 0)
                 vsag::deallocate(linkLists_[i]);
         }
@@ -225,12 +225,33 @@ public:
 
     size_t
     getCurrentElementCount() override {
-        return cur_element_count;
+        return cur_element_count_;
     }
 
     size_t
     getDeletedCount() override {
         return num_deleted_;
+    }
+
+    float getDistanceByLabel(labeltype label, const void *data_point) override {
+        std::unique_lock <std::mutex> lock_table(label_lookup_lock);
+
+        auto search = label_lookup_.find(label);
+        if (search == label_lookup_.end()) {
+            throw std::runtime_error("Label not found");
+        }
+        tableint internal_id = search->second;
+        lock_table.unlock();
+
+        float dist = fstdistfunc_(data_point, getDataByInternalId(internal_id), dist_func_param_);
+        return dist;
+    }
+
+    bool isValidLabel(labeltype label) override {
+        std::unique_lock <std::mutex> lock_table(label_lookup_lock);
+        bool is_valid = (label_lookup_.find(label) != label_lookup_.end());
+        lock_table.unlock();
+        return is_valid;
     }
 
     std::priority_queue<std::pair<float, tableint>,
@@ -869,7 +890,7 @@ public:
 
     void
     resizeIndex(size_t new_max_elements) override {
-        if (new_max_elements < cur_element_count)
+        if (new_max_elements < cur_element_count_)
             throw std::runtime_error(
                 "Cannot resize, max element is less than the current number of elements");
 
@@ -915,8 +936,8 @@ public:
         writeVarToMem(dest, offsetLevel0_);
         // writeBinaryPOD(output, max_elements_);
         writeVarToMem(dest, max_elements_);
-        // writeBinaryPOD(output, cur_element_count);
-        writeVarToMem(dest, cur_element_count);
+        // writeBinaryPOD(output, cur_element_count_);
+        writeVarToMem(dest, cur_element_count_);
         // writeBinaryPOD(output, size_data_per_element_);
         writeVarToMem(dest, size_data_per_element_);
         // writeBinaryPOD(output, label_offset_);
@@ -945,10 +966,10 @@ public:
 
         writeVarToMem(dest, pq_sub_dim);
 
-        // output.write(data_level0_memory_, cur_element_count * size_data_per_element_);
+        // output.write(data_level0_memory_, cur_element_count_ * size_data_per_element_);
         data_level0_memory_->serialize(dest);
 
-        for (size_t i = 0; i < cur_element_count; i++) {
+        for (size_t i = 0; i < cur_element_count_; i++) {
             unsigned int linkListSize =
                 element_levels_[i] > 0 ? size_links_per_element_ * element_levels_[i] : 0;
             // writeBinaryPOD(output, linkListSize);
@@ -981,8 +1002,8 @@ public:
         size += sizeof(offsetLevel0_);
         // writeBinaryPOD(output, max_elements_);
         size += sizeof(max_elements_);
-        // writeBinaryPOD(output, cur_element_count);
-        size += sizeof(cur_element_count);
+        // writeBinaryPOD(output, cur_element_count_);
+        size += sizeof(cur_element_count_);
         // writeBinaryPOD(output, size_data_per_element_);
         size += sizeof(size_data_per_element_);
         // writeBinaryPOD(output, label_offset_);
@@ -1011,10 +1032,10 @@ public:
 
         size += sizeof(pq_sub_dim);
 
-        // output.write(data_level0_memory_, cur_element_count * size_data_per_element_);
+        // output.write(data_level0_memory_, cur_element_count_ * size_data_per_element_);
         size += data_level0_memory_->getSize();
 
-        for (size_t i = 0; i < cur_element_count; i++) {
+        for (size_t i = 0; i < cur_element_count_; i++) {
             unsigned int linkListSize =
                 element_levels_[i] > 0 ? size_links_per_element_ * element_levels_[i] : 0;
             // writeBinaryPOD(output, linkListSize);
@@ -1038,7 +1059,7 @@ public:
     void saveIndex(std::ostream &out_stream) override {
         writeBinaryPOD(out_stream, offsetLevel0_);
         writeBinaryPOD(out_stream, max_elements_);
-        writeBinaryPOD(out_stream, cur_element_count);
+        writeBinaryPOD(out_stream, cur_element_count_);
         writeBinaryPOD(out_stream, size_data_per_element_);
         writeBinaryPOD(out_stream, label_offset_);
         writeBinaryPOD(out_stream, offsetData_);
@@ -1057,7 +1078,7 @@ public:
 
         data_level0_memory_->serialize(out_stream);
 
-        for (size_t i = 0; i < cur_element_count; i++) {
+        for (size_t i = 0; i < cur_element_count_; i++) {
             unsigned int linkListSize = element_levels_[i] > 0 ? size_links_per_element_ * element_levels_[i] : 0;
             writeBinaryPOD(out_stream, linkListSize);
             if (linkListSize) {
@@ -1083,7 +1104,7 @@ public:
 //
 //        writeBinaryPOD(output, offsetLevel0_);
 //        writeBinaryPOD(output, max_elements_);
-//        writeBinaryPOD(output, cur_element_count);
+//        writeBinaryPOD(output, cur_element_count_);
 //        writeBinaryPOD(output, size_data_per_element_);
 //        writeBinaryPOD(output, label_offset_);
 //        writeBinaryPOD(output, offsetData_);
@@ -1096,9 +1117,9 @@ public:
 //        writeBinaryPOD(output, mult_);
 //        writeBinaryPOD(output, ef_construction_);
 //
-//        output.write(data_level0_memory_, cur_element_count * size_data_per_element_);
+//        output.write(data_level0_memory_, cur_element_count_ * size_data_per_element_);
 //
-//        for (size_t i = 0; i < cur_element_count; i++) {
+//        for (size_t i = 0; i < cur_element_count_; i++) {
 //            unsigned int linkListSize =
 //                element_levels_[i] > 0 ? size_links_per_element_ * element_levels_[i] : 0;
 //            writeBinaryPOD(output, linkListSize);
@@ -1138,11 +1159,11 @@ public:
         readFromReader(read_func, cursor, offsetLevel0_);
         // readBinaryPOD(input, max_elements_);
         readFromReader(read_func, cursor, max_elements_);
-        // readBinaryPOD(input, cur_element_count);
-        readFromReader(read_func, cursor, cur_element_count);
+        // readBinaryPOD(input, cur_element_count_);
+        readFromReader(read_func, cursor, cur_element_count_);
 
         size_t max_elements = max_elements_i;
-        if (max_elements < cur_element_count)
+        if (max_elements < cur_element_count_)
             max_elements = max_elements_;
         max_elements_ = max_elements;
         // readBinaryPOD(input, size_data_per_element_);
@@ -1180,8 +1201,8 @@ public:
         // auto pos = input.tellg();
 
         /// Optional - check if index is ok:
-        // input.seekg(cur_element_count * size_data_per_element_, input.cur);
-        // for (size_t i = 0; i < cur_element_count; i++) {
+        // input.seekg(cur_element_count_ * size_data_per_element_, input.cur);
+        // for (size_t i = 0; i < cur_element_count_; i++) {
         //     if (input.tellg() < 0 || input.tellg() >= total_filesize) {
         //         throw std::runtime_error("Index seems to be corrupted or unsupported");
         //     }
@@ -1218,7 +1239,7 @@ public:
 
         revSize_ = 1.0 / mult_;
         ef_ = 10;
-        for (size_t i = 0; i < cur_element_count; i++) {
+        for (size_t i = 0; i < cur_element_count_; i++) {
             label_lookup_[getExternalLabel(i)] = i;
             unsigned int linkListSize;
             // readBinaryPOD(input, linkListSize);
@@ -1238,7 +1259,7 @@ public:
             }
         }
 
-        for (size_t i = 0; i < cur_element_count; i++) {
+        for (size_t i = 0; i < cur_element_count_; i++) {
             if (isMarkedDeleted(i)) {
                 num_deleted_ += 1;
                 if (allow_replace_deleted_)
@@ -1271,10 +1292,10 @@ public:
 
         readBinaryPOD(in_stream, offsetLevel0_);
         readBinaryPOD(in_stream, max_elements_);
-        readBinaryPOD(in_stream, cur_element_count);
+        readBinaryPOD(in_stream, cur_element_count_);
 
         size_t max_elements = max_elements_i;
-        if (max_elements < cur_element_count)
+        if (max_elements < cur_element_count_)
             max_elements = max_elements_;
         max_elements_ = max_elements;
         readBinaryPOD(in_stream, size_data_per_element_);
@@ -1301,8 +1322,8 @@ public:
 
         /// Optional - check if index is ok:
         /*
-        in_stream.seekg(cur_element_count * size_data_per_element_, in_stream.cur);
-        for (size_t i = 0; i < cur_element_count; i++) {
+        in_stream.seekg(cur_element_count_ * size_data_per_element_, in_stream.cur);
+        for (size_t i = 0; i < cur_element_count_; i++) {
             if (in_stream.tellg() < 0 || in_stream.tellg() >= beg_pos + length) {
                 throw std::runtime_error("Index seems to be corrupted or unsupported");
             }
@@ -1335,7 +1356,7 @@ public:
 
         revSize_ = 1.0 / mult_;
         ef_ = 10;
-        for (size_t i = 0; i < cur_element_count; i++) {
+        for (size_t i = 0; i < cur_element_count_; i++) {
             label_lookup_[getExternalLabel(i)] = i;
             unsigned int linkListSize;
             readBinaryPOD(in_stream, linkListSize);
@@ -1351,7 +1372,7 @@ public:
             }
         }
 
-        for (size_t i = 0; i < cur_element_count; i++) {
+        for (size_t i = 0; i < cur_element_count_; i++) {
             if (isMarkedDeleted(i)) {
                 num_deleted_ += 1;
                 if (allow_replace_deleted_) deleted_elements.insert(i);
@@ -1390,10 +1411,10 @@ public:
 
         readBinaryPOD(input, offsetLevel0_);
         readBinaryPOD(input, max_elements_);
-        readBinaryPOD(input, cur_element_count);
+        readBinaryPOD(input, cur_element_count_);
 
         size_t max_elements = max_elements_i;
-        if (max_elements < cur_element_count)
+        if (max_elements < cur_element_count_)
             max_elements = max_elements_;
         max_elements_ = max_elements;
         readBinaryPOD(input, size_data_per_element_);
@@ -1415,8 +1436,8 @@ public:
         auto pos = input.tellg();
 
         /// Optional - check if index is ok:
-        input.seekg(cur_element_count * size_data_per_element_, input.cur);
-        for (size_t i = 0; i < cur_element_count; i++) {
+        input.seekg(cur_element_count_ * size_data_per_element_, input.cur);
+        for (size_t i = 0; i < cur_element_count_; i++) {
             if (input.tellg() < 0 || input.tellg() >= total_filesize) {
                 throw std::runtime_error("Index seems to be corrupted or unsupported");
             }
@@ -1455,7 +1476,7 @@ public:
 
         revSize_ = 1.0 / mult_;
         ef_ = 10;
-        for (size_t i = 0; i < cur_element_count; i++) {
+        for (size_t i = 0; i < cur_element_count_; i++) {
             label_lookup_[getExternalLabel(i)] = i;
             unsigned int linkListSize;
             readBinaryPOD(input, linkListSize);
@@ -1472,7 +1493,7 @@ public:
             }
         }
 
-        for (size_t i = 0; i < cur_element_count; i++) {
+        for (size_t i = 0; i < cur_element_count_; i++) {
             if (isMarkedDeleted(i)) {
                 num_deleted_ += 1;
                 if (allow_replace_deleted_)
@@ -1535,7 +1556,7 @@ public:
     */
     void
     markDeletedInternal(tableint internalId) {
-        assert(internalId < cur_element_count);
+        assert(internalId < cur_element_count_);
         if (!isMarkedDeleted(internalId)) {
             unsigned char* ll_cur = ((unsigned char*)get_linklist0(internalId)) + 2;
             *ll_cur |= DELETE_MARK;
@@ -1593,12 +1614,12 @@ public:
                 return -1;
             }
 
-            if (cur_element_count >= max_elements_) {
+            if (cur_element_count_ >= max_elements_) {
                 throw std::runtime_error("The number of elements exceeds the specified limit");
             }
 
-            cur_c = cur_element_count;
-            cur_element_count++;
+            cur_c = cur_element_count_;
+            cur_element_count_++;
             label_lookup_[label] = cur_c;
         }
 
@@ -1701,7 +1722,7 @@ public:
               size_t k,
               BaseFilterFunctor* isIdAllowed = nullptr) const override {
         std::priority_queue<std::pair<float, labeltype>> result;
-        if (cur_element_count == 0)
+        if (cur_element_count_ == 0)
             return result;
         float* dist_map = nullptr;
         if (is_trained_infer) {
@@ -1778,7 +1799,7 @@ public:
                 BaseFilterFunctor* isIdAllowed = nullptr) const override {
         std::runtime_error("static hnsw does not support range search");
 //        std::priority_queue<std::pair<float, labeltype>> result;
-//        if (cur_element_count == 0)
+//        if (cur_element_count_ == 0)
 //            return result;
 //
 //        tableint currObj = enterpoint_node_;
@@ -1839,11 +1860,28 @@ public:
         return {};
     }
 
+    std::priority_queue<std::pair<float, labeltype>> bruteForce(const void* data_point, int64_t k) override {
+        std::priority_queue<std::pair<float, labeltype>> results;
+        for (uint32_t i = 0; i < cur_element_count_; i++) {
+            float dist = fstdistfunc_(data_point, getDataByInternalId(i), dist_func_param_);
+            if (results.size() < k) {
+                results.push({dist, *getExternalLabeLp(i)});
+            } else {
+                float current_max_dist = results.top().first;
+                if (dist < current_max_dist) {
+                    results.pop();
+                    results.push({dist, *getExternalLabeLp(i)});
+                }
+            }
+        }
+        return results;
+    }
+
     void
     checkIntegrity() {
         int connections_checked = 0;
-        std::vector<int> inbound_connections_num(cur_element_count, 0);
-        for (int i = 0; i < cur_element_count; i++) {
+        std::vector<int> inbound_connections_num(cur_element_count_, 0);
+        for (int i = 0; i < cur_element_count_; i++) {
             for (int l = 0; l <= element_levels_[i]; l++) {
                 linklistsizeint* ll_cur = get_linklist_at_level(i, l);
                 int size = getListCount(ll_cur);
@@ -1851,7 +1889,7 @@ public:
                 std::unordered_set<tableint> s;
                 for (int j = 0; j < size; j++) {
                     assert(data[j] > 0);
-                    assert(data[j] < cur_element_count);
+                    assert(data[j] < cur_element_count_);
                     assert(data[j] != i);
                     inbound_connections_num[data[j]]++;
                     s.insert(data[j]);
@@ -1860,9 +1898,9 @@ public:
                 assert(s.size() == size);
             }
         }
-        if (cur_element_count > 1) {
+        if (cur_element_count_ > 1) {
             int min1 = inbound_connections_num[0], max1 = inbound_connections_num[0];
-            for (int i = 0; i < cur_element_count; i++) {
+            for (int i = 0; i < cur_element_count_; i++) {
                 assert(inbound_connections_num[i] > 0);
                 min1 = std::min(inbound_connections_num[i], min1);
                 max1 = std::max(inbound_connections_num[i], max1);
@@ -1955,7 +1993,7 @@ public:
 #pragma omp parallel for
         for (int i = 0; i < num; i++) {
             std::priority_queue<std::pair<float, tableint>> result_queue;
-            for (int j = 0; j < cur_element_count; j++) {
+            for (int j = 0; j < cur_element_count_; j++) {
                 float dist =
                     naive_l2_dist_calc(train_data + i * dim, (float*)getDataByInternalId(j), dim);
                 if (result_queue.size() < k)
@@ -2040,8 +2078,8 @@ public:
         }
         pq_dim = vec_dim;
         pq_cluster = cluster_size;
-        if (cur_element_count < pq_train_bound)
-            pq_train_bound = cur_element_count;
+        if (cur_element_count_ < pq_train_bound)
+            pq_train_bound = cur_element_count_;
         auto pq_training_data = std::shared_ptr<float[]>(new float[pq_train_bound * vec_dim]);
         for (size_t i = 0; i < pq_train_bound; i++) {
             memcpy(pq_training_data.get() + i * vec_dim, getDataByInternalId(i), data_size_);
@@ -2058,7 +2096,7 @@ public:
         diskann::generate_pq_pivots(
             pq_training_data.get(), pq_train_bound, vec_dim, pq_cluster, pq_chunk, 12, pq_book);
         is_trained_pq = true;
-        encode_hnsw_data_with_codebook(0, cur_element_count);
+        encode_hnsw_data_with_codebook(0, cur_element_count_);
     }
 
     static __attribute__((always_inline)) inline float

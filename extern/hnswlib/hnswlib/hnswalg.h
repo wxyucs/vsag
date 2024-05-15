@@ -27,7 +27,7 @@ class HierarchicalNSW : public AlgorithmInterface<float> {
     static const unsigned char DELETE_MARK = 0x01;
 
     size_t max_elements_{0};
-    mutable std::atomic<size_t> cur_element_count{0};  // current number of elements
+    mutable std::atomic<size_t> cur_element_count_{0};  // current number of elements
     size_t size_data_per_element_{0};
     size_t size_links_per_element_{0};
     mutable std::atomic<size_t> num_deleted_{0};  // number of deleted elements
@@ -141,7 +141,7 @@ class HierarchicalNSW : public AlgorithmInterface<float> {
         if (data_level0_memory_ == nullptr)
             throw std::runtime_error("Not enough memory");
 
-        cur_element_count = 0;
+        cur_element_count_ = 0;
 
         visited_list_pool_ = new VisitedListPool(1, max_elements);
 
@@ -160,13 +160,13 @@ class HierarchicalNSW : public AlgorithmInterface<float> {
 
     ~HierarchicalNSW() {
         delete data_level0_memory_;
-        for (tableint i = 0; i < cur_element_count; i++) {
+        for (tableint i = 0; i < cur_element_count_; i++) {
             if (element_levels_[i] > 0)
                 vsag::deallocate(link_lists_[i]);
         }
 
         if (use_reversed_edges_) {
-            for (tableint i = 0; i < cur_element_count; i++) {
+            for (tableint i = 0; i < cur_element_count_; i++) {
                 auto& in_edges_level0 = *(reversed_level0_link_list_ + i);
                 if (in_edges_level0) {
                     delete in_edges_level0;
@@ -184,6 +184,26 @@ class HierarchicalNSW : public AlgorithmInterface<float> {
         delete visited_list_pool_;
     }
 
+    float getDistanceByLabel(labeltype label, const void *data_point) override {
+        std::unique_lock <std::mutex> lock_table(label_lookup_lock);
+
+        auto search = label_lookup_.find(label);
+        if (search == label_lookup_.end()) {
+            throw std::runtime_error("Label not found");
+        }
+        tableint internal_id = search->second;
+        lock_table.unlock();
+
+        float dist = fstdistfunc_(data_point, getDataByInternalId(internal_id), dist_func_param_);
+        return dist;
+    }
+
+    bool isValidLabel(labeltype label) override {
+        std::unique_lock <std::mutex> lock_table(label_lookup_lock);
+        bool is_valid = (label_lookup_.find(label) != label_lookup_.end());
+        lock_table.unlock();
+        return is_valid;
+    }
 
     struct CompareByFirst {
         constexpr bool operator()(std::pair<float, tableint> const& a,
@@ -273,7 +293,7 @@ class HierarchicalNSW : public AlgorithmInterface<float> {
     bool checkReverseConnection() {
         int edge_count = 0;
         int reversed_edge_count = 0;
-        for (int internal_id = 0; internal_id < cur_element_count; ++internal_id) {
+        for (int internal_id = 0; internal_id < cur_element_count_; ++internal_id) {
             for (int level = 0; level <= element_levels_[internal_id]; ++level) {
                 unsigned int * data;
                 if (level == 0) {
@@ -310,6 +330,23 @@ class HierarchicalNSW : public AlgorithmInterface<float> {
         return (data_level0_memory_->getElementPtr(internal_id, offsetData_));
     }
 
+    std::priority_queue<std::pair<float, labeltype>> bruteForce(const void* data_point, int64_t k) override {
+        std::priority_queue<std::pair<float, labeltype>> results;
+        for (uint32_t i = 0; i < cur_element_count_; i++) {
+            float dist = fstdistfunc_(data_point, getDataByInternalId(i), dist_func_param_);
+            if (results.size() < k) {
+                results.push({dist, *getExternalLabeLp(i)});
+            } else {
+                float current_max_dist = results.top().first;
+                if (dist < current_max_dist) {
+                    results.pop();
+                    results.push({dist, *getExternalLabeLp(i)});
+                }
+            }
+        }
+        return results;
+    }
+
 
     int getRandomLevel(double reverse_size) {
         std::uniform_real_distribution<double> distribution(0.0, 1.0);
@@ -322,7 +359,7 @@ class HierarchicalNSW : public AlgorithmInterface<float> {
     }
 
     size_t getCurrentElementCount() override {
-        return cur_element_count;
+        return cur_element_count_;
     }
 
     size_t getDeletedCount() override {
@@ -756,7 +793,7 @@ class HierarchicalNSW : public AlgorithmInterface<float> {
 
 
     void resizeIndex(size_t new_max_elements) override {
-        if (new_max_elements < cur_element_count)
+        if (new_max_elements < cur_element_count_)
             throw std::runtime_error("Cannot resize, max element is less than the current number of elements");
 
         if (visited_list_pool_ != nullptr) {
@@ -830,8 +867,8 @@ class HierarchicalNSW : public AlgorithmInterface<float> {
         writeVarToMem(dest, offsetLevel0_);
         // writeBinaryPOD(output, max_elements_);
         writeVarToMem(dest, max_elements_);
-        // writeBinaryPOD(output, cur_element_count);
-        writeVarToMem(dest, cur_element_count);
+        // writeBinaryPOD(output, cur_element_count_);
+        writeVarToMem(dest, cur_element_count_);
         // writeBinaryPOD(output, size_data_per_element_);
         writeVarToMem(dest, size_data_per_element_);
         // writeBinaryPOD(output, label_offset_);
@@ -856,7 +893,7 @@ class HierarchicalNSW : public AlgorithmInterface<float> {
 
         data_level0_memory_->serialize(dest);
 
-        for (size_t i = 0; i < cur_element_count; i++) {
+        for (size_t i = 0; i < cur_element_count_; i++) {
             unsigned int linkListSize = element_levels_[i] > 0 ? size_links_per_element_ * element_levels_[i] : 0;
             // writeBinaryPOD(output, linkListSize);
             writeVarToMem(dest, linkListSize);
@@ -878,8 +915,8 @@ class HierarchicalNSW : public AlgorithmInterface<float> {
         size += sizeof(offsetLevel0_);
         // writeBinaryPOD(output, max_elements_);
         size += sizeof(max_elements_);
-        // writeBinaryPOD(output, cur_element_count);
-        size += sizeof(cur_element_count);
+        // writeBinaryPOD(output, cur_element_count_);
+        size += sizeof(cur_element_count_);
         // writeBinaryPOD(output, size_data_per_element_);
         size += sizeof(size_data_per_element_);
         // writeBinaryPOD(output, label_offset_);
@@ -902,9 +939,9 @@ class HierarchicalNSW : public AlgorithmInterface<float> {
         // writeBinaryPOD(output, ef_construction_);
         size += sizeof(ef_construction_);
 
-        // output.write(data_level0_memory_, cur_element_count * size_data_per_element_);
+        // output.write(data_level0_memory_, cur_element_count_ * size_data_per_element_);
         size += data_level0_memory_->getSize();
-        for (size_t i = 0; i < cur_element_count; i++) {
+        for (size_t i = 0; i < cur_element_count_; i++) {
             unsigned int linkListSize = element_levels_[i] > 0 ? size_links_per_element_ * element_levels_[i] : 0;
             // writeBinaryPOD(output, linkListSize);
             size += sizeof(linkListSize);
@@ -921,7 +958,7 @@ class HierarchicalNSW : public AlgorithmInterface<float> {
     void saveIndex(std::ostream &out_stream) override {
         writeBinaryPOD(out_stream, offsetLevel0_);
         writeBinaryPOD(out_stream, max_elements_);
-        writeBinaryPOD(out_stream, cur_element_count);
+        writeBinaryPOD(out_stream, cur_element_count_);
         writeBinaryPOD(out_stream, size_data_per_element_);
         writeBinaryPOD(out_stream, label_offset_);
         writeBinaryPOD(out_stream, offsetData_);
@@ -936,7 +973,7 @@ class HierarchicalNSW : public AlgorithmInterface<float> {
 
         data_level0_memory_->serialize(out_stream);
 
-        for (size_t i = 0; i < cur_element_count; i++) {
+        for (size_t i = 0; i < cur_element_count_; i++) {
             unsigned int linkListSize = element_levels_[i] > 0 ? size_links_per_element_ * element_levels_[i] : 0;
             writeBinaryPOD(out_stream, linkListSize);
             if (linkListSize) {
@@ -951,7 +988,7 @@ class HierarchicalNSW : public AlgorithmInterface<float> {
 
         writeBinaryPOD(output, offsetLevel0_);
         writeBinaryPOD(output, max_elements_);
-        writeBinaryPOD(output, cur_element_count);
+        writeBinaryPOD(output, cur_element_count_);
         writeBinaryPOD(output, size_data_per_element_);
         writeBinaryPOD(output, label_offset_);
         writeBinaryPOD(output, offsetData_);
@@ -966,7 +1003,7 @@ class HierarchicalNSW : public AlgorithmInterface<float> {
 
         data_level0_memory_->serialize(output);
 
-        for (size_t i = 0; i < cur_element_count; i++) {
+        for (size_t i = 0; i < cur_element_count_; i++) {
             unsigned int linkListSize = element_levels_[i] > 0 ? size_links_per_element_ * element_levels_[i] : 0;
             writeBinaryPOD(output, linkListSize);
             if (linkListSize)
@@ -1007,8 +1044,8 @@ class HierarchicalNSW : public AlgorithmInterface<float> {
         max_elements = std::max(max_elements, max_elements_i);
         max_elements = std::max(max_elements, max_elements_);
 
-        // readBinaryPOD(input, cur_element_count);
-        readFromReader(read_func, cursor, cur_element_count);
+        // readBinaryPOD(input, cur_element_count_);
+        readFromReader(read_func, cursor, cur_element_count_);
         // readBinaryPOD(input, size_data_per_element_);
         readFromReader(read_func, cursor, size_data_per_element_);
         // readBinaryPOD(input, label_offset_);
@@ -1038,8 +1075,8 @@ class HierarchicalNSW : public AlgorithmInterface<float> {
         // auto pos = input.tellg();
 
         /// Optional - check if index is ok:
-        // input.seekg(cur_element_count * size_data_per_element_, input.cur);
-        // for (size_t i = 0; i < cur_element_count; i++) {
+        // input.seekg(cur_element_count_ * size_data_per_element_, input.cur);
+        // for (size_t i = 0; i < cur_element_count_; i++) {
         //     if (input.tellg() < 0 || input.tellg() >= total_filesize) {
         //         throw std::runtime_error("Index seems to be corrupted or unsupported");
         //     }
@@ -1062,7 +1099,7 @@ class HierarchicalNSW : public AlgorithmInterface<float> {
         resizeIndex(max_elements);
         if (data_level0_memory_ == nullptr)
             throw std::runtime_error("Not enough memory: loadIndex failed to allocate level0");
-        // input.read(data_level0_memory_, cur_element_count * size_data_per_element_);
+        // input.read(data_level0_memory_, cur_element_count_ * size_data_per_element_);
         data_level0_memory_->deserialize(read_func, cursor);
         cursor += data_level0_memory_->getSize();
 
@@ -1078,7 +1115,7 @@ class HierarchicalNSW : public AlgorithmInterface<float> {
 
         revSize_ = 1.0 / mult_;
         ef_ = 10;
-        for (size_t i = 0; i < cur_element_count; i++) {
+        for (size_t i = 0; i < cur_element_count_; i++) {
             label_lookup_[getExternalLabel(i)] = i;
             unsigned int linkListSize;
             // readBinaryPOD(input, linkListSize);
@@ -1098,7 +1135,7 @@ class HierarchicalNSW : public AlgorithmInterface<float> {
         }
 
         if (use_reversed_edges_) {
-            for (int internal_id = 0; internal_id < cur_element_count; ++internal_id) {
+            for (int internal_id = 0; internal_id < cur_element_count_; ++internal_id) {
                 for (int level = 0; level <= element_levels_[internal_id]; ++level) {
                     unsigned int * data = get_linklist_at_level(internal_id, level);
                     auto link_list = data + 1;
@@ -1112,7 +1149,7 @@ class HierarchicalNSW : public AlgorithmInterface<float> {
             }
         }
 
-        for (size_t i = 0; i < cur_element_count; i++) {
+        for (size_t i = 0; i < cur_element_count_; i++) {
             if (isMarkedDeleted(i)) {
                 num_deleted_ += 1;
                 if (allow_replace_deleted_) deleted_elements.insert(i);
@@ -1135,7 +1172,7 @@ class HierarchicalNSW : public AlgorithmInterface<float> {
         max_elements = std::max(max_elements, max_elements_i);
         max_elements = std::max(max_elements, max_elements_);
 
-        readBinaryPOD(in_stream, cur_element_count);
+        readBinaryPOD(in_stream, cur_element_count_);
         readBinaryPOD(in_stream, size_data_per_element_);
         readBinaryPOD(in_stream, label_offset_);
         readBinaryPOD(in_stream, offsetData_);
@@ -1155,8 +1192,8 @@ class HierarchicalNSW : public AlgorithmInterface<float> {
         auto pos = in_stream.tellg();
 
         /// Optional - check if index is ok:
-        in_stream.seekg(cur_element_count * size_data_per_element_, in_stream.cur);
-        for (size_t i = 0; i < cur_element_count; i++) {
+        in_stream.seekg(cur_element_count_ * size_data_per_element_, in_stream.cur);
+        for (size_t i = 0; i < cur_element_count_; i++) {
             if (in_stream.tellg() < 0 || in_stream.tellg() >= beg_pos + length) {
                 throw std::runtime_error("Index seems to be corrupted or unsupported");
             }
@@ -1190,7 +1227,7 @@ class HierarchicalNSW : public AlgorithmInterface<float> {
 
         revSize_ = 1.0 / mult_;
         ef_ = 10;
-        for (size_t i = 0; i < cur_element_count; i++) {
+        for (size_t i = 0; i < cur_element_count_; i++) {
             label_lookup_[getExternalLabel(i)] = i;
             unsigned int linkListSize;
             readBinaryPOD(in_stream, linkListSize);
@@ -1207,7 +1244,7 @@ class HierarchicalNSW : public AlgorithmInterface<float> {
         }
 
         if (use_reversed_edges_) {
-            for (int internal_id = 0; internal_id < cur_element_count; ++internal_id) {
+            for (int internal_id = 0; internal_id < cur_element_count_; ++internal_id) {
                 for (int level = 0; level <= element_levels_[internal_id]; ++level) {
                     unsigned int * data = get_linklist_at_level(internal_id, level);
                     auto link_list = data + 1;
@@ -1221,7 +1258,7 @@ class HierarchicalNSW : public AlgorithmInterface<float> {
             }
         }
 
-        for (size_t i = 0; i < cur_element_count; i++) {
+        for (size_t i = 0; i < cur_element_count_; i++) {
             if (isMarkedDeleted(i)) {
                 num_deleted_ += 1;
                 if (allow_replace_deleted_) deleted_elements.insert(i);
@@ -1245,10 +1282,10 @@ class HierarchicalNSW : public AlgorithmInterface<float> {
 
         readBinaryPOD(input, offsetLevel0_);
         readBinaryPOD(input, max_elements_);
-        readBinaryPOD(input, cur_element_count);
+        readBinaryPOD(input, cur_element_count_);
 
         size_t max_elements = max_elements_i;
-        if (max_elements < cur_element_count)
+        if (max_elements < cur_element_count_)
             max_elements = max_elements_;
         max_elements_ = max_elements;
         readBinaryPOD(input, size_data_per_element_);
@@ -1270,8 +1307,8 @@ class HierarchicalNSW : public AlgorithmInterface<float> {
         auto pos = input.tellg();
 
         /// Optional - check if index is ok:
-        input.seekg(cur_element_count * size_data_per_element_, input.cur);
-        for (size_t i = 0; i < cur_element_count; i++) {
+        input.seekg(cur_element_count_ * size_data_per_element_, input.cur);
+        for (size_t i = 0; i < cur_element_count_; i++) {
             if (input.tellg() < 0 || input.tellg() >= total_filesize) {
                 throw std::runtime_error("Index seems to be corrupted or unsupported");
             }
@@ -1309,7 +1346,7 @@ class HierarchicalNSW : public AlgorithmInterface<float> {
 
         revSize_ = 1.0 / mult_;
         ef_ = 10;
-        for (size_t i = 0; i < cur_element_count; i++) {
+        for (size_t i = 0; i < cur_element_count_; i++) {
             label_lookup_[getExternalLabel(i)] = i;
             unsigned int linkListSize;
             readBinaryPOD(input, linkListSize);
@@ -1325,7 +1362,7 @@ class HierarchicalNSW : public AlgorithmInterface<float> {
             }
         }
 
-        for (size_t i = 0; i < cur_element_count; i++) {
+        for (size_t i = 0; i < cur_element_count_; i++) {
             if (isMarkedDeleted(i)) {
                 num_deleted_ += 1;
                 if (allow_replace_deleted_) deleted_elements.insert(i);
@@ -1387,7 +1424,7 @@ class HierarchicalNSW : public AlgorithmInterface<float> {
     * whereas maxM0_ has to be limited to the lower 16 bits, however, still large enough in almost all cases.
     */
     void markDeletedInternal(tableint internalId) {
-        assert(internalId < cur_element_count);
+        assert(internalId < cur_element_count_);
         if (!isMarkedDeleted(internalId)) {
             unsigned char *ll_cur = ((unsigned char *)get_linklist0(internalId))+2;
             *ll_cur |= DELETE_MARK;
@@ -1429,7 +1466,7 @@ class HierarchicalNSW : public AlgorithmInterface<float> {
     * Remove the deleted mark of the node.
     */
     void unmarkDeletedInternal(tableint internalId) {
-        assert(internalId < cur_element_count);
+        assert(internalId < cur_element_count_);
         if (isMarkedDeleted(internalId)) {
             unsigned char *ll_cur = ((unsigned char *)get_linklist0(internalId)) + 2;
             *ll_cur &= ~DELETE_MARK;
@@ -1520,7 +1557,7 @@ class HierarchicalNSW : public AlgorithmInterface<float> {
         int maxLevelCopy = maxlevel_;
         tableint entryPointCopy = enterpoint_node_;
         // If point to be updated is entry point and graph just contains single element then just return.
-        if (entryPointCopy == internalId && cur_element_count == 1)
+        if (entryPointCopy == internalId && cur_element_count_ == 1)
             return;
 
         int elemLevel = element_levels_[internalId];
@@ -1682,12 +1719,12 @@ class HierarchicalNSW : public AlgorithmInterface<float> {
                 return -1;
             }
 
-            if (cur_element_count >= max_elements_) {
+            if (cur_element_count_ >= max_elements_) {
                 throw std::runtime_error("The number of elements exceeds the specified limit");
             }
 
-            cur_c = cur_element_count;
-            cur_element_count++;
+            cur_c = cur_element_count_;
+            cur_element_count_++;
             label_lookup_[label] = cur_c;
         }
 
@@ -1779,7 +1816,7 @@ class HierarchicalNSW : public AlgorithmInterface<float> {
     std::priority_queue<std::pair<float, labeltype >>
     searchKnn(const void *query_data, size_t k, BaseFilterFunctor* isIdAllowed = nullptr) const override {
         std::priority_queue<std::pair<float, labeltype >> result;
-        if (cur_element_count == 0) return result;
+        if (cur_element_count_ == 0) return result;
 
         tableint currObj = enterpoint_node_;
         float curdist = fstdistfunc_(query_data, getDataByInternalId(enterpoint_node_), dist_func_param_);
@@ -1835,7 +1872,7 @@ class HierarchicalNSW : public AlgorithmInterface<float> {
     std::priority_queue<std::pair<float, labeltype >>
     searchRange(const void *query_data, float radius, BaseFilterFunctor* isIdAllowed = nullptr) const override {
         std::priority_queue<std::pair<float, labeltype >> result;
-        if (cur_element_count == 0) return result;
+        if (cur_element_count_ == 0) return result;
 
         tableint currObj = enterpoint_node_;
         float curdist = fstdistfunc_(query_data, getDataByInternalId(enterpoint_node_), dist_func_param_);
@@ -1889,8 +1926,8 @@ class HierarchicalNSW : public AlgorithmInterface<float> {
 
     void checkIntegrity() {
         int connections_checked = 0;
-        std::vector <int > inbound_connections_num(cur_element_count, 0);
-        for (int i = 0; i < cur_element_count; i++) {
+        std::vector <int > inbound_connections_num(cur_element_count_, 0);
+        for (int i = 0; i < cur_element_count_; i++) {
             for (int l = 0; l <= element_levels_[i]; l++) {
                 linklistsizeint *ll_cur = get_linklist_at_level(i, l);
                 int size = getListCount(ll_cur);
@@ -1898,7 +1935,7 @@ class HierarchicalNSW : public AlgorithmInterface<float> {
                 std::unordered_set<tableint> s;
                 for (int j = 0; j < size; j++) {
                     assert(data[j] > 0);
-                    assert(data[j] < cur_element_count);
+                    assert(data[j] < cur_element_count_);
                     assert(data[j] != i);
                     inbound_connections_num[data[j]]++;
                     s.insert(data[j]);
@@ -1907,9 +1944,9 @@ class HierarchicalNSW : public AlgorithmInterface<float> {
                 assert(s.size() == size);
             }
         }
-        if (cur_element_count > 1) {
+        if (cur_element_count_ > 1) {
             int min1 = inbound_connections_num[0], max1 = inbound_connections_num[0];
-            for (int i=0; i < cur_element_count; i++) {
+            for (int i=0; i < cur_element_count_; i++) {
                 assert(inbound_connections_num[i] > 0);
                 min1 = std::min(inbound_connections_num[i], min1);
                 max1 = std::max(inbound_connections_num[i], max1);

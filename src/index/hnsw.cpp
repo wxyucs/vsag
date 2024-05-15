@@ -49,9 +49,11 @@ HNSW::HNSW(std::shared_ptr<hnswlib::SpaceInterface> space_interface,
            int M,
            int ef_construction,
            bool use_static,
-           bool use_reversed_edges)
+           bool use_reversed_edges,
+           bool use_conjugate_graph)
     : space(std::move(space_interface)),
       use_static_(use_static),
+      use_conjugate_graph_(use_conjugate_graph),
       use_reversed_edges_(use_reversed_edges) {
     dim_ = *((size_t*)space->get_dist_func_param());
 
@@ -59,6 +61,10 @@ HNSW::HNSW(std::shared_ptr<hnswlib::SpaceInterface> space_interface,
 
     if (ef_construction <= 0) {
         throw std::runtime_error(MESSAGE_PARAMETER);
+    }
+
+    if (use_conjugate_graph) {
+        conjugate_graph_ = std::make_shared<ConjugateGraph>();
     }
 
     if (!use_static_) {
@@ -232,6 +238,19 @@ HNSW::knn_search(const Dataset& query,
             result.Dim(0).NumElements(1);
             return result;
         }
+
+        // perform conjugate graph enhancement
+        if (use_conjugate_graph_ and params.use_conjugate_graph_search) {
+            time_cost = 0;
+            Timer t(time_cost);
+
+            auto func = [this, vector](int64_t label) {
+                return this->alg_hnsw->getDistanceByLabel(label, vector);
+            };
+            conjugate_graph_->EnhanceResult(results, func);
+        }
+
+        // return result
         int64_t* ids = new int64_t[results.size()];
         float* dists = new float[results.size()];
         result.Dim(results.size()).NumElements(1).Ids(ids).Distances(dists);
@@ -500,6 +519,100 @@ HNSW::remove(int64_t id) {
     }
 
     return true;
+}
+
+tl::expected<uint32_t, Error>
+HNSW::feedback(const Dataset& query,
+               int64_t k,
+               const std::string& parameters,
+               int64_t global_optimum_tag_id) {
+    if (not use_conjugate_graph_) {
+        LOG_ERROR_AND_RETURNS(ErrorType::UNSUPPORTED_INDEX_OPERATION,
+                              "no conjugate graph used for feedback");
+    }
+    if (empty_index_) {
+        return 0;
+    }
+
+    if (global_optimum_tag_id == std::numeric_limits<int64_t>::max()) {
+        auto exact_result = this->brute_force(query, k);
+        if (exact_result.has_value()) {
+            global_optimum_tag_id = exact_result->GetIds()[0];
+        } else {
+            LOG_ERROR_AND_RETURNS(ErrorType::INVALID_ARGUMENT,
+                                  "failed to feedback(invalid argument): ",
+                                  exact_result.error().message);
+        }
+    }
+
+    auto result = this->knn_search(query, k, parameters);
+    if (result.has_value()) {
+        return this->feedback(*result, global_optimum_tag_id, k);
+    } else {
+        LOG_ERROR_AND_RETURNS(ErrorType::INVALID_ARGUMENT,
+                              "failed to feedback(invalid argument): ",
+                              result.error().message);
+    }
+}
+
+tl::expected<uint32_t, Error>
+HNSW::feedback(const Dataset& result, int64_t global_optimum_tag_id, int64_t k) {
+    if (not alg_hnsw->isValidLabel(global_optimum_tag_id)) {
+        LOG_ERROR_AND_RETURNS(
+            ErrorType::INVALID_ARGUMENT,
+            "failed to feedback(invalid argument): global optimum tag id doesn't belong to index");
+    }
+
+    auto tag_ids = result.GetIds();
+    k = std::min(k, result.GetNumElements());
+    uint32_t successfully_feedback = 0;
+
+    for (int i = 0; i < k; i++) {
+        if (not alg_hnsw->isValidLabel(tag_ids[i])) {
+            LOG_ERROR_AND_RETURNS(
+                ErrorType::INVALID_ARGUMENT,
+                "failed to feedback(invalid argument): input result don't belong to index");
+        }
+        if (*conjugate_graph_->AddNeighbor(tag_ids[i], global_optimum_tag_id)) {
+            successfully_feedback++;
+        }
+    }
+
+    return successfully_feedback;
+}
+
+tl::expected<Dataset, Error>
+HNSW::brute_force(const Dataset& query, int64_t k) {
+    try {
+        CHECK_ARGUMENT(k > 0, fmt::format("k({}) must be greater than 0", k));
+        CHECK_ARGUMENT(query.GetNumElements() == 1,
+                       fmt::format("query num({}) must equal to 1", query.GetNumElements()));
+        CHECK_ARGUMENT(
+            query.GetDim() == dim_,
+            fmt::format("query.dim({}) must be equal to index.dim({})", query.GetDim(), dim_));
+
+        Dataset result;
+        int64_t* ids = new int64_t[k];
+        float* dists = new float[k];
+        result.Ids(ids).Distances(dists).NumElements(k);
+
+        auto vector = query.GetFloat32Vectors();
+        std::priority_queue<std::pair<float, hnswlib::labeltype>> bf_result =
+            alg_hnsw->bruteForce((const void*)vector, k);
+        result.Dim(std::min(k, (int64_t)bf_result.size()));
+
+        for (int i = result.GetDim() - 1; i >= 0; i--) {
+            ids[i] = bf_result.top().second;
+            dists[i] = bf_result.top().first;
+            bf_result.pop();
+        }
+
+        return std::move(result);
+    } catch (const std::invalid_argument& e) {
+        LOG_ERROR_AND_RETURNS(ErrorType::INVALID_ARGUMENT,
+                              "failed to perform brute force search(invalid argument): ",
+                              e.what());
+    }
 }
 
 bool
