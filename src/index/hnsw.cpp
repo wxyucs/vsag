@@ -206,7 +206,7 @@ HNSW::knn_search(const Dataset& query,
 
         // check search parameters
         auto params = HnswSearchParameters::FromJson(parameters);
-        alg_hnsw->setEf(params.ef_search);
+        alg_hnsw->setEf(std::max(params.ef_search, k));
 
         // check filter
         std::shared_ptr<Filter> filter = nullptr;

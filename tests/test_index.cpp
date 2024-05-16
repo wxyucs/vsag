@@ -1,9 +1,12 @@
 
-#include <fstream>
+#include <spdlog/spdlog.h>
 
-#include "catch2/catch_message.hpp"
-#include "catch2/catch_test_macros.hpp"
-#include "catch2/generators/catch_generators.hpp"
+#include <catch2/catch_message.hpp>
+#include <catch2/catch_test_macros.hpp>
+#include <catch2/generators/catch_generators.hpp>
+#include <fstream>
+#include <nlohmann/json.hpp>
+
 #include "fixtures/fixtures.h"
 #include "fmt/format.h"
 #include "nlohmann/json.hpp"
@@ -326,8 +329,8 @@ TEST_CASE("search on a deserialized empty index", "[ft][index]") {
             "ef_search": 100
         },
         "diskann": {
-            "ef_search": 100, 
-            "beam_search": 4, 
+            "ef_search": 100,
+            "beam_search": 4,
             "io_limit": 100,
             "use_reorder": false
         }
@@ -437,8 +440,8 @@ TEST_CASE("check search parameters", "[ft][index]") {
                 "ef_search": 100
             },
             "diskann": {
-                "ef_search": 200, 
-                "beam_search": 4, 
+                "ef_search": 200,
+                "beam_search": 4,
                 "io_limit": 200,
                 "use_reorder": true
            }
@@ -525,8 +528,8 @@ TEST_CASE("build index with generated_build_parameters", "[ft][index]") {
 	    "ef_search": 100
 	},
 	"diskann": {
-	    "ef_search": 100, 
-	    "beam_search": 4, 
+	    "ef_search": 100,
+	    "beam_search": 4,
 	    "io_limit": 100,
 	    "use_reorder": false
 	}

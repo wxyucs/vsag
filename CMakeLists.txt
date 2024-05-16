@@ -88,6 +88,7 @@ include (extern/catch2/catch2.cmake)
 include (extern/cpuinfo/cpuinfo.cmake)
 include (extern/fmt/fmt.cmake)
 include (extern/hdf5/hdf5.cmake)
+include (extern/thread_pool/thread_pool.cmake)
 
 include_directories (extern/hnswlib)
 include_directories (extern/faiss)

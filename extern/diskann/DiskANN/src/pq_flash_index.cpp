@@ -118,14 +118,10 @@ void PQFlashIndex<T, LabelT>::setup_thread_data(uint64_t nthreads, uint64_t visi
 {
     // diskann::cout << "Setting up thread-specific contexts for nthreads: " << nthreads << std::endl;
 // omp parallel for to generate unique thread IDs
-#pragma omp parallel for num_threads((int)nthreads)
     for (int64_t thread = 0; thread < (int64_t)nthreads; thread++)
     {
-#pragma omp critical
         {
             SSDThreadData<T> *data = new SSDThreadData<T>(this->aligned_dim, visited_reserve, sector_size, sector_len);
-            this->reader->register_thread();
-            data->ctx = this->reader->get_ctx();
             this->thread_data.push(data);
         }
     }
@@ -2126,32 +2122,39 @@ int64_t PQFlashIndex<T, LabelT>::cached_beam_search_memory(const T *query, const
     // re-sort by distance
     std::sort(full_retset.begin(), full_retset.end());
     if (reorder) {
-        std::vector<AlignedRead> sorted_read_reqs;
-        sorted_read_reqs.reserve(io_limit);
-        std::vector<uint32_t> ids;
-        ids.reserve(io_limit);
-        for (int i = 0; i < io_limit; ++i) {
-            auto id = full_retset[i].id;
-            ids.push_back(id);
-            sorted_read_reqs.push_back({NODE_SECTOR_NO(((size_t)id)) * sector_len, sector_len,
-                                        sector_scratch + i * sector_len});
-        }
-        full_retset.clear();
+        std::vector<Neighbor> reorder_retset;
+        uint32_t batch_size = (io_limit + sector_size - 1) / sector_size;
 
-        reader->read(sorted_read_reqs, ctx);
-
-        for (int i = 0; i < io_limit; i ++)
+        for (int i = 0; i < batch_size; ++i)
         {
-            uint32_t id = ids[i];
-            char *node_disk_buf = OFFSET_TO_NODE(sorted_read_reqs[i].buf, id);
-            T *node_fp_coords = OFFSET_TO_NODE_COORDS(node_disk_buf);
-            float exact_dist;
-            exact_dist = dist_cmp->compare(aligned_query_T, node_fp_coords, (uint32_t)data_dim);
-            full_retset.push_back(Neighbor(id, exact_dist));
+            uint32_t start = i * sector_size;
+            uint32_t end = std::min((uint32_t)((i + 1) * sector_size), io_limit);
+            uint32_t cur_len = end - start;
+            std::vector<AlignedRead> sorted_read_reqs;
+            sorted_read_reqs.reserve(cur_len);
+            std::vector<uint32_t> ids;
+            ids.reserve(cur_len);
+            for (int j = start; j < end; ++j) {
+                auto id = full_retset[j].id;
+                ids.push_back(id);
+                sorted_read_reqs.push_back({NODE_SECTOR_NO(((size_t)id)) * sector_len, sector_len,
+                                            sector_scratch + (j - start) * sector_len});
+            }
 
+            reader->read(sorted_read_reqs, ctx);
+            
+            for (int j = 0; j < cur_len; j ++)
+            {
+                uint32_t id = ids[j];
+                char *node_disk_buf = OFFSET_TO_NODE(sorted_read_reqs[j].buf, id);
+                T *node_fp_coords = OFFSET_TO_NODE_COORDS(node_disk_buf);
+                float exact_dist;
+                exact_dist = dist_cmp->compare(aligned_query_T, node_fp_coords, (uint32_t)data_dim);
+                reorder_retset.push_back(Neighbor(id, exact_dist));
+            }
         }
-
-        std::sort(full_retset.begin(), full_retset.end());
+        std::sort(reorder_retset.begin(), reorder_retset.end());
+        full_retset.swap(reorder_retset);
     }
 
     // copy k_search values

@@ -2,6 +2,7 @@
 // Created by inabao on 2023/8/22.
 //
 #include <catch2/catch_test_macros.hpp>
+#include <catch2/generators/catch_generators.hpp>
 #include <fstream>
 #include <iostream>
 #include <nlohmann/json.hpp>
@@ -466,7 +467,7 @@ TEST_CASE("DiskAnn Range Query", "[diskann][test][diskann-ci-part2]") {
 
 TEST_CASE("DiskAnn Preload Graph", "[diskann][test][diskann-ci-part3]") {
     int dim = 65;             // Dimension of the elements
-    int max_elements = 1000;  // Maximum number of elements, should be known beforehand
+    int max_elements = 2000;  // Maximum number of elements, should be known beforehand
     int max_degree = 16;      // Tightly connected with internal dimensionality of the data
     // strongly affects the memory consumption
     int ef_construction = 200;  // Controls index search speed/build speed tradeoff
@@ -474,6 +475,7 @@ TEST_CASE("DiskAnn Preload Graph", "[diskann][test][diskann-ci-part3]") {
     float pq_sample_rate =
         0.5;  // pq_sample_rate represents how much original data is selected during the training of pq compressed vectors.
     int pq_dims = 9;  // pq_dims represents the dimensionality of the compressed vector.
+    int64_t k = GENERATE(2, 700);
     float threshold = 8.0;
     // Initing index
     nlohmann::json diskann_parameters{{"max_degree", max_degree},
@@ -515,7 +517,6 @@ TEST_CASE("DiskAnn Preload Graph", "[diskann][test][diskann-ci-part3]") {
         query.NumElements(1).Dim(dim).Float32Vectors(data + i * dim).Owner(false);
         nlohmann::json parameters{
             {"diskann", {{"ef_search", ef_search}, {"beam_search", 4}, {"io_limit", 200}}}};
-        int64_t k = 2;
         if (auto result = diskann->KnnSearch(query, k, parameters.dump()); result.has_value()) {
             if (result->GetNumElements() == 1) {
                 REQUIRE(!std::isinf(result->GetDistances()[0]));
@@ -541,7 +542,6 @@ TEST_CASE("DiskAnn Preload Graph", "[diskann][test][diskann-ci-part3]") {
                                     {"beam_search", 4},
                                     {"io_limit", 200},
                                     {"use_reorder", true}}}};
-        int64_t k = 2;
         if (auto result = diskann->KnnSearch(query, k, parameters.dump()); result.has_value()) {
             if (result->GetNumElements() == 1) {
                 REQUIRE(!std::isinf(result->GetDistances()[0]));

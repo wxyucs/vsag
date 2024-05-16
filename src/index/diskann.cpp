@@ -4,6 +4,7 @@
 
 #include "diskann.h"
 
+#include <ThreadPool.h>
 #include <local_file_reader.h>
 
 #include <algorithm>
@@ -33,7 +34,6 @@ const static size_t MAXIMAL_BEAM_SEARCH = 64;
 const static size_t MINIMAL_BEAM_SEARCH = 1;
 const static int MINIMAL_R = 8;
 const static int MAXIMAL_R = 64;
-const static int64_t MAX_IO_LIMIT = 512;
 const static int VECTOR_PER_BLOCK = 1;
 const static float GRAPH_SLACK = 1.3 * 1.05;
 const static size_t MINIMAL_SECTOR_LEN = 4096;
@@ -130,21 +130,20 @@ DiskANN::DiskANN(diskann::Metric metric,
       preload_(preload),
       use_reference_(use_reference),
       use_opq_(use_opq) {
+    pool_ = std::make_unique<ThreadPool>(Option::Instance().sector_size());
     status_ = IndexStatus::EMPTY;
     batch_read_ = [&](const std::vector<read_request>& requests) -> void {
         std::vector<std::future<void>> futures;
-        for (int i = 0; i < requests.size(); ++i) {
-            futures.push_back(std::async(
-                std::launch::async,
-                [&](uint64_t offset, uint64_t len, void* dest) {
-                    disk_layout_reader_->Read(offset, len, dest);
-                },
-                std::get<0>(requests[i]),
-                std::get<1>(requests[i]),
-                std::get<2>(requests[i])));
+        for (const auto& req : requests) {
+            auto future = pool_->enqueue([&, req]() {
+                auto [offset, len, dest] = req;
+                disk_layout_reader_->Read(offset, len, dest);
+            });
+            futures.push_back(std::move(future));
         }
-        for (int i = 0; i < requests.size(); ++i) {
-            futures[i].wait();
+
+        for (auto& fut : futures) {
+            fut.get();
         }
     };
 
@@ -293,12 +292,17 @@ DiskANN::knn_search(const Dataset& query,
             };
         }
 
-        // ensure that in the topK scenario, ef_search > k and io_limit > k.
-        ef_search = std::max(ef_search, k);
-        io_limit = std::min(MAX_IO_LIMIT, std::max(io_limit, k));
+        // ensure that in the topK scenario, ef_search > io_limit and io_limit > k.
         if (reorder && preload_) {
-            io_limit = std::min((int64_t)Option::Instance().sector_size(), io_limit);
+            ef_search = std::max(2 * k, ef_search);
+            io_limit = std::max(2 * k, io_limit);
+        } else {
+            ef_search = std::max(ef_search, k);
+            io_limit = std::min(ef_search, std::max(io_limit, k));
         }
+        io_limit = std::min(io_limit, GetNumElements());
+        ef_search = std::min(ef_search, GetNumElements());
+
         beam_search = std::min(beam_search, MAXIMAL_BEAM_SEARCH);
         beam_search = std::max(beam_search, MINIMAL_BEAM_SEARCH);
 
@@ -432,7 +436,6 @@ DiskANN::range_search(const Dataset& query,
         bool reorder = params.use_reorder;
         int64_t io_limit = params.io_limit;
 
-        io_limit = std::min(MAX_IO_LIMIT, io_limit);
         if (reorder && preload_) {
             io_limit = std::min((int64_t)Option::Instance().sector_size(), io_limit);
         }

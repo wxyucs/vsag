@@ -4,6 +4,7 @@
 
 #pragma once
 
+#include <ThreadPool.h>
 #include <abstract_index.h>
 #include <disk_utils.h>
 #include <index.h>
@@ -191,6 +192,7 @@ private:
 
 private:  // Request Statistics
     mutable std::mutex stats_mutex_;
+    std::unique_ptr<ThreadPool> pool_;
 
     mutable std::map<std::string, WindowResultQueue> result_queues_;
 };
