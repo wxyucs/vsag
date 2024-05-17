@@ -111,6 +111,7 @@ vsag_build_asan_ut:
           # compile
           export PATH=/usr/lib/ccache:$PATH
           export GTEST_OUTPUT="xml:$(pwd)/vsag/testresult/gtest/"
+          bash scripts/deps/install_deps_centos.sh
           make test_asan
           #
     - plugin: memcheck-log-parser

@@ -8,3 +8,9 @@ PERL_MM_USE_DEFAULT=1 sudo perl -MCPAN -e 'CPAN::HandleConfig->edit("urllist", "
 PERL_MM_USE_DEFAULT=1 sudo cpan install Test::More Canary::Stability JSON:XS
 
 sed -i 's/lcov_json_module = auto/lcov_json_module = JSON::XS/g' /etc/lcovrc
+
+# install intel mkl
+yum update -y && yum install -y ca-certificates
+yum-config-manager --add-repo https://yum.repos.intel.com/mkl/setup/intel-mkl.repo
+rpm --import https://yum.repos.intel.com/intel-gpg-keys/GPG-PUB-KEY-INTEL-SW-PRODUCTS-2019.PUB
+yum update -y && yum install -y intel-mkl-64bit-2020.0-088

@@ -43,5 +43,9 @@ else ()
 endif ()
 
 add_library(diskann STATIC ${DISKANN_SOURCES})
-target_link_libraries(diskann libopenblas.a gfortran aio)
+target_link_libraries(diskann
+  aio
+  ${BLAS_LIBRARIES}
+  gfortran
+  )
 add_dependencies(diskann boost openblas)
