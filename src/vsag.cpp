@@ -17,11 +17,16 @@ version() {
 
 bool
 init() {
+#ifndef NDEBUG
+    // set debug level by default in debug version of VSAG
+    logger::set_level(logger::level::debug);
+#endif
+
     cpuinfo_initialize();
     std::stringstream ss;
 
     ss << std::boolalpha;
-    ss << "====vsag start init====";
+    ss << "\n====vsag start init====";
     ss << "\nrunning on " << cpuinfo_get_package(0)->name;
     ss << "\ncores count: " << cpuinfo_get_cores_count();
     ss << "\nsse: " << cpuinfo_has_x86_sse();
