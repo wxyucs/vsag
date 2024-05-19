@@ -102,6 +102,7 @@ class HierarchicalNSW : public AlgorithmInterface<float> {
         size_t M = 16,
         size_t ef_construction = 200,
         bool use_reversed_edges = false,
+        size_t block_size_limit = 128 * 1024 * 1024,
         size_t random_seed = 100,
         bool allow_replace_deleted = false)
         : link_list_locks_(max_elements),
@@ -137,7 +138,7 @@ class HierarchicalNSW : public AlgorithmInterface<float> {
             memset(reversed_link_lists_, 0, max_elements_ * sizeof(std::map<int, std::unordered_set<tableint>> *));
         }
 
-        data_level0_memory_ = new BlockManager(max_elements_, size_data_per_element_);
+        data_level0_memory_ = new BlockManager(max_elements_, size_data_per_element_, block_size_limit);
         if (data_level0_memory_ == nullptr)
             throw std::runtime_error("Not enough memory");
 

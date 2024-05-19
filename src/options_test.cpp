@@ -12,4 +12,8 @@ TEST_CASE("option test", "[option][test]") {
     vsag::Option::Instance().set_allocator(std::make_unique<vsag::DefaultAllocator>());
     REQUIRE_FALSE(
         vsag::Option::Instance().set_allocator(std::make_unique<vsag::DefaultAllocator>()));
+
+    size_t block_size_limit = 134217728;
+    vsag::Options::Instance().set_block_size_limit(block_size_limit);
+    REQUIRE(vsag::Option::Instance().block_size_limit() == block_size_limit);
 }

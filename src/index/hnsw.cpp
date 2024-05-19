@@ -68,14 +68,23 @@ HNSW::HNSW(std::shared_ptr<hnswlib::SpaceInterface> space_interface,
     }
 
     if (!use_static_) {
-        alg_hnsw = std::make_shared<hnswlib::HierarchicalNSW>(
-            space.get(), DEFAULT_MAX_ELEMENT, M, ef_construction, use_reversed_edges_);
+        alg_hnsw =
+            std::make_shared<hnswlib::HierarchicalNSW>(space.get(),
+                                                       DEFAULT_MAX_ELEMENT,
+                                                       M,
+                                                       ef_construction,
+                                                       use_reversed_edges_,
+                                                       Options::Instance().block_size_limit());
     } else {
         if (dim_ % 4 != 0) {
             throw std::runtime_error("cannot build static hnsw while dim % 4 != 0");
         }
         alg_hnsw = std::make_shared<hnswlib::StaticHierarchicalNSW>(
-            space.get(), DEFAULT_MAX_ELEMENT, M, ef_construction);
+            space.get(),
+            DEFAULT_MAX_ELEMENT,
+            M,
+            ef_construction,
+            Options::Instance().block_size_limit());
     }
 }
 

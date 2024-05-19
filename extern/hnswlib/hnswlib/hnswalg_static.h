@@ -105,6 +105,7 @@ public:
                           size_t max_elements,
                           size_t M = 16,
                           size_t ef_construction = 200,
+                          size_t block_size_limit = 128 * 1024 * 1024,
                           size_t random_seed = 100,
                           bool allow_replace_deleted = false)
         : link_list_locks_(max_elements),
@@ -132,7 +133,7 @@ public:
         label_offset_ = size_links_level0_ + data_size_;
         offsetLevel0_ = 0;
 
-        data_level0_memory_ = new BlockManager(max_elements_, size_data_per_element_);
+        data_level0_memory_ = new BlockManager(max_elements_, size_data_per_element_, block_size_limit);
 
         cur_element_count_ = 0;
 

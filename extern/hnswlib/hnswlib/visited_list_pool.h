@@ -94,8 +94,9 @@ class VisitedListPool {
 
 class BlockManager {
 public:
-    BlockManager(size_t max_elements, size_t size_data_per_element)
+    BlockManager(size_t max_elements, size_t size_data_per_element, size_t block_size_limit)
         : max_elements_(max_elements), size_data_per_element_(size_data_per_element) {
+        data_num_per_block_ = block_size_limit / size_data_per_element_;
         block_size_ = size_data_per_element * data_num_per_block_;
         size_t full_blocks = (max_elements * size_data_per_element) / block_size_;
         size_t remaining_size = (max_elements * size_data_per_element) % block_size_;
@@ -227,7 +228,7 @@ public:
 
 private:
     std::vector<char*> blocks_;
-    size_t data_num_per_block_ = 97;
+    size_t data_num_per_block_ = 0;
     size_t block_size_ = 0;
     size_t size_data_per_element_;
     size_t max_elements_;

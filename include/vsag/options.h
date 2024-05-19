@@ -26,6 +26,17 @@ public:
         sector_size_.store(size, std::memory_order_release);
     }
 
+    // Gets the limit of block size with memory order acquire for thread safety
+    inline size_t
+    block_size_limit() const {
+        return block_size_limit_.load(std::memory_order_acquire);
+    }
+
+    inline void
+    set_block_size_limit(size_t size) {
+        block_size_limit_.store(size, std::memory_order_release);
+    }
+
     Allocator*
     allocator();
 
@@ -64,6 +75,9 @@ private:
 
     // The allocator will only be set once.
     std::unique_ptr<Allocator> global_allocator_;
+
+    // The size of the maximum memory allocated each time (default is 128MB)
+    std::atomic<size_t> block_size_limit_ = 128 * 1024 * 1024;
 
     LoggerPtr logger_ = nullptr;
 };
