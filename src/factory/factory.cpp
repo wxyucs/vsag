@@ -35,8 +35,16 @@ Factory::CreateIndex(const std::string& origin_name, const std::string& paramete
                                           params.max_degree,
                                           params.ef_construction,
                                           params.use_static,
-                                          params.use_reversed_edges,
+                                          false,
                                           params.use_conjugate_graph);
+        } else if (name == INDEX_FRESH_HNSW) {
+            // read parameters from json, throw exception if not exists
+            auto params = CreateFreshHnswParameters::FromJson(parameters);
+            return std::make_shared<HNSW>(params.space,
+                                          params.max_degree,
+                                          params.ef_construction,
+                                          params.use_static,
+                                          params.use_reversed_edges);
         } else if (name == INDEX_DISKANN) {
             // read parameters from json, throw exception if not exists
             auto params = CreateDiskannParameters::FromJson(parameters);

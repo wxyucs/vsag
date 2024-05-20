@@ -4,6 +4,7 @@ namespace vsag {
 
 constexpr const char* INDEX_DISKANN = "diskann";
 constexpr const char* INDEX_HNSW = "hnsw";
+constexpr const char* INDEX_FRESH_HNSW = "fresh_hnsw";
 constexpr const char* DIM = "dim";
 constexpr const char* NUM_ELEMENTS = "num_elements";
 constexpr const char* IDS = "ids";

@@ -154,10 +154,10 @@ HNSW::add(const Dataset& base) {
 
         int64_t num_elements = base.GetNumElements();
         int64_t max_elements_ = alg_hnsw->getMaxElements();
-        if (num_elements + GetNumElements() > max_elements_) {
+        if (num_elements + alg_hnsw->getCurrentElementCount() > max_elements_) {
             logger::debug("num_elements={}, index.num_elements, max_elements_={}",
                           num_elements,
-                          GetNumElements(),
+                          alg_hnsw->getCurrentElementCount(),
                           max_elements_);
             if (max_elements_ > EXPANSION_NUM) {
                 max_elements_ += EXPANSION_NUM;
@@ -521,7 +521,11 @@ HNSW::remove(int64_t id) {
     }
 
     try {
-        std::reinterpret_pointer_cast<hnswlib::HierarchicalNSW>(alg_hnsw)->markDelete(id);
+        if (use_reversed_edges_) {
+            std::reinterpret_pointer_cast<hnswlib::HierarchicalNSW>(alg_hnsw)->removePoint(id);
+        } else {
+            std::reinterpret_pointer_cast<hnswlib::HierarchicalNSW>(alg_hnsw)->markDelete(id);
+        }
     } catch (const std::runtime_error& e) {
         spdlog::warn("mark delete error for id {}: {}", id, e.what());
         return false;

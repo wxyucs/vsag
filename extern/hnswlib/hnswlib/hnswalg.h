@@ -153,6 +153,7 @@ class HierarchicalNSW : public AlgorithmInterface<float> {
         link_lists_ = (char **) vsag::allocate(sizeof(void *) * max_elements_);
         if (link_lists_ == nullptr)
             throw std::runtime_error("Not enough memory: HierarchicalNSW failed to allocate linklists");
+        memset(link_lists_, 0, sizeof(void *) * max_elements_);
         size_links_per_element_ = maxM_ * sizeof(tableint) + sizeof(linklistsizeint);
         mult_ = 1 / log(1.0 * M_);
         revSize_ = 1.0 / mult_;
@@ -161,13 +162,13 @@ class HierarchicalNSW : public AlgorithmInterface<float> {
 
     ~HierarchicalNSW() {
         delete data_level0_memory_;
-        for (tableint i = 0; i < cur_element_count_; i++) {
-            if (element_levels_[i] > 0)
+        for (tableint i = 0; i < max_elements_; i++) {
+            if (element_levels_[i] > 0 || link_lists_[i] != nullptr)
                 vsag::deallocate(link_lists_[i]);
         }
 
         if (use_reversed_edges_) {
-            for (tableint i = 0; i < cur_element_count_; i++) {
+            for (tableint i = 0; i < max_elements_; i++) {
                 auto& in_edges_level0 = *(reversed_level0_link_list_ + i);
                 if (in_edges_level0) {
                     delete in_edges_level0;
@@ -227,7 +228,9 @@ class HierarchicalNSW : public AlgorithmInterface<float> {
 
 
     inline labeltype getExternalLabel(tableint internal_id) const {
-        return *(labeltype  *)(data_level0_memory_->getElementPtr(internal_id, label_offset_));
+        labeltype value;
+        std::memcpy(&value, data_level0_memory_->getElementPtr(internal_id, label_offset_), sizeof(labeltype));
+        return value;
     }
 
 
@@ -308,7 +311,7 @@ class HierarchicalNSW : public AlgorithmInterface<float> {
                 reversed_edge_count += getEdges(internal_id, level).size();
                 for (int j = 0; j < size; ++j) {
                     auto id = link_list[j];
-                    auto in_edges = getEdges(id, level);
+                    const auto& in_edges = getEdges(id, level);
                     if (in_edges.find(internal_id) == in_edges.end()) {
                         std::cout << "can not find internal_id (" << internal_id << ") in its neighbor ("
                                   << id << ")" << std::endl;
@@ -687,7 +690,7 @@ class HierarchicalNSW : public AlgorithmInterface<float> {
         std::priority_queue<std::pair<float, tableint>, std::vector<std::pair<float, tableint>>, CompareByFirst> &top_candidates,
         int level,
         bool isUpdate) {
-        size_t Mcurmax = level ? maxM_ : maxM0_;
+        size_t m_curmax = level ? maxM_ : maxM0_;
         getNeighborsByHeuristic2(top_candidates, M_);
         if (top_candidates.size() > M_)
             throw std::runtime_error("Should be not be more than M_ candidates returned by the heuristic");
@@ -723,7 +726,7 @@ class HierarchicalNSW : public AlgorithmInterface<float> {
 
             size_t sz_link_list_other = getListCount(ll_other);
 
-            if (sz_link_list_other > Mcurmax)
+            if (sz_link_list_other > m_curmax)
                 throw std::runtime_error("Bad value of sz_link_list_other");
             if (selectedNeighbors[idx] == cur_c)
                 throw std::runtime_error("Trying to connect an element to itself");
@@ -744,7 +747,7 @@ class HierarchicalNSW : public AlgorithmInterface<float> {
 
             // If cur_c is already present in the neighboring connections of `selectedNeighbors[idx]` then no need to modify any connections or run the heuristics.
             if (!is_cur_c_present) {
-                if (sz_link_list_other < Mcurmax) {
+                if (sz_link_list_other < m_curmax) {
                     data[sz_link_list_other] = cur_c;
                     setListCount(ll_other, sz_link_list_other + 1);
                     if (use_reversed_edges_) {
@@ -765,7 +768,7 @@ class HierarchicalNSW : public AlgorithmInterface<float> {
                                                 dist_func_param_), data[j]);
                     }
 
-                    getNeighborsByHeuristic2(candidates, Mcurmax);
+                    getNeighborsByHeuristic2(candidates, m_curmax);
 
                     std::vector<tableint> cand_neighbors;
                     while (candidates.size() > 0) {
@@ -840,7 +843,7 @@ class HierarchicalNSW : public AlgorithmInterface<float> {
         if (linkLists_new == nullptr)
             throw std::runtime_error("Not enough memory: resizeIndex failed to allocate other layers");
         link_lists_ = linkLists_new;
-
+        memset(link_lists_ + max_elements_, 0, (new_max_elements - max_elements_) * sizeof(void *));
         max_elements_ = new_max_elements;
     }
 
@@ -895,12 +898,12 @@ class HierarchicalNSW : public AlgorithmInterface<float> {
         data_level0_memory_->serialize(dest);
 
         for (size_t i = 0; i < cur_element_count_; i++) {
-            unsigned int linkListSize = element_levels_[i] > 0 ? size_links_per_element_ * element_levels_[i] : 0;
-            // writeBinaryPOD(output, linkListSize);
-            writeVarToMem(dest, linkListSize);
-            if (linkListSize) {
-                // output.write(link_lists_[i], linkListSize);
-                writeBinaryToMem(dest, link_lists_[i], linkListSize);
+            unsigned int link_list_size = element_levels_[i] > 0 ? size_links_per_element_ * element_levels_[i] : 0;
+            // writeBinaryPOD(output, link_list_size);
+            writeVarToMem(dest, link_list_size);
+            if (link_list_size) {
+                // output.write(link_lists_[i], link_list_size);
+                writeBinaryToMem(dest, link_lists_[i], link_list_size);
             }
         }
         // output.close();
@@ -943,12 +946,12 @@ class HierarchicalNSW : public AlgorithmInterface<float> {
         // output.write(data_level0_memory_, cur_element_count_ * size_data_per_element_);
         size += data_level0_memory_->getSize();
         for (size_t i = 0; i < cur_element_count_; i++) {
-            unsigned int linkListSize = element_levels_[i] > 0 ? size_links_per_element_ * element_levels_[i] : 0;
-            // writeBinaryPOD(output, linkListSize);
-            size += sizeof(linkListSize);
-            if (linkListSize) {
-                // output.write(linkLists_[i], linkListSize);
-                size += linkListSize;
+            unsigned int link_list_size = element_levels_[i] > 0 ? size_links_per_element_ * element_levels_[i] : 0;
+            // writeBinaryPOD(output, link_list_size);
+            size += sizeof(link_list_size);
+            if (link_list_size) {
+                // output.write(link_lists_[i], link_list_size);
+                size += link_list_size;
             }
         }
         // output.close();
@@ -975,10 +978,10 @@ class HierarchicalNSW : public AlgorithmInterface<float> {
         data_level0_memory_->serialize(out_stream);
 
         for (size_t i = 0; i < cur_element_count_; i++) {
-            unsigned int linkListSize = element_levels_[i] > 0 ? size_links_per_element_ * element_levels_[i] : 0;
-            writeBinaryPOD(out_stream, linkListSize);
-            if (linkListSize) {
-                out_stream.write(link_lists_[i], linkListSize);
+            unsigned int link_list_size = element_levels_[i] > 0 ? size_links_per_element_ * element_levels_[i] : 0;
+            writeBinaryPOD(out_stream, link_list_size);
+            if (link_list_size) {
+                out_stream.write(link_lists_[i], link_list_size);
             }
         }
     }
@@ -1005,10 +1008,10 @@ class HierarchicalNSW : public AlgorithmInterface<float> {
         data_level0_memory_->serialize(output);
 
         for (size_t i = 0; i < cur_element_count_; i++) {
-            unsigned int linkListSize = element_levels_[i] > 0 ? size_links_per_element_ * element_levels_[i] : 0;
-            writeBinaryPOD(output, linkListSize);
-            if (linkListSize)
-                output.write(link_lists_[i], linkListSize);
+            unsigned int link_list_size = element_levels_[i] > 0 ? size_links_per_element_ * element_levels_[i] : 0;
+            writeBinaryPOD(output, link_list_size);
+            if (link_list_size)
+                output.write(link_lists_[i], link_list_size);
         }
         output.close();
     }
@@ -1082,10 +1085,10 @@ class HierarchicalNSW : public AlgorithmInterface<float> {
         //         throw std::runtime_error("Index seems to be corrupted or unsupported");
         //     }
 
-        //     unsigned int linkListSize;
-        //     readBinaryPOD(input, linkListSize);
-        //     if (linkListSize != 0) {
-        //         input.seekg(linkListSize, input.cur);
+        //     unsigned int link_list_size;
+        //     readBinaryPOD(input, link_list_size);
+        //     if (link_list_size != 0) {
+        //         input.seekg(link_list_size, input.cur);
         //     }
         // }
 
@@ -1118,20 +1121,20 @@ class HierarchicalNSW : public AlgorithmInterface<float> {
         ef_ = 10;
         for (size_t i = 0; i < cur_element_count_; i++) {
             label_lookup_[getExternalLabel(i)] = i;
-            unsigned int linkListSize;
-            // readBinaryPOD(input, linkListSize);
-            readFromReader(read_func, cursor, linkListSize);
-            if (linkListSize == 0) {
+            unsigned int link_list_size;
+            // readBinaryPOD(input, link_list_size);
+            readFromReader(read_func, cursor, link_list_size);
+            if (link_list_size == 0) {
                 element_levels_[i] = 0;
                 link_lists_[i] = nullptr;
             } else {
-                element_levels_[i] = linkListSize / size_links_per_element_;
-                link_lists_[i] = (char *) vsag::allocate(linkListSize);
+                element_levels_[i] = link_list_size / size_links_per_element_;
+                link_lists_[i] = (char *) vsag::allocate(link_list_size);
                 if (link_lists_[i] == nullptr)
                     throw std::runtime_error("Not enough memory: loadIndex failed to allocate linklist");
-                // input.read(link_lists_[i], linkListSize);
-                read_func(cursor, linkListSize, link_lists_[i]);
-                cursor += linkListSize;
+                // input.read(link_lists_[i], link_list_size);
+                read_func(cursor, link_list_size, link_lists_[i]);
+                cursor += link_list_size;
             }
         }
 
@@ -1199,10 +1202,10 @@ class HierarchicalNSW : public AlgorithmInterface<float> {
                 throw std::runtime_error("Index seems to be corrupted or unsupported");
             }
 
-            unsigned int linkListSize;
-            readBinaryPOD(in_stream, linkListSize);
-            if (linkListSize != 0) {
-                in_stream.seekg(linkListSize, in_stream.cur);
+            unsigned int link_list_size;
+            readBinaryPOD(in_stream, link_list_size);
+            if (link_list_size != 0) {
+                in_stream.seekg(link_list_size, in_stream.cur);
             }
         }
 
@@ -1230,17 +1233,17 @@ class HierarchicalNSW : public AlgorithmInterface<float> {
         ef_ = 10;
         for (size_t i = 0; i < cur_element_count_; i++) {
             label_lookup_[getExternalLabel(i)] = i;
-            unsigned int linkListSize;
-            readBinaryPOD(in_stream, linkListSize);
-            if (linkListSize == 0) {
+            unsigned int link_list_size;
+            readBinaryPOD(in_stream, link_list_size);
+            if (link_list_size == 0) {
                 element_levels_[i] = 0;
                 link_lists_[i] = nullptr;
             } else {
-                element_levels_[i] = linkListSize / size_links_per_element_;
-                link_lists_[i] = (char *) malloc(linkListSize);
+                element_levels_[i] = link_list_size / size_links_per_element_;
+                link_lists_[i] = (char *) malloc(link_list_size);
                 if (link_lists_[i] == nullptr)
                     throw std::runtime_error("Not enough memory: loadIndex failed to allocate linklist");
-                in_stream.read(link_lists_[i], linkListSize);
+                in_stream.read(link_lists_[i], link_list_size);
             }
         }
 
@@ -1314,10 +1317,10 @@ class HierarchicalNSW : public AlgorithmInterface<float> {
                 throw std::runtime_error("Index seems to be corrupted or unsupported");
             }
 
-            unsigned int linkListSize;
-            readBinaryPOD(input, linkListSize);
-            if (linkListSize != 0) {
-                input.seekg(linkListSize, input.cur);
+            unsigned int link_list_size;
+            readBinaryPOD(input, link_list_size);
+            if (link_list_size != 0) {
+                input.seekg(link_list_size, input.cur);
             }
         }
 
@@ -1349,17 +1352,17 @@ class HierarchicalNSW : public AlgorithmInterface<float> {
         ef_ = 10;
         for (size_t i = 0; i < cur_element_count_; i++) {
             label_lookup_[getExternalLabel(i)] = i;
-            unsigned int linkListSize;
-            readBinaryPOD(input, linkListSize);
-            if (linkListSize == 0) {
+            unsigned int link_list_size;
+            readBinaryPOD(input, link_list_size);
+            if (link_list_size == 0) {
                 element_levels_[i] = 0;
                 link_lists_[i] = nullptr;
             } else {
-                element_levels_[i] = linkListSize / size_links_per_element_;
-                link_lists_[i] = (char *) malloc(linkListSize);
+                element_levels_[i] = link_list_size / size_links_per_element_;
+                link_lists_[i] = (char *) malloc(link_list_size);
                 if (link_lists_[i] == nullptr)
                     throw std::runtime_error("Not enough memory: loadIndex failed to allocate linklist");
-                input.read(link_lists_[i], linkListSize);
+                input.read(link_lists_[i], link_list_size);
             }
         }
 
@@ -1414,8 +1417,8 @@ class HierarchicalNSW : public AlgorithmInterface<float> {
             throw std::runtime_error("Label not found");
         }
         tableint internalId = search->second;
+        label_lookup_.erase(search);
         lock_table.unlock();
-
         markDeletedInternal(internalId);
     }
 
@@ -1549,6 +1552,211 @@ class HierarchicalNSW : public AlgorithmInterface<float> {
         }
         return true;
     }
+
+
+    inline void modify_out_edge(tableint old_internal_id, tableint new_internal_id) {
+        for (int level = 0; level <= element_levels_[old_internal_id]; ++level) {
+            auto& edges = getEdges(old_internal_id, level);
+            for (const auto& in_node : edges) {
+                auto data = get_linklist_at_level(in_node, level);
+                size_t link_size = getListCount(data);
+                tableint* links = (tableint*)(data + 1);
+                for (int i = 0; i < link_size; ++i) {
+                    if (links[i] == old_internal_id) {
+                        links[i] = new_internal_id;
+                        break;
+                    }
+                }
+            }
+        }
+    }
+
+    inline void  modify_in_edges(tableint right_internal_id, tableint wrong_internal_id, bool is_erase) {
+        for (int level = 0; level <= element_levels_[right_internal_id]; ++level) {
+            auto data = get_linklist_at_level(right_internal_id, level);
+            size_t link_size = getListCount(data);
+            tableint *links = (tableint *) (data + 1);
+            for (int i = 0; i < link_size; ++i) {
+                auto& in_egdes = getEdges(links[i], level);
+                if (is_erase) {
+                    in_egdes.erase(wrong_internal_id);
+                } else {
+                    in_egdes.insert(right_internal_id);
+                }
+            }
+        }
+    };
+
+    bool swapConnections(tableint pre_internal_id, tableint post_internal_id) {
+        {
+            // modify the connectivity relationships in the graph.
+            // Through the reverse edges, change the edges pointing to pre_internal_id to point to
+            // post_internal_id.
+            modify_out_edge(pre_internal_id, post_internal_id);
+            modify_out_edge(post_internal_id, pre_internal_id);
+
+            // Swap the data and the adjacency lists of the graph.
+            auto tmp_data_element = std::shared_ptr<char[]>(new char[size_data_per_element_]);
+            memcpy(tmp_data_element.get(), get_linklist0(pre_internal_id), size_data_per_element_);
+            memcpy(get_linklist0(pre_internal_id), get_linklist0(post_internal_id), size_data_per_element_);
+            memcpy(get_linklist0(post_internal_id), tmp_data_element.get(), size_data_per_element_);
+
+            std::swap(link_lists_[pre_internal_id], link_lists_[post_internal_id]);
+            std::swap(element_levels_[pre_internal_id], element_levels_[post_internal_id]);
+        }
+
+        {
+            // Repair the incorrect reverse edges caused by swapping two points.
+            std::swap(reversed_level0_link_list_[pre_internal_id],
+                      reversed_level0_link_list_[post_internal_id]);
+            std::swap(reversed_link_lists_[pre_internal_id],
+                      reversed_link_lists_[post_internal_id]);
+
+            // First, remove the incorrect connectivity relationships in the reverse edges and then
+            // proceed with the insertion. This avoids losing edges when a point simultaneously
+            // has edges pointing to both pre_internal_id and post_internal_id.
+
+            modify_in_edges(pre_internal_id, post_internal_id, true);
+            modify_in_edges(post_internal_id, pre_internal_id, true);
+            modify_in_edges(pre_internal_id, post_internal_id, false);
+            modify_in_edges(post_internal_id, pre_internal_id, false);
+        }
+
+        if (enterpoint_node_ == post_internal_id) {
+            enterpoint_node_ = pre_internal_id;
+        } else if (enterpoint_node_ == pre_internal_id) {
+            enterpoint_node_ = post_internal_id;
+        }
+
+        return true;
+    }
+
+    void dealNoInEdge(tableint id, int level, int m_curmax) {
+        // Establish edges from the neighbors of the id pointing to the id.
+        auto alone_data = get_linklist_at_level(id, level);
+        int alone_size = getListCount(alone_data);
+        auto alone_link = (unsigned int *) (alone_data + 1);
+        auto& in_edges = getEdges(id, level);
+        for (int j = 0; j < alone_size; ++j) {
+            auto to_edge_data_cur = (unsigned int *) get_linklist_at_level(alone_link[j], level);
+            int to_edge_size_cur = getListCount(to_edge_data_cur);
+            auto to_edge_data_link_cur = (unsigned int *) (to_edge_data_cur + 1);
+            if (to_edge_size_cur < m_curmax) {
+                to_edge_data_link_cur[to_edge_size_cur] = id;
+                setListCount(to_edge_data_cur, to_edge_size_cur + 1);
+                in_edges.insert(alone_link[j]);
+            }
+        }
+    }
+
+    void removePoint(labeltype label) {
+        tableint cur_c = 0;
+        tableint internal_id = 0;
+        std::lock_guard <std::mutex> lock(global);
+        {
+            // Swap the connection relationship corresponding to the label to be deleted with the
+            // last element, and modify the information in label_lookup_. By swapping the two points,
+            // fill the void left by the deletion.
+            std::unique_lock <std::mutex> lock_table(label_lookup_lock);
+            auto iter = label_lookup_.find(label);
+            if (iter == label_lookup_.end()) {
+                throw std::runtime_error("no label in FreshHnsw");
+            } else {
+                internal_id = iter->second;
+                label_lookup_.erase(iter);
+            }
+
+            cur_element_count_ --;
+            cur_c = cur_element_count_;
+
+            if (cur_c == 0) {
+                for (int level = 0; level < element_levels_[cur_c]; ++level) {
+                    getEdges(cur_c, level).clear();
+                }
+                enterpoint_node_ = -1;
+                maxlevel_ = -1;
+                return;
+            } else if(cur_c != internal_id) {
+                label_lookup_[getExternalLabel(cur_c)] = internal_id;
+                swapConnections(cur_c, internal_id);
+            }
+        }
+
+        // If the node to be deleted is an entry node, find another top-level node.
+        if (cur_c == enterpoint_node_) {
+            for (int level = maxlevel_; level >= 0; level--) {
+                auto data = (unsigned int *) get_linklist_at_level(enterpoint_node_, level);
+                int size = getListCount(data);
+                if (size != 0) {
+                    maxlevel_ = level;
+                    enterpoint_node_ = *(data + 1);
+                }
+            }
+        }
+
+        // Repair the connection relationship between the indegree and outdegree nodes at each
+        // level. We connect each indegree node with each outdegree node, and then prune the
+        // indegree nodes.
+        for (int level = 0; level <= element_levels_[cur_c]; ++level) {
+            const auto in_edges_cur = getEdges(cur_c, level);
+            auto data_cur = get_linklist_at_level(cur_c, level);
+            int size_cur = getListCount(data_cur);
+            auto data_link_cur = (unsigned int *) (data_cur + 1);
+
+            for (const auto in_edge : in_edges_cur) {
+                std::priority_queue<std::pair<float, tableint>, std::vector<std::pair<float, tableint>>, CompareByFirst> candidates;
+                std::unordered_set<tableint> unique_ids;
+
+                // Add the original neighbors of the indegree node to the candidate queue.
+                for (int i = 0; i < size_cur; ++i) {
+                    if (data_link_cur[i] == cur_c || data_link_cur[i] == in_edge) {
+                        continue;
+                    }
+                    unique_ids.insert(data_link_cur[i]);
+                    candidates.emplace(
+                        fstdistfunc_(getDataByInternalId(data_link_cur[i]), getDataByInternalId(in_edge),
+                                     dist_func_param_), data_link_cur[i]);
+                }
+
+                // Add the neighbors of the node to be deleted to the candidate queue.
+                auto in_edge_data_cur = (unsigned int *) get_linklist_at_level(in_edge, level);
+                int in_edge_size_cur = getListCount(in_edge_data_cur);
+                auto in_edge_data_link_cur = (unsigned int *) (in_edge_data_cur + 1);
+                for (int i = 0; i < in_edge_size_cur; ++i) {
+                    if (in_edge_data_link_cur[i] == cur_c || unique_ids.find(in_edge_data_link_cur[i]) != unique_ids.end()) {
+                        continue;
+                    }
+                    unique_ids.insert(in_edge_data_link_cur[i]);
+                    candidates.emplace(
+                        fstdistfunc_(getDataByInternalId(in_edge_data_link_cur[i]), getDataByInternalId(in_edge),
+                                     dist_func_param_), in_edge_data_link_cur[i]);
+                }
+
+                if (candidates.size() == 0) {
+                    setListCount(in_edge_data_cur, 0);
+                    getEdges(cur_c, level).erase(in_edge);
+                    continue;
+                }
+                mutuallyConnectNewElement(getDataByInternalId(in_edge), in_edge, candidates, level, true);
+
+                // Handle the operations of the deletion point which result in some nodes having no
+                // indegree nodes, and carry out repairs.
+                size_t m_curmax = level ? maxM_ : maxM0_;
+                for (auto id: unique_ids) {
+                    if (getEdges(id, level).size() == 0) {
+                        dealNoInEdge(id, level, m_curmax);
+                    }
+                }
+            }
+
+            for (int i = 0; i < size_cur; ++i) {
+                getEdges(data_link_cur[i], level).erase(cur_c);
+            }
+        }
+        return;
+    }
+
+
 
 
     void updatePoint(const void *dataPoint, tableint internalId, float updateNeighborProbability) {
@@ -1736,10 +1944,10 @@ class HierarchicalNSW : public AlgorithmInterface<float> {
 
         element_levels_[cur_c] = curlevel;
 
-        std::unique_lock <std::mutex> templock(global);
+        std::unique_lock <std::mutex> lock(global);
         int maxlevelcopy = maxlevel_;
         if (curlevel <= maxlevelcopy)
-            templock.unlock();
+            lock.unlock();
         tableint currObj = enterpoint_node_;
         tableint enterpoint_copy = enterpoint_node_;
 
@@ -1751,9 +1959,10 @@ class HierarchicalNSW : public AlgorithmInterface<float> {
         memcpy(getDataByInternalId(cur_c), data_point, data_size_);
 
         if (curlevel) {
-            link_lists_[cur_c] = (char *) vsag::allocate(size_links_per_element_ * curlevel + 1);
-            if (link_lists_[cur_c] == nullptr)
+            auto new_link_lists = (char *) vsag::reallocate(link_lists_[cur_c], size_links_per_element_ * curlevel + 1);
+            if (new_link_lists == nullptr)
                 throw std::runtime_error("Not enough memory: addPoint failed to allocate linklist");
+            link_lists_[cur_c] = new_link_lists;
             memset(link_lists_[cur_c], 0, size_links_per_element_ * curlevel + 1);
         }
 

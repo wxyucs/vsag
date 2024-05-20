@@ -1,6 +1,9 @@
 add_executable (example_hnsw example_hnsw.cpp)
 target_link_libraries (example_hnsw vsag)
 
+add_executable (example_fresh_hnsw example_fresh_hnsw.cpp)
+target_link_libraries (example_fresh_hnsw vsag)
+
 add_executable (example_kmeans example_kmeans.cpp)
 target_link_libraries (example_kmeans vsag)
 

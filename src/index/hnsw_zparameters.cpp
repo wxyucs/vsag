@@ -68,10 +68,6 @@ CreateHnswParameters::FromJson(const std::string& json_string) {
     } else {
         obj.use_conjugate_graph = false;
     }
-    // set obj.use_reversed_edges
-    obj.use_reversed_edges = params[INDEX_HNSW].contains(HNSW_PARAMETER_REVERSED_EDGES) &&
-                             params[INDEX_HNSW][HNSW_PARAMETER_REVERSED_EDGES];
-
     return obj;
 }
 
@@ -99,6 +95,21 @@ HnswSearchParameters::FromJson(const std::string& json_string) {
         obj.use_conjugate_graph_search = true;
     }
 
+    return obj;
+}
+
+CreateFreshHnswParameters
+CreateFreshHnswParameters::FromJson(const std::string& json_string) {
+    auto parrent_obj = CreateHnswParameters::FromJson(json_string);
+    CreateFreshHnswParameters obj;
+
+    obj.max_degree = parrent_obj.max_degree;
+    obj.ef_construction = parrent_obj.ef_construction;
+    obj.space = parrent_obj.space;
+    obj.use_static = false;
+
+    // set obj.use_reversed_edges
+    obj.use_reversed_edges = true;
     return obj;
 }
 

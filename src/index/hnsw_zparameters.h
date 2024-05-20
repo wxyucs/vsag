@@ -19,10 +19,22 @@ public:
     int64_t ef_construction;
     bool use_conjugate_graph;
     bool use_static;
+
+protected:
+    CreateHnswParameters() = default;
+};
+
+struct CreateFreshHnswParameters : public CreateHnswParameters {
+public:
+    static CreateFreshHnswParameters
+    FromJson(const std::string& json_string);
+
+public:
+    // required vars
     bool use_reversed_edges;
 
 private:
-    CreateHnswParameters() = default;
+    CreateFreshHnswParameters() = default;
 };
 
 struct HnswSearchParameters {

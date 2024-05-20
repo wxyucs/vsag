@@ -30,7 +30,7 @@ float_hnsw() {
     int max_degree = 16;       // Tightly connected with internal dimensionality of the data
     // strongly affects the memory consumption
     int ef_construction = 200;  // Controls index search speed/build speed tradeoff
-    int ef_search = 200;
+    int ef_search = 100;
     float threshold = 8.0;
 
     // Initing index
@@ -128,6 +128,7 @@ float_hnsw() {
         std::cout << std::fixed << std::setprecision(3)
                   << "Memory Uasage:" << hnsw->GetMemoryUsage() / 1024.0 << " KB" << std::endl;
         std::cout << "Recall: " << recall << std::endl;
+        std::cout << hnsw->GetStats() << std::endl;
     }
 
     correct = 0;
