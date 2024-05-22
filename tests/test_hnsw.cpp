@@ -28,7 +28,7 @@ readBinaryPOD(std::istream& in, T& podRef) {
 
 const std::string tmp_dir = "/tmp/";
 
-TEST_CASE("HNSW range search", "[hnsw][test]") {
+TEST_CASE("HNSW range search", "[ft][hnsw]") {
     spdlog::set_level(spdlog::level::debug);
 
     int dim = 71;
@@ -100,7 +100,7 @@ TEST_CASE("HNSW range search", "[hnsw][test]") {
     CHECK((expected->CountOnes() - result->GetDim()) * 100 < max_elements);
 }
 
-TEST_CASE("HNSW filtering knn search", "[hnsw][test]") {
+TEST_CASE("HNSW filtering knn search", "[ft][hnsw]") {
     spdlog::set_level(spdlog::level::debug);
 
     int dim = 17;
@@ -167,7 +167,7 @@ TEST_CASE("HNSW filtering knn search", "[hnsw][test]") {
     }
 }
 
-TEST_CASE("HNSW Filtering Test", "[hnsw][test]") {
+TEST_CASE("HNSW Filtering Test", "[ft][hnsw]") {
     spdlog::set_level(spdlog::level::debug);
 
     int dim = 17;
@@ -305,7 +305,7 @@ TEST_CASE("HNSW Filtering Test", "[hnsw][test]") {
     REQUIRE(recall_knn == 1);
 }
 
-TEST_CASE("HNSW small dimension", "[hnsw][test]") {
+TEST_CASE("HNSW small dimension", "[ft][hnsw]") {
     spdlog::set_level(spdlog::level::debug);
 
     int dim = 3;
@@ -368,7 +368,7 @@ TEST_CASE("HNSW small dimension", "[hnsw][test]") {
     REQUIRE(recall == 1);
 }
 
-TEST_CASE("HNSW Random Id", "[hnsw][test]") {
+TEST_CASE("HNSW Random Id", "[ft][hnsw]") {
     spdlog::set_level(spdlog::level::debug);
 
     int dim = 128;
@@ -451,7 +451,7 @@ TEST_CASE("HNSW Random Id", "[hnsw][test]") {
     REQUIRE(recall == 1);
 }
 
-TEST_CASE("pq infer knn search time recall", "[hnsw][test]") {
+TEST_CASE("pq infer knn search time recall", "[ft][hnsw]") {
     spdlog::set_level(spdlog::level::debug);
 
     int dim = 128;
@@ -513,7 +513,7 @@ TEST_CASE("pq infer knn search time recall", "[hnsw][test]") {
     REQUIRE(recall == 1);
 }
 
-TEST_CASE("hnsw serialize", "[hnsw][test]") {
+TEST_CASE("hnsw serialize", "[ft][hnsw]") {
     spdlog::set_level(spdlog::level::debug);
 
     int dim = 128;

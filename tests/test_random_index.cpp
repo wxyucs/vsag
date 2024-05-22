@@ -11,7 +11,7 @@
 
 using namespace std;
 
-TEST_CASE("Random Index Test", "[random][test]") {
+TEST_CASE("Random Index Test", "[ft][random]") {
     std::random_device rd;
     std::mt19937 rng(rd());
 

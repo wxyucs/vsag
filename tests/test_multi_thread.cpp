@@ -84,7 +84,7 @@ query_knn(std::shared_ptr<vsag::Index> index,
     return 0.0;
 }
 
-TEST_CASE("DiskAnn Multi-threading", "[diskann][test][diskann-ci-part4]") {
+TEST_CASE("DiskAnn Multi-threading", "[ft][diskann]") {
     int dim = 65;             // Dimension of the elements
     int max_elements = 1000;  // Maximum number of elements, should be known beforehand
     int max_degree = 16;      // Tightly connected with internal dimensionality of the data
@@ -160,7 +160,7 @@ TEST_CASE("DiskAnn Multi-threading", "[diskann][test][diskann-ci-part4]") {
     delete[] bits_zeros;
 }
 
-TEST_CASE("HNSW Multi-threading", "[hnsw]") {
+TEST_CASE("HNSW Multi-threading", "[ft][hnsw]") {
     int dim = 16;             // Dimension of the elements
     int max_elements = 1000;  // Maximum number of elements, should be known beforehand
     int max_degree = 16;      // Tightly connected with internal dimensionality of the data

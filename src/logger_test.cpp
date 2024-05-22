@@ -15,7 +15,7 @@ TEST_CASE("test logger", "[ut][logger]") {
     vsag::logger::critical("this is a critical level message");
 }
 
-TEST_CASE("spdlog usage", "[log][test]") {
+TEST_CASE("spdlog usage", "[ut][log]") {
     spdlog::info("Welcome to spdlog!");
     spdlog::error("SomeError message with arg: {}", 1);
 

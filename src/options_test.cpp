@@ -4,7 +4,7 @@
 
 #include "default_allocator.h"
 
-TEST_CASE("option test", "[option][test]") {
+TEST_CASE("option test", "[ut][option]") {
     size_t sector_size = 100;
     vsag::Options::Instance().set_sector_size(sector_size);
     REQUIRE(vsag::Option::Instance().sector_size() == sector_size);

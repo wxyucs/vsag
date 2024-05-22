@@ -9,7 +9,7 @@
 
 using namespace vsag;
 
-TEST_CASE("l2_and_filtering", "[utils][test]") {
+TEST_CASE("l2_and_filtering", "[ft][utils]") {
     int64_t dim = 4;
     int64_t nb = 10;
     float* base = new float[nb * dim];
@@ -37,6 +37,6 @@ TEST_CASE("l2_and_filtering", "[utils][test]") {
     CHECK_FALSE(res->Get(9));
 }
 
-TEST_CASE("version", "[version][test]") {
+TEST_CASE("version", "[ft][version]") {
     std::cout << "version: " << vsag::version() << std::endl;
 }

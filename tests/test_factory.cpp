@@ -5,7 +5,7 @@
 
 #include "vsag/vsag.h"
 
-TEST_CASE("index params", "[factory][test]") {
+TEST_CASE("index params", "[ft][factory]") {
     int dim = 16;
     int max_elements = 1000;
     int max_degree = 16;
