@@ -158,7 +158,7 @@ class SpaceInterface {
 template<typename dist_t>
 class AlgorithmInterface {
  public:
-    virtual bool addPoint(const void *datapoint, labeltype label, bool replace_deleted = false) = 0;
+    virtual bool addPoint(const void *datapoint, labeltype label) = 0;
 
     virtual std::priority_queue<std::pair<dist_t, labeltype>>
         searchKnn(const void*, size_t, BaseFilterFunctor* isIdAllowed = nullptr) const = 0;
@@ -194,8 +194,6 @@ class AlgorithmInterface {
     virtual void loadIndex(std::istream &in_stream, int64_t length, SpaceInterface *s, size_t max_elements_i = 0) = 0;
 
     virtual size_t getCurrentElementCount() = 0;
-
-    virtual void markDelete(labeltype label) = 0;
 
     virtual size_t getDeletedCount() = 0;
 

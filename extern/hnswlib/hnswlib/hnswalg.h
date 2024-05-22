@@ -6,6 +6,7 @@
 #include <cstdint>
 #include <cstring>
 #include <iterator>
+#include <mutex>
 #include <random>
 #include <stdlib.h>
 #include <iostream>
@@ -15,6 +16,7 @@
 #include <list>
 #include <functional>
 #include <map>
+#include <memory>
 
 namespace hnswlib {
 typedef unsigned int tableint;
@@ -1407,7 +1409,7 @@ class HierarchicalNSW : public AlgorithmInterface<float> {
     /*
     * Marks an element with the given label deleted, does NOT really change the current graph.
     */
-    void markDelete(labeltype label) override {
+    void markDelete(labeltype label) {
         // lock all operations with element by label
         std::unique_lock <std::mutex> lock_label(getLabelOpMutex(label));
 
@@ -1505,50 +1507,12 @@ class HierarchicalNSW : public AlgorithmInterface<float> {
 
 
     /*
-    * Adds point. Updates the point if it is already in the index.
-    * If replacement of deleted elements is enabled: replaces previously deleted point if any, updating it with new point
+    * Adds point.
     */
-    bool addPoint(const void *data_point, labeltype label, bool replace_deleted = false) override {
-        if ((allow_replace_deleted_ == false) && (replace_deleted == true)) {
-            throw std::runtime_error("Replacement of deleted elements is disabled in constructor");
-        }
-
-        // lock all operations with element by label
-        std::unique_lock <std::mutex> lock_label(getLabelOpMutex(label));
-        if (!replace_deleted) {
-            if(addPoint(data_point, label, -1) == -1) {
-                return false;
-            }
-            return true;
-        }
-        // check if there is vacant place
-        tableint internal_id_replaced;
-        std::unique_lock <std::mutex> lock_deleted_elements(deleted_elements_lock);
-        bool is_vacant_place = !deleted_elements.empty();
-        if (is_vacant_place) {
-            internal_id_replaced = *deleted_elements.begin();
-            deleted_elements.erase(internal_id_replaced);
-        }
-        lock_deleted_elements.unlock();
-
-        // if there is no vacant place then add or update point
-        // else add point to vacant place
-        if (!is_vacant_place) {
-            if(addPoint(data_point, label, -1) == -1) {
-                return false;
-            }
-        } else {
-            // we assume that there are no concurrent operations on deleted element
-            labeltype label_replaced = getExternalLabel(internal_id_replaced);
-            setExternalLabel(internal_id_replaced, label);
-
-            std::unique_lock <std::mutex> lock_table(label_lookup_lock);
-            label_lookup_.erase(label_replaced);
-            label_lookup_[label] = internal_id_replaced;
-            lock_table.unlock();
-
-            unmarkDeletedInternal(internal_id_replaced);
-            updatePoint(data_point, internal_id_replaced, 1.0);
+    bool addPoint(const void *data_point, labeltype label) override {
+        std::lock_guard<std::mutex> lock_label(getLabelOpMutex(label));
+        if (addPoint(data_point, label, -1) == -1) {
+            return false;
         }
         return true;
     }
@@ -1755,167 +1719,6 @@ class HierarchicalNSW : public AlgorithmInterface<float> {
         }
         return;
     }
-
-
-
-
-    void updatePoint(const void *dataPoint, tableint internalId, float updateNeighborProbability) {
-        // update the feature vector associated with existing point with new vector
-        memcpy(getDataByInternalId(internalId), dataPoint, data_size_);
-
-        int maxLevelCopy = maxlevel_;
-        tableint entryPointCopy = enterpoint_node_;
-        // If point to be updated is entry point and graph just contains single element then just return.
-        if (entryPointCopy == internalId && cur_element_count_ == 1)
-            return;
-
-        int elemLevel = element_levels_[internalId];
-        std::uniform_real_distribution<float> distribution(0.0, 1.0);
-        for (int layer = 0; layer <= elemLevel; layer++) {
-            std::unordered_set<tableint> sCand;
-            std::unordered_set<tableint> sNeigh;
-            std::vector<tableint> listOneHop = getConnectionsWithLock(internalId, layer);
-            if (listOneHop.size() == 0)
-                continue;
-
-            sCand.insert(internalId);
-
-            for (auto&& elOneHop : listOneHop) {
-                sCand.insert(elOneHop);
-
-                if (distribution(update_probability_generator_) > updateNeighborProbability)
-                    continue;
-
-                sNeigh.insert(elOneHop);
-
-                std::vector<tableint> listTwoHop = getConnectionsWithLock(elOneHop, layer);
-                for (auto&& elTwoHop : listTwoHop) {
-                    sCand.insert(elTwoHop);
-                }
-            }
-
-            for (auto&& neigh : sNeigh) {
-                // if (neigh == internalId)
-                //     continue;
-
-                std::priority_queue<std::pair<float, tableint>, std::vector<std::pair<float, tableint>>, CompareByFirst> candidates;
-                size_t size = sCand.find(neigh) == sCand.end() ? sCand.size() : sCand.size() - 1;  // sCand guaranteed to have size >= 1
-                size_t elementsToKeep = std::min(ef_construction_, size);
-                for (auto&& cand : sCand) {
-                    if (cand == neigh)
-                        continue;
-
-                    float distance = fstdistfunc_(getDataByInternalId(neigh), getDataByInternalId(cand), dist_func_param_);
-                    if (candidates.size() < elementsToKeep) {
-                        candidates.emplace(distance, cand);
-                    } else {
-                        if (distance < candidates.top().first) {
-                            candidates.pop();
-                            candidates.emplace(distance, cand);
-                        }
-                    }
-                }
-
-                // Retrieve neighbours using heuristic and set connections.
-                getNeighborsByHeuristic2(candidates, layer == 0 ? maxM0_ : maxM_);
-
-                {
-                    std::unique_lock <std::recursive_mutex> lock(link_list_locks_[neigh]);
-                    linklistsizeint *ll_cur;
-                    ll_cur = get_linklist_at_level(neigh, layer);
-                    size_t candSize = candidates.size();
-                    setListCount(ll_cur, candSize);
-                    tableint *data = (tableint *) (ll_cur + 1);
-                    for (size_t idx = 0; idx < candSize; idx++) {
-                        data[idx] = candidates.top().second;
-                        candidates.pop();
-                    }
-                }
-            }
-        }
-
-        repairConnectionsForUpdate(dataPoint, entryPointCopy, internalId, elemLevel, maxLevelCopy);
-    }
-
-
-    void repairConnectionsForUpdate(
-        const void *dataPoint,
-        tableint entryPointInternalId,
-        tableint dataPointInternalId,
-        int dataPointLevel,
-        int maxLevel) {
-        tableint currObj = entryPointInternalId;
-        if (dataPointLevel < maxLevel) {
-            float curdist = fstdistfunc_(dataPoint, getDataByInternalId(currObj), dist_func_param_);
-            for (int level = maxLevel; level > dataPointLevel; level--) {
-                bool changed = true;
-                while (changed) {
-                    changed = false;
-                    unsigned int *data;
-                    std::unique_lock <std::recursive_mutex> lock(link_list_locks_[currObj]);
-                    data = get_linklist_at_level(currObj, level);
-                    int size = getListCount(data);
-                    tableint *datal = (tableint *) (data + 1);
-#ifdef USE_SSE
-                    _mm_prefetch(getDataByInternalId(*datal), _MM_HINT_T0);
-#endif
-                    for (int i = 0; i < size; i++) {
-#ifdef USE_SSE
-                        _mm_prefetch(getDataByInternalId(*(datal + i + 1)), _MM_HINT_T0);
-#endif
-                        tableint cand = datal[i];
-                        float d = fstdistfunc_(dataPoint, getDataByInternalId(cand), dist_func_param_);
-                        if (d < curdist) {
-                            curdist = d;
-                            currObj = cand;
-                            changed = true;
-                        }
-                    }
-                }
-            }
-        }
-
-        if (dataPointLevel > maxLevel)
-            throw std::runtime_error("Level of item to be updated cannot be bigger than max level");
-
-        for (int level = dataPointLevel; level >= 0; level--) {
-            std::priority_queue<std::pair<float, tableint>, std::vector<std::pair<float, tableint>>, CompareByFirst> topCandidates = searchBaseLayer(
-                    currObj, dataPoint, level);
-
-            std::priority_queue<std::pair<float, tableint>, std::vector<std::pair<float, tableint>>, CompareByFirst> filteredTopCandidates;
-            while (topCandidates.size() > 0) {
-                if (topCandidates.top().second != dataPointInternalId)
-                    filteredTopCandidates.push(topCandidates.top());
-
-                topCandidates.pop();
-            }
-
-            // Since element_levels_ is being used to get `dataPointLevel`, there could be cases where `topCandidates` could just contains entry point itself.
-            // To prevent self loops, the `topCandidates` is filtered and thus can be empty.
-            if (filteredTopCandidates.size() > 0) {
-                bool epDeleted = isMarkedDeleted(entryPointInternalId);
-                if (epDeleted) {
-                    filteredTopCandidates.emplace(fstdistfunc_(dataPoint, getDataByInternalId(entryPointInternalId), dist_func_param_), entryPointInternalId);
-                    if (filteredTopCandidates.size() > ef_construction_)
-                        filteredTopCandidates.pop();
-                }
-
-                currObj = mutuallyConnectNewElement(dataPoint, dataPointInternalId, filteredTopCandidates, level, true);
-            }
-        }
-    }
-
-
-    std::vector<tableint> getConnectionsWithLock(tableint internalId, int level) {
-        std::unique_lock <std::recursive_mutex> lock(link_list_locks_[internalId]);
-        unsigned int *data = get_linklist_at_level(internalId, level);
-        int size = getListCount(data);
-        std::vector<tableint> result(size);
-        tableint *ll = (tableint *) (data + 1);
-        memcpy(result.data(), ll, size * sizeof(tableint));
-        return result;
-    }
-
 
     tableint addPoint(const void *data_point, labeltype label, int level) {
         tableint cur_c = 0;

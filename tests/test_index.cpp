@@ -11,6 +11,7 @@
 #include "fmt/format.h"
 #include "nlohmann/json.hpp"
 #include "vsag/dataset.h"
+#include "vsag/errors.h"
 #include "vsag/logger.h"
 #include "vsag/options.h"
 #include "vsag/vsag.h"
@@ -515,31 +516,56 @@ TEST_CASE("index with bsa", "[ft][index]") {
 // utility functions
 /////////////////////////////////////////////////////////
 
-TEST_CASE("check build parameters", "[ft][index]") {
+TEST_CASE("check correct build parameters", "[ft][index]") {
     vsag::Options::Instance().logger()->SetLevel(vsag::Logger::Level::DEBUG);
 
     auto json_string = R"(
-        {
-            "dtype": "float32",
-            "metric_type": "l2",
-            "dim": 512,
-            "hnsw": {
-                "max_degree": 16,
-                "ef_construction": 100
-            },
-            "diskann": {
-                "max_degree": 16,
-                "ef_construction": 200,
-                "pq_dims": 32,
-                "pq_sample_rate": 0.5
-            }
+    {
+        "dtype": "float32",
+        "metric_type": "l2",
+        "dim": 512,
+        "hnsw": {
+            "max_degree": 16,
+            "ef_construction": 100
+        },
+        "diskann": {
+            "max_degree": 16,
+            "ef_construction": 200,
+            "pq_dims": 32,
+            "pq_sample_rate": 0.5
         }
-        )";
+    }
+    )";
     auto res = vsag::check_diskann_hnsw_build_parameters(json_string);
     REQUIRE(res.has_value());
 }
 
-TEST_CASE("check search parameters", "[ft][index]") {
+TEST_CASE("check incorrect build parameters", "[ft][index]") {
+    vsag::Options::Instance().logger()->SetLevel(vsag::Logger::Level::DEBUG);
+
+    // dtype is missing
+    auto json_string = R"(
+    {
+        "metric_type": "l2",
+        "dim": 512,
+        "hnsw": {
+            "max_degree": 16,
+            "ef_construction": 100
+        },
+        "diskann": {
+            "max_degree": 16,
+            "ef_construction": 200,
+            "pq_dims": 32,
+            "pq_sample_rate": 0.5
+        }
+    }
+    )";
+    auto res = vsag::check_diskann_hnsw_build_parameters(json_string);
+    REQUIRE_FALSE(res.has_value());
+    REQUIRE(res.error().type == vsag::ErrorType::INVALID_ARGUMENT);
+}
+
+TEST_CASE("check correct search parameters", "[ft][index]") {
     vsag::Options::Instance().logger()->SetLevel(vsag::Logger::Level::DEBUG);
 
     auto json_string = R"(
@@ -557,6 +583,27 @@ TEST_CASE("check search parameters", "[ft][index]") {
         )";
     auto res = vsag::check_diskann_hnsw_search_parameters(json_string);
     REQUIRE(res.has_value());
+}
+
+TEST_CASE("check incorrect search parameters", "[ft][index]") {
+    vsag::Options::Instance().logger()->SetLevel(vsag::Logger::Level::DEBUG);
+
+    auto json_string = R"(
+        {
+            "hhhhhhhhhhhhhh": {
+                "ef_search": 100
+            },
+            "diskann": {
+                "ef_search": 200,
+                "beam_search": 4,
+                "io_limit": 200,
+                "use_reorder": true
+           }
+        }
+        )";
+    auto res = vsag::check_diskann_hnsw_search_parameters(json_string);
+    REQUIRE_FALSE(res.has_value());
+    REQUIRE(res.error().type == vsag::ErrorType::INVALID_ARGUMENT);
 }
 
 TEST_CASE("generate build parameters", "[ft][index]") {

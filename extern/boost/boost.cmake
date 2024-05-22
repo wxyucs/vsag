@@ -1,5 +1,7 @@
 # Copyright (c) 2022 Ant Group. All rights reserved.
 
+cmake_policy(SET CMP0114 NEW)
+
 set(name boost)
 set(source_dir ${CMAKE_CURRENT_BINARY_DIR}/${name}/source)
 set(install_dir ${CMAKE_CURRENT_BINARY_DIR}/${name}/install)
