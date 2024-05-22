@@ -79,6 +79,11 @@ CreateDiskannParameters::FromJson(const std::string& json_string) {
         obj.use_opq = params[INDEX_DISKANN][DISKANN_PARAMETER_USE_OPQ];
     }
 
+    // set obj.use_bsa
+    if (params[INDEX_DISKANN].contains(DISKANN_PARAMETER_USE_BSA)) {
+        obj.use_bsa = params[INDEX_DISKANN][DISKANN_PARAMETER_USE_BSA];
+    }
+
     return obj;
 }
 

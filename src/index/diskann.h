@@ -46,8 +46,9 @@ public:
             size_t disk_pq_dims,
             int64_t dim,
             bool preload,
-            bool use_reference,
-            bool use_opq);
+            bool use_reference = true,
+            bool use_opq = false,
+            bool use_bsa = false);
 
     ~DiskANN() = default;
 
@@ -186,6 +187,7 @@ private:
     int64_t dim_;
     bool use_reference_ = true;
     bool use_opq_ = false;
+    bool use_bsa_ = false;
     bool preload_;
     IndexStatus status_;
     bool empty_index_ = false;

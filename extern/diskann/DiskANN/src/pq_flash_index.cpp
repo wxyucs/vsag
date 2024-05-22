@@ -43,8 +43,8 @@ namespace diskann
 {
 
 template <typename T, typename LabelT>
-PQFlashIndex<T, LabelT>::PQFlashIndex(std::shared_ptr<AlignedFileReader> &fileReader, diskann::Metric m, size_t sector_len)
-    : reader(fileReader), metric(m), thread_data(nullptr), sector_len(sector_len)
+PQFlashIndex<T, LabelT>::PQFlashIndex(std::shared_ptr<AlignedFileReader> &fileReader, diskann::Metric m, size_t sector_len, bool use_bsa)
+    : reader(fileReader), metric(m), thread_data(nullptr), sector_len(sector_len), use_bsa(use_bsa)
 {
     if (m == diskann::Metric::COSINE || m == diskann::Metric::INNER_PRODUCT)
     {
@@ -1372,6 +1372,13 @@ int PQFlashIndex<T, LabelT>::load_from_separate_paths(uint32_t num_threads, std:
 
     size_t npts_u64, nchunks_u64;
     diskann::load_bin<uint8_t>(compressed_stream, this->data, npts_u64, nchunks_u64);
+    if (use_bsa) {
+        errors.reset(new float[npts_u64]);
+        compressed_stream.seekg(sizeof(uint32_t) * 2 + npts_u64 * nchunks_u64 * sizeof(uint8_t), compressed_stream.beg);
+        compressed_stream.read((char *) errors.get(), npts_u64 * sizeof(float));
+    }
+
+
 
     this->num_points = npts_u64;
     this->n_chunks = nchunks_u64;
@@ -2123,27 +2130,28 @@ int64_t PQFlashIndex<T, LabelT>::cached_beam_search_memory(const T *query, const
     std::sort(full_retset.begin(), full_retset.end());
     if (reorder) {
         std::vector<Neighbor> reorder_retset;
-        uint32_t batch_size = (io_limit + sector_size - 1) / sector_size;
-
-        for (int i = 0; i < batch_size; ++i)
+        std::priority_queue<float> distance_ranks;
+        int loc = 0;
+        while (loc < io_limit)
         {
-            uint32_t start = i * sector_size;
-            uint32_t end = std::min((uint32_t)((i + 1) * sector_size), io_limit);
-            uint32_t cur_len = end - start;
             std::vector<AlignedRead> sorted_read_reqs;
-            sorted_read_reqs.reserve(cur_len);
             std::vector<uint32_t> ids;
-            ids.reserve(cur_len);
-            for (int j = start; j < end; ++j) {
-                auto id = full_retset[j].id;
-                ids.push_back(id);
-                sorted_read_reqs.push_back({NODE_SECTOR_NO(((size_t)id)) * sector_len, sector_len,
-                                            sector_scratch + (j - start) * sector_len});
+            int cur_loc = 0;
+            while (sorted_read_reqs.size() < beam_width && loc < io_limit) {
+                auto id = full_retset[loc].id;
+                if (not use_bsa || reorder_retset.empty() || reorder_retset.size() < k_search ||
+                    distance_ranks.top() + this->errors[id] > full_retset[loc].distance) {
+                    ids.push_back(id);
+                    sorted_read_reqs.push_back({NODE_SECTOR_NO(((size_t)id)) * sector_len, sector_len,
+                                                sector_scratch + cur_loc * sector_len});
+                    cur_loc ++;
+                }
+                loc ++;
             }
 
             reader->read(sorted_read_reqs, ctx);
-            
-            for (int j = 0; j < cur_len; j ++)
+
+            for (int j = 0; j < sorted_read_reqs.size(); j ++)
             {
                 uint32_t id = ids[j];
                 char *node_disk_buf = OFFSET_TO_NODE(sorted_read_reqs[j].buf, id);
@@ -2151,6 +2159,10 @@ int64_t PQFlashIndex<T, LabelT>::cached_beam_search_memory(const T *query, const
                 float exact_dist;
                 exact_dist = dist_cmp->compare(aligned_query_T, node_fp_coords, (uint32_t)data_dim);
                 reorder_retset.push_back(Neighbor(id, exact_dist));
+                distance_ranks.push(exact_dist);
+                if (distance_ranks.size() > k_search) {
+                    distance_ranks.pop();
+                }
             }
         }
         std::sort(reorder_retset.begin(), reorder_retset.end());

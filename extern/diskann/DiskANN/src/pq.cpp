@@ -1698,7 +1698,7 @@ int generate_pq_data_from_pivots(std::stringstream &base_reader, uint32_t num_ce
 template <typename T>
 int generate_pq_data_from_pivots(const T* data, size_t num_points, size_t dim, const std::vector<size_t>& skip_locs, uint32_t num_centers, uint32_t num_pq_chunks,
                                  std::stringstream &pq_pivots_stream, std::stringstream &compressed_file_writer,
-                                 bool use_opq, std::shared_ptr<float[]> rotmat_tr)
+                                 bool use_opq, std::shared_ptr<float[]> rotmat_tr, bool use_bsa)
 {
     size_t read_blk_size = 64 * 1024 * 1024;
     std::unique_ptr<float[]> full_pivot_data;
@@ -1731,6 +1731,8 @@ int generate_pq_data_from_pivots(const T* data, size_t num_points, size_t dim, c
     std::unique_ptr<float[]> block_data_float = std::make_unique<float[]>(block_size * dim);
     std::unique_ptr<float[]> block_data_tmp = std::make_unique<float[]>(block_size * dim);
 
+    std::vector<float> errors;
+
     size_t num_blocks = DIV_ROUND_UP(num_points, block_size);
 
     size_t next_skip_loc_index = 0;
@@ -1740,6 +1742,8 @@ int generate_pq_data_from_pivots(const T* data, size_t num_points, size_t dim, c
         size_t start_id = block * block_size;
         size_t end_id = std::min((block + 1) * block_size, num_points);
         size_t cur_blk_size = end_id - start_id;
+        std::vector<float> cur_errors(cur_blk_size, 0.0f);
+
         diskann::convert_types<T, float>(data + start_id * dim, block_data_tmp.get(), cur_blk_size, dim);
 
         // diskann::cout << "Processing points  [" << start_id << ", " << end_id << ").." << std::flush;
@@ -1791,6 +1795,11 @@ int generate_pq_data_from_pivots(const T* data, size_t num_points, size_t dim, c
             for (int64_t j = 0; j < (int64_t)cur_blk_size; j++)
             {
                 block_compressed_base[j * num_pq_chunks + i] = closest_center[j];
+                if (use_bsa) {
+                    cur_errors[j] += math_utils::calc_distance(cur_data.get() + j * cur_chunk_size,
+                                                              cur_pivot_data.get() + closest_center[j] * cur_chunk_size,
+                                                              cur_chunk_size);
+                }
 #ifdef SAVE_INFLATED_PQ
                 for (size_t k = 0; k < cur_chunk_size; k++)
                     block_inflated_base[j * dim + chunk_offsets[i] + k] =
@@ -1806,12 +1815,18 @@ int generate_pq_data_from_pivots(const T* data, size_t num_points, size_t dim, c
                 next_skip_loc_index ++;
                 continue;
             }
+            if (use_bsa) {
+                errors.push_back(cur_errors[i]);
+            }
             diskann::convert_types<uint32_t, uint8_t>(block_compressed_base.get() + i * num_pq_chunks, p_vec.get(),
                                                       1, num_pq_chunks);
             compressed_file_writer.write((char *)(p_vec.get()), num_pq_chunks * sizeof(uint8_t));
         }
 
         // diskann::cout << ".done." << std::endl;
+    }
+    if (use_bsa) {
+        compressed_file_writer.write((char *) errors.data(), errors.size() * sizeof(float));
     }
     // Gopal. Splitting diskann_dll into separate DLLs for search and build.
     // This code should only be available in the "build" DLL.
@@ -1880,7 +1895,7 @@ void generate_disk_quantized_data(std::stringstream &data_stream, std::stringstr
 template <typename T>
 void generate_disk_quantized_data(const T* train_data, size_t train_size, size_t train_dim, const std::vector<size_t>& skip_locs, std::stringstream &disk_pq_pivots,
                                   std::stringstream &disk_pq_compressed_vectors, diskann::Metric compare_metric,
-                                  const double p_val, size_t &disk_pq_dims, bool use_opq)
+                                  const double p_val, size_t &disk_pq_dims, bool use_opq, bool use_bsa)
 {
     // instantiates train_data with random sample updates train_size
     uint32_t sample_size = (uint32_t)(train_size * p_val);
@@ -1903,7 +1918,7 @@ void generate_disk_quantized_data(const T* train_data, size_t train_size, size_t
                                             disk_pq_compressed_vectors, use_opq, rotate);
     else
         generate_pq_data_from_pivots<T>(train_data, train_size, train_dim, skip_locs, 256, (uint32_t)disk_pq_dims, disk_pq_pivots,
-                                        disk_pq_compressed_vectors, use_opq, rotate);
+                                        disk_pq_compressed_vectors, use_opq, rotate, use_bsa);
 }
 
 
@@ -1979,15 +1994,15 @@ template DISKANN_DLLEXPORT int generate_pq_data_from_pivots<float>(std::stringst
 
 template DISKANN_DLLEXPORT int generate_pq_data_from_pivots<float>(const float* data, size_t num_points, size_t dim, const std::vector<size_t>& skip_locs, uint32_t num_centers, uint32_t num_pq_chunks,
                                                                    std::stringstream &pq_pivots_stream, std::stringstream &compressed_file_writer,
-                                                                   bool use_opq, std::shared_ptr<float[]> rotmat_tr);
+                                                                   bool use_opq, std::shared_ptr<float[]> rotmat_tr, bool use_bsa = false);
 
 template DISKANN_DLLEXPORT int generate_pq_data_from_pivots<uint8_t>(const uint8_t* data, size_t num_points, size_t dim, const std::vector<size_t>& skip_locs, uint32_t num_centers, uint32_t num_pq_chunks,
                                                             std::stringstream &pq_pivots_stream, std::stringstream &compressed_file_writer,
-                                                            bool use_opq, std::shared_ptr<float[]> rotmat_tr);
+                                                            bool use_opq, std::shared_ptr<float[]> rotmat_tr, bool use_bsa = false);
 
 template DISKANN_DLLEXPORT int generate_pq_data_from_pivots<int8_t>(const int8_t* data, size_t num_points, size_t dim, const std::vector<size_t>& skip_locs, uint32_t num_centers, uint32_t num_pq_chunks,
                                                             std::stringstream &pq_pivots_stream, std::stringstream &compressed_file_writer,
-                                                            bool use_opq, std::shared_ptr<float[]> rotmat_tr);
+                                                            bool use_opq, std::shared_ptr<float[]> rotmat_tr, bool use_bsa = false);
 
 template DISKANN_DLLEXPORT void generate_disk_quantized_data<int8_t>(const std::string &data_file_to_use,
                                                                      const std::string &disk_pq_pivots_path,
@@ -2021,11 +2036,11 @@ template DISKANN_DLLEXPORT void generate_disk_quantized_data<float>(std::strings
 
 template DISKANN_DLLEXPORT void generate_disk_quantized_data<float>(const float* train_data, size_t train_size, size_t train_dim, const std::vector<size_t>& skip_locs,
                                                                     std::stringstream &disk_pq_pivots, std::stringstream &disk_pq_compressed_vectors, diskann::Metric compare_metric,
-                                                                    const double p_val, size_t &disk_pq_dims, bool use_opq);
+                                                                    const double p_val, size_t &disk_pq_dims, bool use_opq, bool use_bsa = false);
 
 template DISKANN_DLLEXPORT void generate_disk_quantized_data<long>(const long* train_data, size_t train_size, size_t train_dim, const std::vector<size_t>& skip_locs,
                                                                    std::stringstream &disk_pq_pivots, std::stringstream &disk_pq_compressed_vectors, diskann::Metric compare_metric,
-                                                                   const double p_val, size_t &disk_pq_dims, bool use_opq);
+                                                                   const double p_val, size_t &disk_pq_dims, bool use_opq, bool use_bsa = false);
 
 template DISKANN_DLLEXPORT void generate_quantized_data<int8_t>(const std::string &data_file_to_use,
                                                                 const std::string &pq_pivots_path,

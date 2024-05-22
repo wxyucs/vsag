@@ -25,6 +25,7 @@ public:
     bool use_preload = false;
     bool use_reference = true;
     bool use_opq = false;
+    bool use_bsa = false;
 
 private:
     CreateDiskannParameters() = default;

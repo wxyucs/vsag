@@ -57,7 +57,8 @@ Factory::CreateIndex(const std::string& origin_name, const std::string& paramete
                                              params.dim,
                                              params.use_preload,
                                              params.use_reference,
-                                             params.use_opq);
+                                             params.use_opq,
+                                             params.use_bsa);
         } else {
             LOG_ERROR_AND_RETURNS(
                 ErrorType::UNSUPPORTED_INDEX, "failed to create index(unsupported): ", name);

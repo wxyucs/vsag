@@ -455,6 +455,62 @@ TEST_CASE("remove vectors from the index", "[ft][index]") {
     }
 }
 
+TEST_CASE("index with bsa", "[ft][index]") {
+    vsag::Options::Instance().logger()->SetLevel(vsag::Logger::Level::DEBUG);
+    int64_t num_vectors = 1000;
+    int64_t dim = 128;
+    auto index_name = GENERATE("diskann");
+    auto metric_type = "l2";
+
+    auto build_parameter_json = R"(
+    {{
+        "dtype": "float32",
+        "metric_type": "{}",
+        "dim": {},
+        "hnsw": {{
+            "max_degree": 16,
+            "ef_construction": 100
+        }},
+        "diskann": {{
+            "max_degree": 16,
+            "ef_construction": 100,
+            "pq_dims": 32,
+            "pq_sample_rate": 0.5,
+            "use_pq_search": true
+        }}
+    }}
+    )";
+    auto build_parameters = fmt::format(build_parameter_json, metric_type, dim);
+    auto index = vsag::Factory::CreateIndex(index_name, build_parameters).value();
+
+    auto [ids, vectors] = fixtures::generate_ids_and_vectors(num_vectors, dim);
+    vsag::Dataset base;
+    base.NumElements(num_vectors)
+        .Dim(dim)
+        .Ids(ids.data())
+        .Float32Vectors(vectors.data())
+        .Owner(false);
+    REQUIRE(index->Build(base).has_value());
+
+    auto search_parameters = R"(
+    {
+        "hnsw": {
+            "ef_search": 100
+        },
+        "diskann": {
+            "ef_search": 100,
+            "beam_search": 4,
+            "io_limit": 100,
+            "use_reorder": true,
+            "use_bsa": true
+        }
+    }
+    )";
+    float recall =
+        fixtures::test_knn_recall(index, search_parameters, num_vectors, dim, ids, vectors);
+    REQUIRE(recall > 0.99);
+}
+
 /////////////////////////////////////////////////////////
 // utility functions
 /////////////////////////////////////////////////////////

@@ -119,7 +119,8 @@ DiskANN::DiskANN(diskann::Metric metric,
                  int64_t dim,
                  bool preload,
                  bool use_reference,
-                 bool use_opq)
+                 bool use_opq,
+                 bool use_bsa)
     : metric_(metric),
       L_(L),
       R_(R),
@@ -129,7 +130,8 @@ DiskANN::DiskANN(diskann::Metric metric,
       dim_(dim),
       preload_(preload),
       use_reference_(use_reference),
-      use_opq_(use_opq) {
+      use_opq_(use_opq),
+      use_bsa_(use_bsa) {
     pool_ = std::make_unique<ThreadPool>(Option::Instance().sector_size());
     status_ = IndexStatus::EMPTY;
     batch_read_ = [&](const std::vector<read_request>& requests) -> void {
@@ -200,7 +202,8 @@ DiskANN::build(const Dataset& base) {
                                                          metric_,
                                                          p_val_,
                                                          disk_pq_dims_,
-                                                         use_opq_);
+                                                         use_opq_,
+                                                         use_bsa_);
         }
         {
             SlowTaskTimer t("diskann build full (disk layout)");
@@ -222,7 +225,8 @@ DiskANN::build(const Dataset& base) {
 
         disk_layout_reader_ = std::make_shared<LocalMemoryReader>(disk_layout_stream_);
         reader_.reset(new LocalFileReader(batch_read_));
-        index_.reset(new diskann::PQFlashIndex<float, int64_t>(reader_, metric_, sector_len_));
+        index_.reset(
+            new diskann::PQFlashIndex<float, int64_t>(reader_, metric_, sector_len_, use_bsa_));
         index_->set_sector_size(Option::Instance().sector_size());
         index_->load_from_separate_paths(
             omp_get_num_procs(), pq_pivots_stream_, disk_pq_compressed_vectors_, tag_stream_);
@@ -624,7 +628,8 @@ DiskANN::deserialize(const ReaderSet& reader_set) {
 
     disk_layout_reader_ = reader_set.Get(DISKANN_LAYOUT_FILE);
     reader_.reset(new LocalFileReader(batch_read_));
-    index_.reset(new diskann::PQFlashIndex<float, int64_t>(reader_, metric_, sector_len_));
+    index_.reset(
+        new diskann::PQFlashIndex<float, int64_t>(reader_, metric_, sector_len_, use_bsa_));
     index_->set_sector_size(Option::Instance().sector_size());
     index_->load_from_separate_paths(
         omp_get_num_procs(), pq_pivots_stream, disk_pq_compressed_vectors, tag_stream);
@@ -911,7 +916,8 @@ tl::expected<void, Error>
 DiskANN::load_disk_index(const BinarySet& binary_set) {
     disk_layout_reader_ = std::make_shared<LocalMemoryReader>(disk_layout_stream_);
     reader_.reset(new LocalFileReader(batch_read_));
-    index_.reset(new diskann::PQFlashIndex<float, int64_t>(reader_, metric_, sector_len_));
+    index_.reset(
+        new diskann::PQFlashIndex<float, int64_t>(reader_, metric_, sector_len_, use_bsa_));
     index_->set_sector_size(Option::Instance().sector_size());
 
     convert_binary_to_stream(binary_set.Get(DISKANN_COMPRESSED_VECTOR),

@@ -24,7 +24,7 @@ namespace diskann
 template <typename T, typename LabelT = uint32_t> class PQFlashIndex
 {
   public:
-    DISKANN_DLLEXPORT PQFlashIndex(std::shared_ptr<AlignedFileReader> &fileReader, diskann::Metric m, size_t len);
+    DISKANN_DLLEXPORT PQFlashIndex(std::shared_ptr<AlignedFileReader> &fileReader, diskann::Metric m, size_t len, bool use_bsa = false);
     DISKANN_DLLEXPORT ~PQFlashIndex();
 
 #ifdef EXEC_ENV_OLS
@@ -152,8 +152,10 @@ template <typename T, typename LabelT = uint32_t> class PQFlashIndex
     // chunk_size = chunk size of each dimension chunk
     // pq_tables = float* [[2^8 * [chunk_size]] * n_chunks]
     uint8_t *data = nullptr;
+    std::shared_ptr<float[]> errors;
     uint64_t n_chunks;
     FixedChunkPQTable pq_table;
+    bool use_bsa = false;
 
     // distance comparator
     std::shared_ptr<Distance<T>> dist_cmp;
