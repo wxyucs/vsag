@@ -7,7 +7,9 @@
 #include <cpuinfo.h>
 
 #include <iostream>
+
 namespace vsag {
+
 float (*L2SqrSIMD16Ext)(const void*, const void*, const void*);
 float (*L2SqrSIMD16ExtResiduals)(const void*, const void*, const void*);
 float (*L2SqrSIMD4Ext)(const void*, const void*, const void*);

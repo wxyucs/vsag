@@ -1,6 +1,7 @@
 #pragma once
 
 #include <stdlib.h>
+
 namespace vsag {
 
 void
@@ -63,4 +64,5 @@ DistanceFunc
 GetL2DistanceFunc(size_t dim);
 DistanceFunc
 GetInnerProductDistanceFunc(size_t dim);
+
 }  // namespace vsag

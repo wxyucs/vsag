@@ -10,6 +10,9 @@
 
 namespace fixtures {
 
+std::vector<float>
+generate_vectors(int64_t num_vectors, int64_t dim);
+
 std::tuple<std::vector<int64_t>, std::vector<float>>
 generate_ids_and_vectors(int64_t num_elements, int64_t dim);
 
@@ -60,6 +63,26 @@ struct temp_dir {
     }
 
     std::string path;
+};
+
+struct dist_t {
+    dist_t(float val) {
+        this->value = val;
+    }
+
+    bool
+    operator==(const dist_t& d) {
+        return std::fabs(this->value - d.value) < epsilon;
+    }
+
+    friend std::ostream&
+    operator<<(std::ostream& os, const dist_t& obj) {
+        os << obj.value;
+        return os;
+    }
+
+    float value;
+    const float epsilon = 1e-6;
 };
 
 }  // Namespace fixtures
