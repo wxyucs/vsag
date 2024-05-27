@@ -15,3 +15,6 @@ target_link_libraries (simple_hnsw vsag_static)
 
 add_executable (example_conjugate_graph example_conjugate_graph.cpp)
 target_link_libraries(example_conjugate_graph vsag)
+
+add_executable (custom_memory_allocator custom_memory_allocator.cpp)
+target_link_libraries(custom_memory_allocator vsag)
