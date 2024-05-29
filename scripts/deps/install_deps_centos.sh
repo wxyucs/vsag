@@ -14,3 +14,6 @@ yum update -y && yum install -y ca-certificates
 yum-config-manager --add-repo https://yum.repos.intel.com/mkl/setup/intel-mkl.repo
 rpm --import https://yum.repos.intel.com/intel-gpg-keys/GPG-PUB-KEY-INTEL-SW-PRODUCTS-2019.PUB
 yum update -y && yum install -y intel-mkl-64bit-2020.0-088
+
+# install openmp
+yum install -b current -y libomp11-devel libomp11
