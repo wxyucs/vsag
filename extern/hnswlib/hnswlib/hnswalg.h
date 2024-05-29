@@ -1200,7 +1200,7 @@ class HierarchicalNSW : public AlgorithmInterface<float> {
         /// Optional - check if index is ok:
         in_stream.seekg(cur_element_count_ * size_data_per_element_, in_stream.cur);
         for (size_t i = 0; i < cur_element_count_; i++) {
-            if (in_stream.tellg() < 0 || in_stream.tellg() >= beg_pos + length) {
+            if (in_stream.tellg() < 0 || in_stream.tellg() >= beg_pos + static_cast<std::streamoff>(length)) {
                 throw std::runtime_error("Index seems to be corrupted or unsupported");
             }
 
@@ -1212,7 +1212,7 @@ class HierarchicalNSW : public AlgorithmInterface<float> {
         }
 
         // throw exception if it either corrupted or old index
-        if (in_stream.tellg() != beg_pos + length)
+        if (in_stream.tellg() != beg_pos + static_cast<std::streamoff>(length))
             throw std::runtime_error("Index seems to be corrupted or unsupported");
 
         in_stream.clear();
@@ -1385,7 +1385,7 @@ class HierarchicalNSW : public AlgorithmInterface<float> {
     std::vector<data_t> getDataByLabel(labeltype label) const {
         // lock all operations with element by label
         std::unique_lock <std::mutex> lock_label(getLabelOpMutex(label));
-        
+
         std::unique_lock <std::mutex> lock_table(label_lookup_lock);
         auto search = label_lookup_.find(label);
         if (search == label_lookup_.end() || isMarkedDeleted(search->second)) {
@@ -1447,7 +1447,7 @@ class HierarchicalNSW : public AlgorithmInterface<float> {
 
     /*
     * Removes the deleted mark of the node, does NOT really change the current graph.
-    * 
+    *
     * Note: the method is not safe to use when replacement of deleted elements is enabled,
     *  because elements marked as deleted can be completely removed by addPoint
     */

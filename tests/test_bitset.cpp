@@ -135,7 +135,11 @@ TEST_CASE("construct from memory", "[ft][bitset]") {
     BENCHMARK("popcount") {
         uint64_t count = 0;
         for (uint8_t num : buffer) {
+#if __cplusplus >= 202002L
+            count += std::popcount(num);
+#else
             count += std::__popcount(num);
+#endif
         }
         count1 = count;
     };

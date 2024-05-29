@@ -99,7 +99,7 @@ test_knn_recall(const vsag::IndexPtr& index,
 
 std::string
 generate_hnsw_build_parameters_string(const std::string& metric_type, int64_t dim) {
-    auto parameter_temp = R"(
+    constexpr auto parameter_temp = R"(
     {{
         "dtype": "float32",
         "metric_type": "{}",

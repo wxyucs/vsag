@@ -14,14 +14,13 @@ ExternalProject_Add(
     SOURCE_DIR ${source_dir}
     CONFIGURE_COMMAND ""
     BUILD_COMMAND
-	env PATH=/usr/lib/ccache:$ENV{PATH}
-	env OMP_NUM_THREADS=1
-	make USE_OPENMP=1
-	-j${NUM_BUILDING_JOBS}
+        ${common_configure_envs}
+        OMP_NUM_THREADS=1
+        PATH=/usr/lib/ccache:$ENV{PATH}
+        LD_LIBRARY_PATH=/opt/alibaba-cloud-compiler/lib64/:$ENV{LD_LIBRARY_PATH}
+        make USE_OPENMP=1 -j${NUM_BUILDING_JOBS}
     INSTALL_COMMAND
-	make
-	PREFIX=${install_dir}
-	install
+        make PREFIX=${install_dir} install
     BUILD_IN_SOURCE 1
     LOG_CONFIGURE TRUE
     LOG_BUILD TRUE

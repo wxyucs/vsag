@@ -1414,8 +1414,10 @@ std::pair<uint32_t, uint32_t> Index<T, TagT, LabelT>::iterate_to_fixed_point(
         {
             if (_dynamic_index)
                 _locks[n].lock();
-            for (auto id : _final_graph[n])
+
+            for (int i = 0; i < _final_graph[n].size(); i++)
             {
+                auto id = _final_graph[n][i];
                 assert(id < _max_points + _num_frozen_pts);
 
                 if (use_filter)
@@ -1508,7 +1510,7 @@ void Index<T, TagT, LabelT>::search_for_point_and_prune(int location, uint32_t L
 
     auto &pool = scratch->pool();
 
-    for (uint32_t i = 0; i < pool.size(); i++)
+    for (uint32_t i = 0; i < pool.size(); ++i)
     {
         if (pool[i].id == (uint32_t)location)
         {

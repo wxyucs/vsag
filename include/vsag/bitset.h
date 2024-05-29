@@ -49,7 +49,11 @@ public:
         this->Extend(length * 8);
         memcpy(data_.data(), src, length);
         for (uint8_t num : data_) {
+#if __cplusplus >= 202002L
+            num_ones_ += std::popcount(num);
+#else
             num_ones_ += std::__popcount(num);
+#endif
         }
     }
     ~Bitset() = default;
@@ -82,7 +86,7 @@ public:
 
     /**
       * Set a bit value to the bitset
-      * 
+      *
       * @param offset the index of bit to be set, available range: [0, mem_limit * 8)
       * @param value to be set into the specify bit
       */
@@ -114,7 +118,7 @@ public:
 
     /**
       * Count the number of bits have been set to 1
-      * 
+      *
       * @return the number of 1s in the bitset
       */
     uint64_t

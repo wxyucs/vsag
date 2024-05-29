@@ -25,6 +25,8 @@
 #include "vsag/index.h"
 #include "vsag/options.h"
 
+using ThreadPool = progschj::ThreadPool;
+
 namespace vsag {
 
 enum IndexStatus { EMPTY = 0, MEMORY = 1, HYBRID = 2, BUILDING = 3 };

@@ -1,7 +1,6 @@
 
 CMAKE_GENERATOR ?= "Unix Makefiles"
 CMAKE_INSTALL_PREFIX ?= "/usr/local/"
-ASAN_LIB ?= "/usr/lib/gcc/x86_64-redhat-linux/10/libasan.so"
 COMPILE_JOBS ?= 4
 VSAG_CMAKE_ARGS = -DCMAKE_EXPORT_COMPILE_COMMANDS=1 -DCMAKE_INSTALL_PREFIX=${CMAKE_INSTALL_PREFIX} -DNUM_BUILDING_JOBS=${COMPILE_JOBS} -DENABLE_TESTS=1 -DENABLE_PYBINDS=1 -G ${CMAKE_GENERATOR} -S. -Bbuild
 UT_FILTER = ""
@@ -52,9 +51,9 @@ test:                   ## Build and run unit tests.
 test_asan:              ## Build and run unit tests with AddressSanitizer option.
 	cmake ${VSAG_CMAKE_ARGS} -DCMAKE_BUILD_TYPE=Debug -DENABLE_ASAN=ON -DENABLE_CCACHE=ON
 	cmake --build build --parallel ${COMPILE_JOBS}
-	LD_PRELOAD=${ASAN_LIB} ./build/tests/unittests -d yes ${UT_FILTER} --allow-running-no-tests ${UT_SHARD}
-	LD_PRELOAD=${ASAN_LIB} ./build/tests/functests -d yes ${UT_FILTER} --allow-running-no-tests ${UT_SHARD}
-	LD_PRELOAD=${ASAN_LIB} ./build/mockimpl/tests_mockimpl -d yes ${UT_FILTER} --allow-running-no-tests ${UT_SHARD}
+	./build/tests/unittests -d yes ${UT_FILTER} --allow-running-no-tests ${UT_SHARD}
+	./build/tests/functests -d yes ${UT_FILTER} --allow-running-no-tests ${UT_SHARD}
+	./build/mockimpl/tests_mockimpl -d yes ${UT_FILTER} --allow-running-no-tests ${UT_SHARD}
 
 .PHONY: test_cov
 test_cov:               ## Build and run unit tests with code coverage enabled.
@@ -64,7 +63,7 @@ test_cov:               ## Build and run unit tests with code coverage enabled.
 	./build/tests/functests -d yes ${UT_FILTER} --allow-running-no-tests ${UT_SHARD}
 	./build/mockimpl/tests_mockimpl -d yes ${UT_FILTER} --allow-running-no-tests ${UT_SHARD}
 	bash scripts/aci/collect_cpp_coverage.sh
-	genhtml --output-directory testresult/coverage/html testresult/coverage/coverage.info
+	genhtml --output-directory testresult/coverage/html testresult/coverage/coverage.info --ignore-errors inconsistent,inconsistent
 
 .PHONY: clean
 clean:                  ## Clear build/ directory.

@@ -8,7 +8,7 @@ include_directories(extern/diskann/DiskANN/include)
 set(DISKANN_SOURCES
     extern/diskann/DiskANN/src/abstract_data_store.cpp
     extern/diskann/DiskANN/src/ann_exception.cpp
-    extern/diskann/DiskANN/src/disk_utils.cpp 
+    extern/diskann/DiskANN/src/disk_utils.cpp
     extern/diskann/DiskANN/src/distance.cpp
     extern/diskann/DiskANN/src/index.cpp
     extern/diskann/DiskANN/src/in_mem_graph_store.cpp
@@ -37,15 +37,15 @@ set(DISKANN_SOURCES
 
 # work
 if (${CMAKE_SYSTEM_PROCESSOR} MATCHES "x86_64")
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -mavx -msse2 -ftree-vectorize -fno-builtin-malloc -fno-builtin-calloc -fno-builtin-realloc -fno-builtin-free -fopenmp -fopenmp-simd -funroll-loops -Wfatal-errors")
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++17 -mavx -msse2 -ftree-vectorize -fno-builtin-malloc -fno-builtin-calloc -fno-builtin-realloc -fno-builtin-free -fopenmp -fopenmp-simd -funroll-loops -Wfatal-errors")
 else ()
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -ftree-vectorize -fno-builtin-malloc -fno-builtin-calloc -fno-builtin-realloc -fno-builtin-free -fopenmp -fopenmp-simd -funroll-loops -Wfatal-errors")
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++17 -ftree-vectorize -fno-builtin-malloc -fno-builtin-calloc -fno-builtin-realloc -fno-builtin-free -fopenmp -fopenmp-simd -funroll-loops -Wfatal-errors")
 endif ()
 
 add_library(diskann STATIC ${DISKANN_SOURCES})
+add_dependencies(diskann aio boost openblas)
 target_link_libraries(diskann
-  aio
+  libaio.a
   ${BLAS_LIBRARIES}
   gfortran
   )
-add_dependencies(diskann boost openblas)

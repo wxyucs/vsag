@@ -1,6 +1,7 @@
 #!/bin/bash
 
 set -e
+set -x
 
 SCRIPTS_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 ROOT_DIR="${SCRIPTS_DIR}/../../"
@@ -13,7 +14,8 @@ else
 fi
 
 # 通过lcov生成coverage info文件
-lcov --rc branch_coverage=1 \
+lcov --gcov-tool ${SCRIPTS_DIR}/gcov_for_clang.sh \
+     --rc branch_coverage=1 \
      --rc geninfo_unexecuted_blocks=1 \
      --parallel 8 \
      --include "*/vsag/include/*" \
@@ -25,6 +27,7 @@ lcov --rc branch_coverage=1 \
      --capture \
      --ignore-errors mismatch,mismatch \
      --ignore-errors unused,unused \
+     --ignore-errors inconsistent,inconsistent \
      --directory . \
      --output-file  "${COVERAGE_DIR}/coverage_ut.info"
 
@@ -40,7 +43,10 @@ for coverage in $coverages; do
     echo "$coverage"
     lcov_command="$lcov_command -a $coverage"
 done
-$lcov_command -o coverage.info --rc branch_coverage=1
+$lcov_command -o coverage.info \
+        --rc branch_coverage=1 \
+        --ignore-errors inconsistent,inconsistent \
+        --ignore-errors corrupt,corrupt
 popd
 
 

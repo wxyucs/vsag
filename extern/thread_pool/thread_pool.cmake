@@ -1,11 +1,11 @@
 
 include(FetchContent)
 
+# https://github.com/log4cplus/ThreadPool
 FetchContent_Declare(
         thread_pool
-        URL http://tbase.cn-hangzhou.alipay.aliyun-inc.com/vsag%2Fthirdparty%2Fthread_pool.tar.gz?OSSAccessKeyId=LTAILFuN8FJQZ4Eu&Expires=4869367210&Signature=%2BoyedDFXrx%2BcHVzq8xyDxmube5s%3D
-        URL_HASH MD5=8355f0ffdd13c4b6bb9a4ea3ef6b85c4
-)
+        URL http://aivolvo-dev.cn-hangzhou-alipay-b.oss-cdn.aliyun-inc.com/vsag/third-party/ThreadPool_7ea1ee6b.zip
+        URL_HASH MD5=044b9437bbc94c389149954f1831f126)
 
 FetchContent_MakeAvailable(thread_pool)
 include_directories(${thread_pool_SOURCE_DIR}/)

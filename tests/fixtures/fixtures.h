@@ -71,7 +71,7 @@ struct dist_t {
     }
 
     bool
-    operator==(const dist_t& d) {
+    operator==(const dist_t& d) const {
         return std::fabs(this->value - d.value) < epsilon;
     }
 

@@ -15,7 +15,7 @@ ExternalProject_Add(
     DOWNLOAD_DIR ${DOWNLOAD_DIR}
     SOURCE_DIR ${source_dir}
     CONFIGURE_COMMAND
-        cmake -DHDF5_ENABLE_NONSTANDARD_FEATURE_FLOAT16=OFF -DCMAKE_INSTALL_PREFIX=${install_dir} -DHDF5_BUILD_CPP_LIB=ON -S. -Bbuild
+        cmake ${common_cmake_args} -DHDF5_ENABLE_NONSTANDARD_FEATURE_FLOAT16=OFF -DCMAKE_INSTALL_PREFIX=${install_dir} -DHDF5_BUILD_CPP_LIB=ON -S. -Bbuild
     BUILD_COMMAND
         cmake --build build --target install --parallel ${NUM_BUILDING_JOBS}
     INSTALL_COMMAND
