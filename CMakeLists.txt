@@ -30,6 +30,7 @@ option (ENABLE_FRAME_POINTER "Whether to build with -fno-omit-frame-pointer" ON)
 option (ENABLE_THIN_LTO "Whether to build with thin lto -flto=thin" OFF)
 option (ENABLE_CCACHE "Whether to open ccache" OFF)
 option (ENABLE_COVERAGE "Enable gcov (debug, Linux builds only)" OFF)
+option (ENABLE_INTEL_MKL "Enable intel-mkl (x86 platform only)" ON)
 
 # ccache
 find_program (CCACHE_FOUND ccache)
