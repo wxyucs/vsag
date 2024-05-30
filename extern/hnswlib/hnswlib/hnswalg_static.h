@@ -1288,7 +1288,7 @@ public:
     }
 
     // load index from a file stream
-    void loadIndex(std::istream &in_stream, int64_t length, SpaceInterface *s, size_t max_elements_i = 0) override {
+    void loadIndex(std::istream &in_stream, SpaceInterface *s, size_t max_elements_i = 0) override {
         auto beg_pos = in_stream.tellg();
 
         readBinaryPOD(in_stream, offsetLevel0_);

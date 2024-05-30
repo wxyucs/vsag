@@ -213,7 +213,7 @@ TEST_CASE("deserialize on not empty index", "[ut][hnsw]") {
     int64_t max_degree = 12;
     int64_t ef_construction = 100;
     auto index = std::make_shared<vsag::HNSW>(
-        std::make_shared<hnswlib::L2Space>(dim), max_degree, ef_construction);
+        std::make_shared<hnswlib::L2Space>(dim), max_degree, ef_construction, false, false, true);
 
     const int64_t num_elements = 10;
     auto [ids, vectors] = fixtures::generate_ids_and_vectors(num_elements, dim);
@@ -230,6 +230,15 @@ TEST_CASE("deserialize on not empty index", "[ut][hnsw]") {
         auto voidresult = index->Deserialize(binary_set.value());
         REQUIRE_FALSE(voidresult.has_value());
         REQUIRE(voidresult.error().type == vsag::ErrorType::INDEX_NOT_EMPTY);
+
+        auto another_index = std::make_shared<vsag::HNSW>(std::make_shared<hnswlib::L2Space>(dim),
+                                                          max_degree,
+                                                          ef_construction,
+                                                          false,
+                                                          false,
+                                                          true);
+        auto deserialize_result = another_index->Deserialize(binary_set.value());
+        REQUIRE(deserialize_result.has_value());
     }
 
     SECTION("serialize to fstream") {
@@ -240,10 +249,7 @@ TEST_CASE("deserialize on not empty index", "[ut][hnsw]") {
         out_stream.close();
 
         std::fstream in_stream(dir.path + "index.bin", std::ios::in | std::ios::binary);
-        in_stream.seekg(0, std::ios::end);
-        auto length = in_stream.tellg();
-        in_stream.seekg(0, std::ios::beg);
-        auto voidresult = index->Deserialize(in_stream, length);
+        auto voidresult = index->Deserialize(in_stream);
         REQUIRE_FALSE(voidresult.has_value());
         REQUIRE(voidresult.error().type == vsag::ErrorType::INDEX_NOT_EMPTY);
         in_stream.close();
@@ -362,7 +368,7 @@ TEST_CASE("build with reversed edges", "[ut][hnsw]") {
         in_file.seekg(0, std::ios::beg);
         auto new_index = std::make_shared<vsag::HNSW>(
             std::make_shared<hnswlib::L2Space>(dim), max_degree, ef_construction, false, true);
-        REQUIRE(new_index->Deserialize(in_file, length).has_value());
+        REQUIRE(new_index->Deserialize(in_file).has_value());
         REQUIRE(new_index->CheckGraphIntegrity());
     }
 
@@ -473,7 +479,7 @@ TEST_CASE("redundant feedback and empty enhancement", "[ut][hnsw]") {
     REQUIRE(buildindex.has_value());
 
     nlohmann::json search_parameters{
-        {"hnsw", {{"ef_search", 200}}},
+        {"hnsw", {{"ef_search", 200}, {"use_conjugate_graph", true}}},
     };
 
     auto [ids, vectors] = fixtures::generate_ids_and_vectors(num_query, dim);
@@ -486,7 +492,7 @@ TEST_CASE("redundant feedback and empty enhancement", "[ut][hnsw]") {
     SECTION("index redundant feedback") {
         auto feedback_result =
             index->Feedback(query, k, search_parameters.dump(), search_result->GetIds()[0]);
-        REQUIRE(*feedback_result == 1);
+        REQUIRE(*feedback_result == k - 1);
 
         auto redundant_feedback_result =
             index->Feedback(query, k, search_parameters.dump(), search_result->GetIds()[0]);

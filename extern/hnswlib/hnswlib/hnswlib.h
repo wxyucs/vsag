@@ -139,6 +139,10 @@ static void writeBinaryPOD(std::ostream &out, const T &podRef) {
 template<typename T>
 static void readBinaryPOD(std::istream &in, T &podRef) {
     in.read((char *) &podRef, sizeof(T));
+
+    if (in.fail()) {
+        throw std::runtime_error("Failed to read from stream.");
+    }
 }
 
 using DISTFUNC = float(*)(const void *, const void *, const void *);
@@ -191,7 +195,7 @@ class AlgorithmInterface {
     virtual void loadIndex(std::function<void(uint64_t, uint64_t, void*)> read_func, SpaceInterface *s,
               size_t max_elements_i = 0) = 0;
 
-    virtual void loadIndex(std::istream &in_stream, int64_t length, SpaceInterface *s, size_t max_elements_i = 0) = 0;
+    virtual void loadIndex(std::istream &in_stream, SpaceInterface *s, size_t max_elements_i = 0) = 0;
 
     virtual size_t getCurrentElementCount() = 0;
 

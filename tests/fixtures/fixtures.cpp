@@ -55,9 +55,12 @@ generate_index(const std::string& name,
                int64_t num_vectors,
                int64_t dim,
                std::vector<int64_t>& ids,
-               std::vector<float>& vectors) {
-    auto index = vsag::Factory::CreateIndex(
-                     name, vsag::generate_build_parameters(metric_type, num_vectors, dim).value())
+               std::vector<float>& vectors,
+               bool use_conjugate_graph) {
+    auto index = vsag::Factory::CreateIndex(name,
+                                            vsag::generate_build_parameters(
+                                                metric_type, num_vectors, dim, use_conjugate_graph)
+                                                .value())
                      .value();
 
     vsag::Dataset base;

@@ -13,7 +13,7 @@
 #include <vector>
 
 #include "../common.h"
-#include "../conjugate_graph/conjugate_graph.h"
+#include "../impl/conjugate_graph.h"
 #include "../logger.h"
 #include "../utils.h"
 #include "vsag/binaryset.h"
@@ -93,8 +93,8 @@ public:
     }
 
     tl::expected<void, Error>
-    Deserialize(std::istream& in_stream, int64_t length) override {
-        SAFE_CALL(return this->deserialize(in_stream, length));
+    Deserialize(std::istream& in_stream) override {
+        SAFE_CALL(return this->deserialize(in_stream));
     }
 
 public:
@@ -165,7 +165,7 @@ private:
     deserialize(const ReaderSet& binary_set);
 
     tl::expected<void, Error>
-    deserialize(std::istream& in_stream, int64_t length);
+    deserialize(std::istream& in_stream);
 
     BinarySet
     empty_binaryset() const;

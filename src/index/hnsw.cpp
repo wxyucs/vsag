@@ -396,6 +396,11 @@ HNSW::serialize() const {
         BinarySet bs;
         bs.Set(HNSW_DATA, b);
 
+        if (use_conjugate_graph_) {
+            Binary b_cg = *conjugate_graph_->Serialize();
+            bs.Set(CONJUGATE_GRAPH_DATA, b_cg);
+        }
+
         return bs;
     } catch (const std::bad_alloc& e) {
         LOG_ERROR_AND_RETURNS(
@@ -422,6 +427,10 @@ HNSW::serialize(std::ostream& out_stream) {
     // no expected exception
     alg_hnsw->saveIndex(out_stream);
 
+    if (use_conjugate_graph_) {
+        conjugate_graph_->Serialize(out_stream);
+    }
+
     return {};
 }
 
@@ -446,7 +455,15 @@ HNSW::deserialize(const BinarySet& binary_set) {
 
     try {
         alg_hnsw->loadIndex(func, this->space.get());
+        if (use_conjugate_graph_) {
+            Binary b_cg = binary_set.Get(CONJUGATE_GRAPH_DATA);
+            if (not conjugate_graph_->Deserialize(b_cg).has_value()) {
+                throw std::runtime_error("error in deserialize conjugate graph");
+            }
+        }
     } catch (const std::runtime_error& e) {
+        LOG_ERROR_AND_RETURNS(ErrorType::READ_ERROR, "failed to deserialize: ", e.what());
+    } catch (const std::out_of_range& e) {
         LOG_ERROR_AND_RETURNS(ErrorType::READ_ERROR, "failed to deserialize: ", e.what());
     }
 
@@ -481,7 +498,7 @@ HNSW::deserialize(const ReaderSet& reader_set) {
 }
 
 tl::expected<void, Error>
-HNSW::deserialize(std::istream& in_stream, int64_t length) {
+HNSW::deserialize(std::istream& in_stream) {
     SlowTaskTimer t("hnsw deserialize");
     if (this->alg_hnsw->getCurrentElementCount() > 0) {
         LOG_ERROR_AND_RETURNS(ErrorType::INDEX_NOT_EMPTY,
@@ -489,7 +506,10 @@ HNSW::deserialize(std::istream& in_stream, int64_t length) {
     }
 
     try {
-        alg_hnsw->loadIndex(in_stream, length, this->space.get());
+        alg_hnsw->loadIndex(in_stream, this->space.get());
+        if (use_conjugate_graph_ and not conjugate_graph_->Deserialize(in_stream).has_value()) {
+            throw std::runtime_error("error in deserialize conjugate graph");
+        }
     } catch (const std::runtime_error& e) {
         LOG_ERROR_AND_RETURNS(ErrorType::READ_ERROR, "failed to deserialize: ", e.what());
     }
@@ -577,7 +597,7 @@ HNSW::feedback(const Dataset& result, int64_t global_optimum_tag_id, int64_t k) 
     }
 
     auto tag_ids = result.GetIds();
-    k = std::min(k, result.GetNumElements());
+    k = std::min(k, result.GetDim());
     uint32_t successfully_feedback = 0;
 
     for (int i = 0; i < k; i++) {

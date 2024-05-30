@@ -12,6 +12,7 @@ constexpr const char* DISTS = "dists";
 constexpr const char* FLOAT32_VECTORS = "f32_vectors";
 constexpr const char* INT8_VECTORS = "i8_vectors";
 constexpr const char* HNSW_DATA = "hnsw_data";
+constexpr const char* CONJUGATE_GRAPH_DATA = "conjugate_graph_data";
 constexpr const char* DISKANN_PQ = "diskann_qp";
 constexpr const char* DISKANN_COMPRESSED_VECTOR = "diskann_compressed_vector";
 constexpr const char* DISKANN_LAYOUT_FILE = "diskann_layout_file";

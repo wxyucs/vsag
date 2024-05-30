@@ -522,11 +522,10 @@ TEST_CASE("hnsw serialize", "[ft][hnsw]") {
     int ef_construction = 200;
     int ef_search = 200;
     // Initing index
-    nlohmann::json hnsw_parameters{
-        {"max_degree", max_degree},
-        {"ef_construction", ef_construction},
-        {"use_static", true},
-    };
+    nlohmann::json hnsw_parameters{{"max_degree", max_degree},
+                                   {"ef_construction", ef_construction},
+                                   {"use_static", true},
+                                   {"use_conjugate_graph", true}};
     nlohmann::json index_parameters{
         {"dtype", "float32"}, {"metric_type", "l2"}, {"dim", dim}, {"hnsw", hnsw_parameters}};
 

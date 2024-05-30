@@ -1168,7 +1168,7 @@ class HierarchicalNSW : public AlgorithmInterface<float> {
     }
 
     // load index from a file stream
-    void loadIndex(std::istream &in_stream, int64_t length, SpaceInterface *s, size_t max_elements_i = 0) override {
+    void loadIndex(std::istream &in_stream, SpaceInterface *s, size_t max_elements_i = 0) override {
         auto beg_pos = in_stream.tellg();
 
         readBinaryPOD(in_stream, offsetLevel0_);
@@ -1200,9 +1200,6 @@ class HierarchicalNSW : public AlgorithmInterface<float> {
         /// Optional - check if index is ok:
         in_stream.seekg(cur_element_count_ * size_data_per_element_, in_stream.cur);
         for (size_t i = 0; i < cur_element_count_; i++) {
-            if (in_stream.tellg() < 0 || in_stream.tellg() >= beg_pos + static_cast<std::streamoff>(length)) {
-                throw std::runtime_error("Index seems to be corrupted or unsupported");
-            }
 
             unsigned int link_list_size;
             readBinaryPOD(in_stream, link_list_size);
@@ -1210,10 +1207,6 @@ class HierarchicalNSW : public AlgorithmInterface<float> {
                 in_stream.seekg(link_list_size, in_stream.cur);
             }
         }
-
-        // throw exception if it either corrupted or old index
-        if (in_stream.tellg() != beg_pos + static_cast<std::streamoff>(length))
-            throw std::runtime_error("Index seems to be corrupted or unsupported");
 
         in_stream.clear();
         /// Optional check end

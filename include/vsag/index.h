@@ -181,7 +181,7 @@ public:
       *   if there is additional content in the file)
       */
     virtual tl::expected<void, Error>
-    Deserialize(std::istream& in_stream, int64_t length) {
+    Deserialize(std::istream& in_stream) {
         throw std::runtime_error("Index not support deserialize from a file stream");
     }
 
@@ -252,6 +252,9 @@ check_diskann_hnsw_search_parameters(const std::string& json_string);
   * @return the build parameter string
   */
 tl::expected<std::string, Error>
-generate_build_parameters(std::string metric_type, int64_t num_elements, int64_t dim);
+generate_build_parameters(std::string metric_type,
+                          int64_t num_elements,
+                          int64_t dim,
+                          bool use_conjugate_graph = false);
 
 }  // namespace vsag

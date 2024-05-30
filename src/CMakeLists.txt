@@ -3,7 +3,7 @@ add_subdirectory (simd)
 
 file (GLOB CPP_SRCS "*.cpp")
 file (GLOB CPP_FACTORY_SRCS "factory/*.cpp")
-file (GLOB CPP_CONJUGATE_GRAPH_SRCS "conjugate_graph/*.cpp")
+file (GLOB CPP_CONJUGATE_GRAPH_SRCS "impl/*.cpp")
 file (GLOB CPP_INDEX_SRCS "index/*.cpp")
 list (FILTER CPP_SRCS EXCLUDE REGEX "_test.cpp")
 list (FILTER CPP_FACTORY_SRCS EXCLUDE REGEX "_test.cpp")

@@ -22,7 +22,8 @@ generate_index(const std::string& name,
                int64_t num_vectors,
                int64_t dim,
                std::vector<int64_t>& ids,
-               std::vector<float>& vectors);
+               std::vector<float>& vectors,
+               bool use_conjugate_graph = false);
 
 float
 test_knn_recall(const vsag::IndexPtr& index,

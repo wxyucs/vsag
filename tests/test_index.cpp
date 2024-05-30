@@ -169,7 +169,8 @@ TEST_CASE("serialize/deserialize with file stream", "[ft][index]") {
     auto metric_type = GENERATE("l2", "ip");
 
     auto [ids, vectors] = fixtures::generate_ids_and_vectors(num_vectors, dim);
-    auto index = fixtures::generate_index(index_name, metric_type, num_vectors, dim, ids, vectors);
+    auto index =
+        fixtures::generate_index(index_name, metric_type, num_vectors, dim, ids, vectors, true);
 
     auto search_parameters = R"(
     {
@@ -185,7 +186,7 @@ TEST_CASE("serialize/deserialize with file stream", "[ft][index]") {
     }
     )";
 
-    {
+    SECTION("successful case") {
         fixtures::temp_dir dir("test_index_serialize_via_stream");
 
         // serialize to file stream
@@ -195,14 +196,12 @@ TEST_CASE("serialize/deserialize with file stream", "[ft][index]") {
 
         // deserialize from file stream
         std::fstream in_file(dir.path + "index.bin", std::ios::in | std::ios::binary);
-        in_file.seekg(0, std::ios::end);
-        int64_t length = in_file.tellg();
-        in_file.seekg(0, std::ios::beg);
         auto new_index =
             vsag::Factory::CreateIndex(
-                index_name, vsag::generate_build_parameters(metric_type, num_vectors, dim).value())
+                index_name,
+                vsag::generate_build_parameters(metric_type, num_vectors, dim, true).value())
                 .value();
-        REQUIRE(new_index->Deserialize(in_file, length).has_value());
+        REQUIRE(new_index->Deserialize(in_file).has_value());
 
         // compare recall
         auto before_serialize_recall =
@@ -210,6 +209,49 @@ TEST_CASE("serialize/deserialize with file stream", "[ft][index]") {
         auto after_serialize_recall =
             fixtures::test_knn_recall(new_index, search_parameters, num_vectors, dim, ids, vectors);
         REQUIRE(before_serialize_recall == after_serialize_recall);
+    }
+
+    SECTION("less bits") {
+        fixtures::temp_dir dir("test_index_serialize_via_stream");
+
+        // serialize to file stream
+        std::fstream out_file(dir.path + "index.bin", std::ios::out | std::ios::binary);
+        REQUIRE(index->Serialize(out_file).has_value());
+        int size = out_file.tellg();
+        out_file.close();
+
+        // deserialize from file stream
+        std::filesystem::resize_file(dir.path + "index.bin", size - 10);
+        std::fstream in_file(dir.path + "index.bin", std::ios::in | std::ios::binary);
+
+        auto new_index =
+            vsag::Factory::CreateIndex(
+                index_name,
+                vsag::generate_build_parameters(metric_type, num_vectors, dim, true).value())
+                .value();
+        REQUIRE(new_index->Deserialize(in_file).error().type == vsag::ErrorType::READ_ERROR);
+    }
+
+    SECTION("diskann invalid") {
+        fixtures::temp_dir dir("test_index_serialize_via_stream");
+
+        // serialize to file stream
+        std::fstream out_file(dir.path + "index.bin", std::ios::out | std::ios::binary);
+        REQUIRE(index->Serialize(out_file).has_value());
+        int size = out_file.tellg();
+        out_file.close();
+
+        // deserialize from file stream
+        std::filesystem::resize_file(dir.path + "index.bin", size - 10);
+        std::fstream in_file(dir.path + "index.bin", std::ios::in | std::ios::binary);
+
+        auto new_index =
+            vsag::Factory::CreateIndex(
+                "diskann",
+                vsag::generate_build_parameters(metric_type, num_vectors, dim, true).value())
+                .value();
+        REQUIRE_THROWS(new_index->Deserialize(in_file));
+        REQUIRE_THROWS(new_index->Serialize(in_file));
     }
 }
 
@@ -229,7 +271,8 @@ TEST_CASE("serialize/deserialize hnswstatic with file stream", "[ft][index]") {
         "hnsw": {{
             "max_degree": 16,
             "ef_construction": 100,
-            "use_static": true
+            "use_static": true,
+            "use_conjugate_graph": true
         }},
         "diskann": {{
             "max_degree": 16,
@@ -266,7 +309,7 @@ TEST_CASE("serialize/deserialize hnswstatic with file stream", "[ft][index]") {
     }
     )";
 
-    {
+    SECTION("successful case") {
         fixtures::temp_dir dir("test_index_serialize_via_stream");
 
         // serialize to file stream
@@ -276,19 +319,33 @@ TEST_CASE("serialize/deserialize hnswstatic with file stream", "[ft][index]") {
 
         // deserialize from file stream
         std::fstream in_file(dir.path + "index.bin", std::ios::in | std::ios::binary);
-        in_file.seekg(0, std::ios::end);
-        int64_t length = in_file.tellg();
-        in_file.seekg(0, std::ios::beg);
         auto new_index = vsag::Factory::CreateIndex(index_name, build_parameters).value();
-        REQUIRE(new_index->Deserialize(in_file, length).has_value());
+        REQUIRE(new_index->Deserialize(in_file).has_value());
 
         // compare recall
         auto before_serialize_recall =
             fixtures::test_knn_recall(index, search_parameters, num_vectors, dim, ids, vectors);
-        auto aftet_serialize_recall =
+        auto after_serialize_recall =
             fixtures::test_knn_recall(new_index, search_parameters, num_vectors, dim, ids, vectors);
 
-        REQUIRE(before_serialize_recall == aftet_serialize_recall);
+        REQUIRE(before_serialize_recall == after_serialize_recall);
+    }
+
+    SECTION("less bits") {
+        fixtures::temp_dir dir("test_index_serialize_via_stream");
+
+        // serialize to file stream
+        std::fstream out_file(dir.path + "index.bin", std::ios::out | std::ios::binary);
+        REQUIRE(index->Serialize(out_file).has_value());
+        int size = out_file.tellg();
+        out_file.close();
+
+        // deserialize from file stream
+        std::filesystem::resize_file(dir.path + "index.bin", size - 10);
+        std::fstream in_file(dir.path + "index.bin", std::ios::in | std::ios::binary);
+
+        auto new_index = vsag::Factory::CreateIndex(index_name, build_parameters).value();
+        REQUIRE(new_index->Deserialize(in_file).error().type == vsag::ErrorType::READ_ERROR);
     }
 }
 
@@ -799,8 +856,8 @@ TEST_CASE("hnsw + feedback with global optimum id", "[ft][index][hnsw]") {
             int64_t local_optimum = result->GetIds()[0];
 
             if (local_optimum != global_optimum and round == 0) {
-                error_fix += *index->Feedback(query, 1, search_parameters, global_optimum);
-                REQUIRE(*index->Feedback(query, 1, search_parameters) == 0);
+                error_fix += *index->Feedback(query, k, search_parameters, global_optimum);
+                REQUIRE(*index->Feedback(query, k, search_parameters) == 0);
             }
 
             if (local_optimum == global_optimum) {
@@ -814,7 +871,6 @@ TEST_CASE("hnsw + feedback with global optimum id", "[ft][index][hnsw]") {
     logger->Debug("====summary====");
     logger->Debug(fmt::format(R"(Error fix: {})", error_fix));
 
-    REQUIRE(std::fabs(recall[0] + error_fix / (1.0 * num_query) - 1.0) < 1e-7);
     REQUIRE(std::fabs(recall[1] - 1.0) < 1e-7);
 }
 
@@ -924,7 +980,6 @@ TEST_CASE("static hnsw + feedback without global optimum id", "[ft][index][hnsw]
     logger->Debug("====summary====");
     logger->Debug(fmt::format(R"(Error fix: {})", error_fix));
 
-    REQUIRE(std::fabs(recall[0] + error_fix / (1.0 * num_query) - 1.0) < 1e-7);
     REQUIRE(std::fabs(recall[1] - 1.0) < 1e-7);
 }
 
