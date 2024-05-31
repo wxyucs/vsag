@@ -1,6 +1,8 @@
 
 #include <vsag/vsag.h>
 
+#include <iostream>
+
 int
 main(int argc, char** argv) {
     vsag::init();

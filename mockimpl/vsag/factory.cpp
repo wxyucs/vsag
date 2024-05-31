@@ -78,8 +78,7 @@ l2sqr(const void* vec1, const void* vec2, int64_t dim) {
 
 BitsetPtr
 l2_and_filtering(int64_t dim, int64_t nb, const float* base, const float* query, float threshold) {
-    BitsetPtr bp = std::make_shared<Bitset>();
-    bp->Extend(nb);
+    BitsetPtr bp = Bitset::Make();
 
     for (int64_t i = 0; i < nb; ++i) {
         const float dist = l2sqr(base + i * dim, query, dim);
@@ -106,10 +105,10 @@ range_search_recall(const float* base,
                     int64_t result_size,
                     float threshold) {
     BitsetPtr groundtruth = l2_and_filtering(data_dim, base_num, base, query, threshold);
-    if (groundtruth->CountOnes() == 0) {
+    if (groundtruth->Count() == 0) {
         return 1;
     }
-    return (float)(result_size) / groundtruth->CountOnes();
+    return (float)(result_size) / groundtruth->Count();
 }
 
 float

@@ -25,8 +25,7 @@ l2sqr(const void* vec1, const void* vec2, int64_t dim) {
 
 BitsetPtr
 l2_and_filtering(int64_t dim, int64_t nb, const float* base, const float* query, float threshold) {
-    BitsetPtr bp = std::make_shared<Bitset>();
-    bp->Extend(nb);
+    BitsetPtr bp = Bitset::Make();
 
     for (int64_t i = 0; i < nb; ++i) {
         const float dist = l2sqr(base + i * dim, query, dim);
@@ -36,22 +35,6 @@ l2_and_filtering(int64_t dim, int64_t nb, const float* base, const float* query,
     }
 
     return bp;
-}
-
-float
-range_search_recall(const float* base,
-                    const int64_t* id_map,
-                    int64_t base_num,
-                    const float* query,
-                    int64_t data_dim,
-                    const int64_t* result_ids,
-                    int64_t result_size,
-                    float threshold) {
-    BitsetPtr groundtruth = l2_and_filtering(data_dim, base_num, base, query, threshold);
-    if (groundtruth->CountOnes() == 0) {
-        return 1;
-    }
-    return (float)(result_size) / groundtruth->CountOnes();
 }
 
 float
@@ -77,6 +60,22 @@ knn_search_recall(const float* base,
         }
     }
     return 0;
+}
+
+float
+range_search_recall(const float* base,
+                    const int64_t* base_ids,
+                    int64_t num_base,
+                    const float* query,
+                    int64_t dim,
+                    const int64_t* result_ids,
+                    int64_t result_size,
+                    float threshold) {
+    BitsetPtr groundtruth = l2_and_filtering(dim, num_base, base, query, threshold);
+    if (groundtruth->Count() == 0) {
+        return 1;
+    }
+    return (float)(result_size) / groundtruth->Count();
 }
 
 }  // namespace vsag

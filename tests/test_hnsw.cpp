@@ -2,13 +2,14 @@
 #include <spdlog/spdlog.h>
 
 #include <catch2/catch_test_macros.hpp>
+#include <catch2/generators/catch_generators.hpp>
 #include <fstream>
+#include <iostream>
 #include <limits>
 #include <nlohmann/json.hpp>
 #include <numeric>
 #include <random>
 
-#include "catch2/generators/catch_generators.hpp"
 #include "vsag/errors.h"
 #include "vsag/vsag.h"
 
@@ -85,19 +86,19 @@ TEST_CASE("HNSW range search", "[ft][hnsw]") {
     REQUIRE(result->GetNumElements() == 1);
 
     auto expected = vsag::l2_and_filtering(dim, max_elements, data, query_data, radius);
-    if (expected->CountOnes() != result->GetDim()) {
-        std::cout << "not 100% recall: expect " << expected->CountOnes() << " return "
+    if (expected->Count() != result->GetDim()) {
+        std::cout << "not 100% recall: expect " << expected->Count() << " return "
                   << result->GetDim() << std::endl;
     }
 
     // check no false recall
     for (int64_t i = 0; i < result->GetDim(); ++i) {
         auto offset = result->GetIds()[i];
-        CHECK(expected->Get(offset));
+        CHECK(expected->Test(offset));
     }
 
     // recall > 99%
-    CHECK((expected->CountOnes() - result->GetDim()) * 100 < max_elements);
+    CHECK((expected->Count() - result->GetDim()) * 100 < max_elements);
 }
 
 TEST_CASE("HNSW filtering knn search", "[ft][hnsw]") {
@@ -155,14 +156,14 @@ TEST_CASE("HNSW filtering knn search", "[ft][hnsw]") {
         int64_t k = max_elements;
 
         vsag::BitsetPtr filter = vsag::Bitset::Random(label_num);
-        int64_t num_deleted = filter->CountOnes();
+        int64_t num_deleted = filter->Count();
 
         auto result = hnsw->KnnSearch(query, k, parameters.dump(), filter);
         REQUIRE(result.has_value());
         REQUIRE(result->GetDim() == max_elements - num_deleted * (max_elements / label_num));
         for (int64_t j = 0; j < result->GetDim(); ++j) {
             // deleted ids NOT in result
-            REQUIRE(filter->Get(result->GetIds()[j] & 0xFFFFFFFFLL) == false);
+            REQUIRE(filter->Test(result->GetIds()[j] & 0xFFFFFFFFLL) == false);
         }
     }
 }
@@ -223,14 +224,14 @@ TEST_CASE("HNSW Filtering Test", "[ft][hnsw]") {
         int64_t k = 10;
 
         vsag::BitsetPtr filter = vsag::Bitset::Random(max_elements);
-        int64_t num_deleted = filter->CountOnes();
+        int64_t num_deleted = filter->Count();
 
         if (auto result = hnsw->RangeSearch(query, radius, parameters.dump(), filter);
             result.has_value()) {
             REQUIRE(result->GetDim() == max_elements - num_deleted);
             for (int64_t j = 0; j < result->GetDim(); ++j) {
                 // deleted ids NOT in result
-                REQUIRE(filter->Get(result->GetIds()[j]) == false);
+                REQUIRE(filter->Test(result->GetIds()[j]) == false);
             }
         } else {
             std::cerr << "failed to range search on index: internalError" << std::endl;
@@ -242,17 +243,17 @@ TEST_CASE("HNSW Filtering Test", "[ft][hnsw]") {
             REQUIRE(result.has_value());
             for (int64_t j = 0; j < result->GetDim(); ++j) {
                 // deleted ids NOT in result
-                REQUIRE(filter->Get(result->GetIds()[j]) == false);
+                REQUIRE(filter->Test(result->GetIds()[j]) == false);
             }
         } else {
             std::cerr << "failed to knn search on index: internalError" << std::endl;
             exit(-1);
         }
 
-        size_t bytes_count = max_elements / 4 + 1;
-        auto bits_ones = new uint8_t[bytes_count];
-        std::memset(bits_ones, 0xFF, bytes_count);
-        vsag::BitsetPtr ones = std::make_shared<vsag::Bitset>(bits_ones, bytes_count);
+        vsag::BitsetPtr ones = vsag::Bitset::Make();
+        for (int64_t i = 0; i < max_elements; ++i) {
+            ones->Set(i, true);
+        }
         if (auto result = hnsw->RangeSearch(query, radius, parameters.dump(), ones);
             result.has_value()) {
             REQUIRE(result->GetDim() == 0);
@@ -272,9 +273,7 @@ TEST_CASE("HNSW Filtering Test", "[ft][hnsw]") {
             exit(-1);
         }
 
-        auto bits_zeros = new uint8_t[bytes_count];
-        std::memset(bits_zeros, 0, bytes_count);
-        vsag::BitsetPtr zeros = std::make_shared<vsag::Bitset>(bits_zeros, bytes_count);
+        vsag::BitsetPtr zeros = vsag::Bitset::Make();
 
         if (auto result = hnsw->KnnSearch(query, k, parameters.dump(), zeros); result.has_value()) {
             correct_knn += vsag::knn_search_recall(
@@ -295,8 +294,6 @@ TEST_CASE("HNSW Filtering Test", "[ft][hnsw]") {
             std::cerr << "failed to range search on index: internalError" << std::endl;
             exit(-1);
         }
-        delete[] bits_ones;
-        delete[] bits_zeros;
     }
     recall_knn = correct_knn / max_elements;
     recall_range = correct_range / max_elements;

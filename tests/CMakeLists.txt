@@ -21,7 +21,7 @@ target_link_libraries (unittests PRIVATE Catch2::Catch2WithMain vsag simd)
 add_dependencies (unittests spdlog Catch2)
 
 # function tests
-file (GLOB FUNCTION_TESTS "*.cpp")
+file (GLOB FUNCTION_TESTS "test_*.cpp")
 add_executable (functests
     ${FUNCTION_TESTS}
     fixtures/fixtures.cpp

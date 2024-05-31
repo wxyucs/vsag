@@ -33,12 +33,7 @@ public:
     bool
     operator()(hnswlib::labeltype id) override {
         int64_t bit_index = id & ROW_ID_MASK;
-        if (bit_index >= bitset_->Capacity()) {
-            logger::error(
-                "id {} is greater than the capacity {} of bitset ", bit_index, bitset_->Capacity());
-            return false;  // FIXME: throwing an error directly here would lead to a memory leak within the HNSW internals.
-        }
-        return not bitset_->Get(bit_index);
+        return not bitset_->Test(bit_index);
     }
 
 private:
@@ -141,7 +136,7 @@ HNSW::build(const Dataset& base) {
 
 tl::expected<std::vector<int64_t>, Error>
 HNSW::add(const Dataset& base) {
-    SlowTaskTimer t("hnsw add", 10);
+    SlowTaskTimer t("hnsw add", 20);
 
     if (use_static_) {
         LOG_ERROR_AND_RETURNS(ErrorType::UNSUPPORTED_INDEX_OPERATION,
@@ -191,7 +186,7 @@ HNSW::knn_search(const Dataset& query,
                  int64_t k,
                  const std::string& parameters,
                  BitsetPtr invalid) const {
-    SlowTaskTimer t("hnsw knnsearch", 10);
+    SlowTaskTimer t("hnsw knnsearch", 20);
 
     // cannot perform search on empty index
     if (empty_index_) {
@@ -282,7 +277,7 @@ HNSW::range_search(const Dataset& query,
                    float radius,
                    const std::string& parameters,
                    BitsetPtr invalid) const {
-    SlowTaskTimer t("hnsw rangesearch", 10);
+    SlowTaskTimer t("hnsw rangesearch", 20);
 
     // cannot perform search on empty index
     if (empty_index_) {

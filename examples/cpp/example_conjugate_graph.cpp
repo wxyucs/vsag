@@ -1,3 +1,5 @@
+
+#include <iostream>
 #include <nlohmann/json.hpp>
 
 #include "vsag/vsag.h"

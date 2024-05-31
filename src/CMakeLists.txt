@@ -14,7 +14,7 @@ set (VSAG_SRCS ${CPP_SRCS} ${CPP_FACTORY_SRCS} ${CPP_INDEX_SRCS} ${CPP_CONJUGATE
 add_library (vsag SHARED ${VSAG_SRCS})
 add_library (vsag_static STATIC ${VSAG_SRCS})
 
-set (VSAG_DEP_LIBS diskann pthread m dl simd fmt::fmt-header-only nlohmann_json::nlohmann_json)
+set (VSAG_DEP_LIBS diskann pthread m dl simd fmt::fmt-header-only nlohmann_json::nlohmann_json roaring)
 target_link_libraries (vsag ${VSAG_DEP_LIBS})
 target_link_libraries (vsag_static ${VSAG_DEP_LIBS})
-add_dependencies (vsag spdlog)
+add_dependencies (vsag spdlog roaringbitmap)

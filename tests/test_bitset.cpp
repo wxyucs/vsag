@@ -1,160 +1,31 @@
 
-#include <catch2/benchmark/catch_benchmark.hpp>
 #include <catch2/catch_test_macros.hpp>
-#include <catch2/matchers/catch_matchers_string.hpp>
 
 #include "vsag/bitset.h"
 
-using namespace vsag;
-using Catch::Matchers::ContainsSubstring;
+TEST_CASE("test bitset", "[ft][bitset]") {
+    auto bitset = vsag::Bitset::Make();
 
-TEST_CASE("general usage", "[ft][bitset]") {
-    BitsetPtr bp = std::make_shared<Bitset>();
-    CHECK(bp->Capacity() == 0);
+    // empty
+    REQUIRE(bitset->Count() == 0);
 
-    bp->Set(100, true);
-    CHECK(bp->Get(100) == true);
-    CHECK(bp->CountOnes() == 1);
-    CHECK(bp->CountZeros() == 103);
-    CHECK(bp->Capacity() == 104);
+    // set to true
+    bitset->Set(100, true);
+    REQUIRE(bitset->Test(100));
+    REQUIRE(bitset->Count() == 1);
 
-    bp->Set(79, true);
-    CHECK(bp->Get(79) == true);
-    CHECK(bp->CountOnes() == 2);
-    CHECK(bp->CountZeros() == 102);
-    CHECK(bp->Capacity() == 104);
+    // set to false
+    bitset->Set(100, false);
+    REQUIRE_FALSE(bitset->Test(100));
+    REQUIRE(bitset->Count() == 0);
 
-    bp->Set(100, false);
-    CHECK(bp->Get(100) == false);
-    CHECK(bp->CountOnes() == 1);
-    CHECK(bp->CountZeros() == 103);
-    CHECK(bp->Capacity() == 104);
-}
+    // not set
+    REQUIRE_FALSE(bitset->Test(1234567890));
 
-TEST_CASE("get and set", "[ft][bitset]") {
-    BitsetPtr bp = std::make_shared<Bitset>();
-
-    CHECK_THROWS_WITH(
-        bp->Get(-1),
-        ContainsSubstring("failed to get bitset: offset") && ContainsSubstring("is less than 0"));
-    CHECK_THROWS_WITH(bp->Get(1),
-                      ContainsSubstring("failed to get from bitset: offset") &&
-                          ContainsSubstring("is greater than capcity"));
-
-    CHECK_THROWS_WITH(
-        bp->Set(-1, true),
-        ContainsSubstring("failed to set bitset: offset") && ContainsSubstring("is less than 0"));
-
-    CHECK_NOTHROW(bp->Set(0, true));
-    CHECK(bp->Capacity() == 8);
-    CHECK_NOTHROW(bp->Get(0));
-
-    CHECK_NOTHROW(bp->Set(8, true));
-    CHECK(bp->Capacity() == 16);
-    CHECK_NOTHROW(bp->Get(8));
-}
-
-TEST_CASE("count ones and zeros", "[ft][bitset]") {
-    BitsetPtr bp = std::make_shared<Bitset>();
-
-    bp->Set(1, true);
-    CHECK(bp->CountOnes() == 1);
-    CHECK(bp->CountZeros() == 7);
-    bp->Set(11, true);
-    CHECK(bp->CountOnes() == 2);
-    CHECK(bp->CountZeros() == 14);
-}
-
-TEST_CASE("capcity and extend", "[ft][bitset]") {
-    int64_t mem_limit = 1024 * 1024;
-    BitsetPtr bp = std::make_shared<Bitset>(mem_limit);
-    CHECK(bp->Capacity() == 0);
-
-    bp->Set(1, true);
-    CHECK(bp->Capacity() == 8);
-
-    bp->Set(11, true);
-    CHECK(bp->Capacity() == 16);
-
-    bp->Set(1, false);
-    CHECK(bp->Capacity() == 16);
-
-    bp->Set(111, false);
-    CHECK(bp->Capacity() == 112);
-
-    CHECK_THROWS_WITH(bp->Extend(mem_limit * 8 + 1),
-                      ContainsSubstring("failed to extend bitset: number_of_bytes") &&
-                          ContainsSubstring("is greater than memory limit"));
-
-    CHECK_THROWS_WITH(bp->Extend(64),
-                      ContainsSubstring("failed to extend bitset: number_of_bits") &&
-                          ContainsSubstring("is less than current capcity"));
-
-    CHECK_NOTHROW(bp->Extend(mem_limit * 8));
-    CHECK(bp->Capacity() == mem_limit * 8);
-}
-
-TEST_CASE("construct from memory", "[ft][bitset]") {
-    auto memory = std::shared_ptr<uint8_t[]>(new uint8_t[2]);
-    memory[0] = 0b01010101;
-    memory[1] = 0b11111010;
-    BitsetPtr bp = std::make_shared<Bitset>(memory.get(), 2);
-    CHECK(bp->Capacity() == 16);
-
-    CHECK(bp->Get(0) == true);
-    CHECK(bp->Get(1) == false);
-    CHECK(bp->Get(2) == true);
-    CHECK(bp->Get(3) == false);
-    CHECK(bp->Get(4) == true);
-    CHECK(bp->Get(5) == false);
-    CHECK(bp->Get(6) == true);
-    CHECK(bp->Get(7) == false);
-
-    CHECK(bp->Get(8) == false);
-    CHECK(bp->Get(9) == true);
-    CHECK(bp->Get(10) == false);
-    CHECK(bp->Get(11) == true);
-    CHECK(bp->Get(12) == true);
-    CHECK(bp->Get(13) == true);
-    CHECK(bp->Get(14) == true);
-    CHECK(bp->Get(15) == true);
-
-    CHECK(bp->CountOnes() == 10);
-    CHECK(bp->CountZeros() == 6);
-
-    std::vector<uint8_t> buffer;
-    buffer.resize(1'000'000);
-    static auto gen =
-        std::bind(std::uniform_real_distribution<float>(0, 1), std::default_random_engine());
-    auto ptr = (float*)buffer.data();
-    for (uint64_t i = 0; i < buffer.size() / 4; ++i) {
-        ptr[i] = gen();
-    }
-
-    uint64_t count1 = 0;
-    BENCHMARK("popcount") {
-        uint64_t count = 0;
-        for (uint8_t num : buffer) {
-#if __cplusplus >= 202002L
-            count += std::popcount(num);
-#else
-            count += std::__popcount(num);
-#endif
-        }
-        count1 = count;
-    };
-
-    uint64_t count2 = 0;
-    BENCHMARK("while") {
-        uint64_t count = 0;
-        for (uint8_t num : buffer) {
-            while (num) {
-                count += num & 1;
-                num >>= 1;
-            }
-        }
-        count2 = count;
-    };
-
-    REQUIRE(count1 == count2);
+    // dump
+    bitset->Set(100, false);
+    REQUIRE(bitset->Dump() == "{}");
+    bitset->Set(100, true);
+    auto dumped = bitset->Dump();
+    REQUIRE(dumped == "{100}");
 }

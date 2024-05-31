@@ -1,6 +1,7 @@
 
 #include <catch2/catch_test_macros.hpp>
 #include <future>
+#include <iostream>
 #include <nlohmann/json.hpp>
 #include <thread>
 #include <type_traits>
@@ -138,10 +139,7 @@ TEST_CASE("DiskAnn Multi-threading", "[ft][diskann]") {
         {"diskann", {{"ef_search", ef_search}, {"beam_search", 4}, {"io_limit", io_limit}}}};
     std::string str_parameters = parameters.dump();
 
-    size_t bytes_count = max_elements / 8 + 1;
-    auto bits_zeros = new uint8_t[bytes_count];
-    std::memset(bits_zeros, 0, bytes_count);
-    vsag::BitsetPtr zeros = std::make_shared<vsag::Bitset>(bits_zeros, bytes_count);
+    vsag::BitsetPtr zeros = vsag::Bitset::Make();
     for (int i = 0; i < max_elements; i++) {
         int64_t k = 2;
         future_results.push_back(
@@ -158,7 +156,6 @@ TEST_CASE("DiskAnn Multi-threading", "[ft][diskann]") {
     float recall = correct / max_elements;
     std::cout << index->GetStats() << std::endl;
     REQUIRE(recall >= 0.99);
-    delete[] bits_zeros;
 }
 
 TEST_CASE("HNSW Multi-threading", "[ft][hnsw]") {
@@ -204,10 +201,7 @@ TEST_CASE("HNSW Multi-threading", "[ft][hnsw]") {
         {"hnsw", {{"ef_search", ef_search}}},
     };
     std::string str_parameters = parameters.dump();
-    size_t bytes_count = max_elements / 8 + 1;
-    auto bits_zeros = new uint8_t[bytes_count];
-    std::memset(bits_zeros, 0, bytes_count);
-    vsag::BitsetPtr zeros = std::make_shared<vsag::Bitset>(bits_zeros, bytes_count);
+    vsag::BitsetPtr zeros = vsag::Bitset::Make();
     for (int i = 0; i < max_elements; i++) {
         int64_t k = 2;
         future_results.push_back(
@@ -224,5 +218,4 @@ TEST_CASE("HNSW Multi-threading", "[ft][hnsw]") {
     float recall = correct / max_elements;
     std::cout << index->GetStats() << std::endl;
     REQUIRE(recall == 1);
-    delete[] bits_zeros;
 }

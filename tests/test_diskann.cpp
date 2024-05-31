@@ -448,9 +448,9 @@ TEST_CASE("DiskAnn Range Query", "[ft][diskann]") {
                 correct++;
             }
             for (int j = 0; j < result->GetDim(); ++j) {
-                REQUIRE(range_result->Get(result->GetIds()[j]));
+                REQUIRE(range_result->Test(result->GetIds()[j]));
             }
-            true_result += range_result->CountOnes();
+            true_result += range_result->Count();
             return_result += result->GetDim();
         } else if (result.error().type == vsag::ErrorType::INTERNAL_ERROR) {
             std::cerr << "failed to search on index: internalError" << std::endl;
@@ -649,14 +649,14 @@ TEST_CASE("DiskAnn Filter Test", "[ft][diskann]") {
         query.NumElements(1).Dim(dim).Float32Vectors(data + i * dim).Owner(false);
 
         vsag::BitsetPtr invalid = vsag::Bitset::Random(label_num);
-        int64_t num_deleted = invalid->CountOnes();
+        int64_t num_deleted = invalid->Count();
         nlohmann::json parameters{
             {"diskann", {{"ef_search", ef_search}, {"beam_search", 4}, {"io_limit", 200}}}};
         if (auto result = diskann->KnnSearch(query, k, parameters.dump(), invalid);
             result.has_value()) {
             if (result->GetNumElements() == 1) {
                 if (result->GetDim() != 0 && result->GetNumElements() == 1) {
-                    REQUIRE(invalid->Get(ids[i] & 0xFFFFFFFFLL) ^ (ids[i] == result->GetIds()[0]));
+                    REQUIRE(invalid->Test(ids[i] & 0xFFFFFFFFLL) ^ (ids[i] == result->GetIds()[0]));
                 }
             }
         } else if (result.error().type == vsag::ErrorType::INTERNAL_ERROR) {
@@ -667,16 +667,16 @@ TEST_CASE("DiskAnn Filter Test", "[ft][diskann]") {
         if (auto result = diskann->RangeSearch(query, threshold, parameters.dump(), invalid);
             result.has_value()) {
             if (result->GetDim() != 0 && result->GetNumElements() == 1) {
-                REQUIRE(invalid->Get(ids[i] & 0xFFFFFFFFLL) ^ (ids[i] == result->GetIds()[0]));
+                REQUIRE(invalid->Test(ids[i] & 0xFFFFFFFFLL) ^ (ids[i] == result->GetIds()[0]));
             }
         } else if (result.error().type == vsag::ErrorType::INTERNAL_ERROR) {
             std::cerr << "failed to range search on index: internalError" << std::endl;
             exit(-1);
         }
-        size_t bytes_count = label_num / 8 + 1;
-        auto bits_ones = new uint8_t[bytes_count];
-        std::memset(bits_ones, 0xFF, bytes_count);
-        vsag::BitsetPtr ones = std::make_shared<vsag::Bitset>(bits_ones, bytes_count);
+        vsag::BitsetPtr ones = vsag::Bitset::Make();
+        for (int64_t i = 0; i < label_num; ++i) {
+            ones->Set(i, true);
+        }
         if (auto result = diskann->RangeSearch(query, threshold, parameters.dump(), ones);
             result.has_value()) {
             REQUIRE(result->GetDim() == 0);
@@ -697,9 +697,7 @@ TEST_CASE("DiskAnn Filter Test", "[ft][diskann]") {
             exit(-1);
         }
 
-        auto bits_zeros = new uint8_t[bytes_count];
-        std::memset(bits_zeros, 0, bytes_count);
-        vsag::BitsetPtr zeros = std::make_shared<vsag::Bitset>(bits_zeros, bytes_count);
+        vsag::BitsetPtr zeros = vsag::Bitset::Make();
 
         if (auto result = diskann->KnnSearch(query, k, parameters.dump(), zeros);
             result.has_value()) {
@@ -725,8 +723,6 @@ TEST_CASE("DiskAnn Filter Test", "[ft][diskann]") {
             std::cerr << "failed to range search on index: internalError" << std::endl;
             exit(-1);
         }
-        delete[] bits_ones;
-        delete[] bits_zeros;
     }
 
     recall_knn = correct_knn / max_elements;

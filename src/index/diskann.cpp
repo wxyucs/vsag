@@ -1,6 +1,3 @@
-//
-// Created by root on 9/6/23.
-//
 
 #include "diskann.h"
 
@@ -248,7 +245,7 @@ DiskANN::knn_search(const Dataset& query,
                     int64_t k,
                     const std::string& parameters,
                     BitsetPtr invalid) const {
-    SlowTaskTimer t("diskann knnsearch", 100);
+    SlowTaskTimer t("diskann knnsearch", 200);
 
     // cannot perform search on empty index
     if (empty_index_) {
@@ -286,13 +283,7 @@ DiskANN::knn_search(const Dataset& query,
         if (invalid) {
             filter_ = [&](int64_t offset) -> bool {
                 int64_t bit_index = offset & ROW_ID_MASK;
-                if (bit_index >= invalid->Capacity()) {
-                    logger::error("id {} is greater than the capacity {} of bitset ",
-                                  bit_index,
-                                  invalid->Capacity());
-                    return false;
-                }
-                return invalid->Get(bit_index);
+                return invalid->Test(bit_index);
             };
         }
 
@@ -388,7 +379,7 @@ DiskANN::range_search(const Dataset& query,
                       float radius,
                       const std::string& parameters,
                       BitsetPtr invalid) const {
-    SlowTaskTimer t("diskann rangesearch", 100);
+    SlowTaskTimer t("diskann rangesearch", 200);
 
     // cannot perform search on empty index
     if (empty_index_) {
@@ -427,13 +418,7 @@ DiskANN::range_search(const Dataset& query,
         if (invalid) {
             filter = [&](int64_t offset) -> bool {
                 int64_t bit_index = offset & ROW_ID_MASK;
-                if (bit_index >= invalid->Capacity()) {
-                    logger::error("id {} is greater than the capacity {} of bitset ",
-                                  bit_index,
-                                  invalid->Capacity());
-                    return false;
-                }
-                return invalid->Get(bit_index & ROW_ID_MASK);
+                return invalid->Test(bit_index & ROW_ID_MASK);
             };
         }
 

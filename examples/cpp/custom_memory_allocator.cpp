@@ -1,4 +1,6 @@
 
+#include <iostream>
+
 #include "vsag/vsag.h"
 
 class ExampleAllocator : public vsag::Allocator {

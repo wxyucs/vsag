@@ -19,16 +19,6 @@ BitsetPtr
 l2_and_filtering(int64_t dim, int64_t nb, const float* base, const float* query, float threshold);
 
 float
-range_search_recall(const float* base,
-                    const int64_t* id_map,
-                    int64_t base_num,
-                    const float* query,
-                    int64_t data_dim,
-                    const int64_t* result_ids,
-                    int64_t result_size,
-                    float threshold);
-
-float
 knn_search_recall(const float* base,
                   const int64_t* id_map,
                   int64_t base_num,
@@ -36,5 +26,15 @@ knn_search_recall(const float* base,
                   int64_t data_dim,
                   const int64_t* result_ids,
                   int64_t result_size);
+
+float
+range_search_recall(const float* base,
+                    const int64_t* base_ids,
+                    int64_t num_base,
+                    const float* query,
+                    int64_t dim,
+                    const int64_t* result_ids,
+                    int64_t result_size,
+                    float threshold);
 
 }  // namespace vsag

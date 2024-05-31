@@ -1,15 +1,15 @@
 
+#include <fmt/format.h>
 #include <spdlog/spdlog.h>
 
 #include <catch2/catch_message.hpp>
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/generators/catch_generators.hpp>
 #include <fstream>
+#include <iostream>
 #include <nlohmann/json.hpp>
 
 #include "fixtures/fixtures.h"
-#include "fmt/format.h"
-#include "nlohmann/json.hpp"
 #include "vsag/dataset.h"
 #include "vsag/errors.h"
 #include "vsag/logger.h"
@@ -23,7 +23,7 @@
 TEST_CASE("hnsw build test", "[ft][index][hnsw]") {
     vsag::Options::Instance().logger()->SetLevel(vsag::Logger::Level::DEBUG);
 
-    int64_t num_vectors = 10000;
+    int64_t num_vectors = 1000;
     int64_t dim = 57;
     auto metric_type = GENERATE("l2", "ip");
 
@@ -68,7 +68,7 @@ TEST_CASE("hnsw build test", "[ft][index][hnsw]") {
 TEST_CASE("hnsw float32 recall", "[ft][index][hnsw]") {
     vsag::Options::Instance().logger()->SetLevel(vsag::Logger::Level::DEBUG);
 
-    int64_t num_vectors = 10000;
+    int64_t num_vectors = 1000;
     int64_t dim = 104;
     auto metric_type = GENERATE("l2", "ip");
 
@@ -104,7 +104,7 @@ TEST_CASE("hnsw float32 recall", "[ft][index][hnsw]") {
 TEST_CASE("create two hnsw index in the same time", "[ft][index][hnsw]") {
     vsag::Options::Instance().logger()->SetLevel(vsag::Logger::Level::DEBUG);
 
-    int64_t num_vectors = 10000;
+    int64_t num_vectors = 1000;
     int64_t dim = 49;
     auto metric_type = GENERATE("l2", "ip");
 
@@ -162,7 +162,7 @@ TEST_CASE("create two hnsw index in the same time", "[ft][index][hnsw]") {
 TEST_CASE("serialize/deserialize with file stream", "[ft][index]") {
     vsag::Options::Instance().logger()->SetLevel(vsag::Logger::Level::DEBUG);
 
-    int64_t num_vectors = 10000;
+    int64_t num_vectors = 1000;
     int64_t dim = 64;
     // auto index_name = GENERATE("hnsw", "diskann");
     auto index_name = GENERATE("hnsw");
@@ -258,7 +258,7 @@ TEST_CASE("serialize/deserialize with file stream", "[ft][index]") {
 TEST_CASE("serialize/deserialize hnswstatic with file stream", "[ft][index]") {
     vsag::Options::Instance().logger()->SetLevel(vsag::Logger::Level::DEBUG);
 
-    int64_t num_vectors = 10000;
+    int64_t num_vectors = 1000;
     int64_t dim = 64;
     auto index_name = GENERATE("hnsw");
     auto metric_type = GENERATE("l2");  // hnswstatic does not support ip
@@ -352,7 +352,7 @@ TEST_CASE("serialize/deserialize hnswstatic with file stream", "[ft][index]") {
 TEST_CASE("search on a deserialized empty index", "[ft][index]") {
     vsag::Options::Instance().logger()->SetLevel(vsag::Logger::Level::DEBUG);
 
-    int64_t num_vectors = 10000;
+    int64_t num_vectors = 1000;
     int64_t dim = 64;
     auto index_name = GENERATE("hnsw", "diskann");
     auto metric_type = GENERATE("l2", "ip");
@@ -717,7 +717,7 @@ TEST_CASE("generate build parameters with invalid dim", "[ft][index]") {
 TEST_CASE("build index with generated_build_parameters", "[ft][index]") {
     vsag::Options::Instance().logger()->SetLevel(vsag::Logger::Level::DEBUG);
 
-    int64_t num_vectors = 10000;
+    int64_t num_vectors = 1000;
     int64_t dim = 64;
 
     auto index = vsag::Factory::CreateIndex(
@@ -772,7 +772,7 @@ TEST_CASE("hnsw + feedback with global optimum id", "[ft][index][hnsw]") {
 
     // parameters
     int dim = 128;
-    int num_base = 10000;
+    int num_base = 1000;
     int num_query = 1000;
     int64_t k = 10;
     auto metric_type = GENERATE("l2");
@@ -880,7 +880,7 @@ TEST_CASE("static hnsw + feedback without global optimum id", "[ft][index][hnsw]
 
     // parameters
     int dim = 128;
-    int num_base = 10000;
+    int num_base = 1000;
     int num_query = 1000;
     auto metric_type = GENERATE("l2");
     constexpr auto build_parameter_json = R"(

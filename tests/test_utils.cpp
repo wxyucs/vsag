@@ -23,18 +23,17 @@ TEST_CASE("l2_and_filtering", "[ft][utils]") {
     auto res = l2_and_filtering(dim, nb, base, query, 20.0f);
     delete[] base;
     delete[] query;
-    CHECK(res->Capacity() == 16);
-    CHECK(res->CountOnes() == 5);
-    CHECK_FALSE(res->Get(0));
-    CHECK_FALSE(res->Get(1));
-    CHECK_FALSE(res->Get(2));
-    CHECK(res->Get(3));
-    CHECK(res->Get(4));
-    CHECK(res->Get(5));
-    CHECK(res->Get(6));
-    CHECK(res->Get(7));
-    CHECK_FALSE(res->Get(8));
-    CHECK_FALSE(res->Get(9));
+    CHECK(res->Count() == 5);
+    CHECK_FALSE(res->Test(0));
+    CHECK_FALSE(res->Test(1));
+    CHECK_FALSE(res->Test(2));
+    CHECK(res->Test(3));
+    CHECK(res->Test(4));
+    CHECK(res->Test(5));
+    CHECK(res->Test(6));
+    CHECK(res->Test(7));
+    CHECK_FALSE(res->Test(8));
+    CHECK_FALSE(res->Test(9));
 }
 
 TEST_CASE("version", "[ft][version]") {
