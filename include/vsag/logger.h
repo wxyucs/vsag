@@ -11,14 +11,14 @@ using LoggerPtr = std::shared_ptr<Logger>;
 class Logger {
 public:
     enum Level : int {
-        TRACE = 0,
-        DEBUG = 1,
-        INFO = 2,
-        WARN = 3,
-        ERR = 4,
-        CRITICAL = 5,
-        OFF = 6,
-        N_LEVELS
+        kTRACE = 0,
+        kDEBUG = 1,
+        kINFO = 2,
+        kWARN = 3,
+        kERR = 4,
+        kCRITICAL = 5,
+        kOFF = 6,
+        kN_LEVELS
     };
 
     virtual void

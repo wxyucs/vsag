@@ -415,7 +415,7 @@ TEST_CASE("build with reversed edges", "[ut][hnsw]") {
 }
 
 TEST_CASE("feedback with invalid argument", "[ut][hnsw]") {
-    vsag::Options::Instance().logger()->SetLevel(vsag::Logger::Level::DEBUG);
+    vsag::Options::Instance().logger()->SetLevel(vsag::Logger::Level::kDEBUG);
     // parameters
     int dim = 128;
     int max_degree = 16;
@@ -448,7 +448,7 @@ TEST_CASE("feedback with invalid argument", "[ut][hnsw]") {
 }
 
 TEST_CASE("redundant feedback and empty enhancement", "[ut][hnsw]") {
-    vsag::Options::Instance().logger()->SetLevel(vsag::Logger::Level::DEBUG);
+    vsag::Options::Instance().logger()->SetLevel(vsag::Logger::Level::kDEBUG);
 
     // parameters
     int dim = 128;
@@ -503,7 +503,7 @@ TEST_CASE("redundant feedback and empty enhancement", "[ut][hnsw]") {
 }
 
 TEST_CASE("feedback without use conjugate graph", "[ut][hnsw]") {
-    vsag::Options::Instance().logger()->SetLevel(vsag::Logger::Level::DEBUG);
+    vsag::Options::Instance().logger()->SetLevel(vsag::Logger::Level::kDEBUG);
 
     // parameters
     int dim = 128;
@@ -540,7 +540,7 @@ TEST_CASE("feedback without use conjugate graph", "[ut][hnsw]") {
 }
 
 TEST_CASE("feedback on empty index", "[ut][hnsw]") {
-    vsag::Options::Instance().logger()->SetLevel(vsag::Logger::Level::DEBUG);
+    vsag::Options::Instance().logger()->SetLevel(vsag::Logger::Level::kDEBUG);
 
     // parameters
     int dim = 128;
@@ -577,7 +577,7 @@ TEST_CASE("feedback on empty index", "[ut][hnsw]") {
 }
 
 TEST_CASE("get distance by label", "[ut][hnsw]") {
-    vsag::Options::Instance().logger()->SetLevel(vsag::Logger::Level::DEBUG);
+    vsag::Options::Instance().logger()->SetLevel(vsag::Logger::Level::kDEBUG);
 
     // parameters
     int dim = 128;

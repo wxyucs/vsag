@@ -10,13 +10,13 @@ namespace vsag {
 namespace logger {
 
 enum class level {
-    trace = Logger::Level::TRACE,
-    debug = Logger::Level::DEBUG,
-    info = Logger::Level::INFO,
-    warn = Logger::Level::WARN,
-    err = Logger::Level::ERR,
-    critical = Logger::Level::CRITICAL,
-    off = Logger::Level::OFF
+    trace = Logger::Level::kTRACE,
+    debug = Logger::Level::kDEBUG,
+    info = Logger::Level::kINFO,
+    warn = Logger::Level::kWARN,
+    err = Logger::Level::kERR,
+    critical = Logger::Level::kCRITICAL,
+    off = Logger::Level::kOFF
 };
 
 inline void

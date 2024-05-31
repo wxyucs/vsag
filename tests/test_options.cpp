@@ -14,7 +14,7 @@ TEST_CASE("set external logger", "[ft][options]") {
     public:
         inline void
         SetLevel(Level log_level) override {
-            level_ = log_level - vsag::Logger::Level::TRACE;
+            level_ = log_level - vsag::Logger::Level::kTRACE;
         }
 
         inline void

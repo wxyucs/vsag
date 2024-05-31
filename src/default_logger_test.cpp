@@ -7,7 +7,7 @@
 
 TEST_CASE("test default logger", "[ut][logger]") {
     vsag::DefaultLogger logger;
-    logger.SetLevel(vsag::Logger::Level::TRACE);
+    logger.SetLevel(vsag::Logger::Level::kTRACE);
     logger.Trace("this is a trace level message");
     logger.Debug("this is a debug level message");
     logger.Info("this is a info level message");

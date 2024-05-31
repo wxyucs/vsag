@@ -21,7 +21,7 @@
 /////////////////////////////////////////////////////////
 
 TEST_CASE("hnsw build test", "[ft][index][hnsw]") {
-    vsag::Options::Instance().logger()->SetLevel(vsag::Logger::Level::DEBUG);
+    vsag::Options::Instance().logger()->SetLevel(vsag::Logger::Level::kDEBUG);
 
     int64_t num_vectors = 1000;
     int64_t dim = 57;
@@ -66,7 +66,7 @@ TEST_CASE("hnsw build test", "[ft][index][hnsw]") {
 /////////////////////////////////////////////////////////
 
 TEST_CASE("hnsw float32 recall", "[ft][index][hnsw]") {
-    vsag::Options::Instance().logger()->SetLevel(vsag::Logger::Level::DEBUG);
+    vsag::Options::Instance().logger()->SetLevel(vsag::Logger::Level::kDEBUG);
 
     int64_t num_vectors = 1000;
     int64_t dim = 104;
@@ -102,7 +102,7 @@ TEST_CASE("hnsw float32 recall", "[ft][index][hnsw]") {
 }
 
 TEST_CASE("create two hnsw index in the same time", "[ft][index][hnsw]") {
-    vsag::Options::Instance().logger()->SetLevel(vsag::Logger::Level::DEBUG);
+    vsag::Options::Instance().logger()->SetLevel(vsag::Logger::Level::kDEBUG);
 
     int64_t num_vectors = 1000;
     int64_t dim = 49;
@@ -160,7 +160,7 @@ TEST_CASE("create two hnsw index in the same time", "[ft][index][hnsw]") {
 /////////////////////////////////////////////////////////
 
 TEST_CASE("serialize/deserialize with file stream", "[ft][index]") {
-    vsag::Options::Instance().logger()->SetLevel(vsag::Logger::Level::DEBUG);
+    vsag::Options::Instance().logger()->SetLevel(vsag::Logger::Level::kDEBUG);
 
     int64_t num_vectors = 1000;
     int64_t dim = 64;
@@ -256,7 +256,7 @@ TEST_CASE("serialize/deserialize with file stream", "[ft][index]") {
 }
 
 TEST_CASE("serialize/deserialize hnswstatic with file stream", "[ft][index]") {
-    vsag::Options::Instance().logger()->SetLevel(vsag::Logger::Level::DEBUG);
+    vsag::Options::Instance().logger()->SetLevel(vsag::Logger::Level::kDEBUG);
 
     int64_t num_vectors = 1000;
     int64_t dim = 64;
@@ -350,7 +350,7 @@ TEST_CASE("serialize/deserialize hnswstatic with file stream", "[ft][index]") {
 }
 
 TEST_CASE("search on a deserialized empty index", "[ft][index]") {
-    vsag::Options::Instance().logger()->SetLevel(vsag::Logger::Level::DEBUG);
+    vsag::Options::Instance().logger()->SetLevel(vsag::Logger::Level::kDEBUG);
 
     int64_t num_vectors = 1000;
     int64_t dim = 64;
@@ -407,7 +407,7 @@ TEST_CASE("search on a deserialized empty index", "[ft][index]") {
 }
 
 TEST_CASE("remove vectors from the index", "[ft][index]") {
-    vsag::Options::Instance().logger()->SetLevel(vsag::Logger::Level::DEBUG);
+    vsag::Options::Instance().logger()->SetLevel(vsag::Logger::Level::kDEBUG);
     int64_t num_vectors = 10000;
     int64_t dim = 64;
     auto index_name = GENERATE("fresh_hnsw", "hnsw", "diskann");
@@ -514,7 +514,7 @@ TEST_CASE("remove vectors from the index", "[ft][index]") {
 }
 
 TEST_CASE("index with bsa", "[ft][index]") {
-    vsag::Options::Instance().logger()->SetLevel(vsag::Logger::Level::DEBUG);
+    vsag::Options::Instance().logger()->SetLevel(vsag::Logger::Level::kDEBUG);
     int64_t num_vectors = 1000;
     int64_t dim = 128;
     auto index_name = GENERATE("diskann");
@@ -574,7 +574,7 @@ TEST_CASE("index with bsa", "[ft][index]") {
 /////////////////////////////////////////////////////////
 
 TEST_CASE("check correct build parameters", "[ft][index]") {
-    vsag::Options::Instance().logger()->SetLevel(vsag::Logger::Level::DEBUG);
+    vsag::Options::Instance().logger()->SetLevel(vsag::Logger::Level::kDEBUG);
 
     auto json_string = R"(
     {
@@ -598,7 +598,7 @@ TEST_CASE("check correct build parameters", "[ft][index]") {
 }
 
 TEST_CASE("check incorrect build parameters", "[ft][index]") {
-    vsag::Options::Instance().logger()->SetLevel(vsag::Logger::Level::DEBUG);
+    vsag::Options::Instance().logger()->SetLevel(vsag::Logger::Level::kDEBUG);
 
     // dtype is missing
     auto json_string = R"(
@@ -623,7 +623,7 @@ TEST_CASE("check incorrect build parameters", "[ft][index]") {
 }
 
 TEST_CASE("check correct search parameters", "[ft][index]") {
-    vsag::Options::Instance().logger()->SetLevel(vsag::Logger::Level::DEBUG);
+    vsag::Options::Instance().logger()->SetLevel(vsag::Logger::Level::kDEBUG);
 
     auto json_string = R"(
         {
@@ -643,7 +643,7 @@ TEST_CASE("check correct search parameters", "[ft][index]") {
 }
 
 TEST_CASE("check incorrect search parameters", "[ft][index]") {
-    vsag::Options::Instance().logger()->SetLevel(vsag::Logger::Level::DEBUG);
+    vsag::Options::Instance().logger()->SetLevel(vsag::Logger::Level::kDEBUG);
 
     auto json_string = R"(
         {
@@ -664,7 +664,7 @@ TEST_CASE("check incorrect search parameters", "[ft][index]") {
 }
 
 TEST_CASE("generate build parameters", "[ft][index]") {
-    vsag::Options::Instance().logger()->SetLevel(vsag::Logger::Level::DEBUG);
+    vsag::Options::Instance().logger()->SetLevel(vsag::Logger::Level::kDEBUG);
 
     auto metric_type = GENERATE("l2", "IP");
     auto num_elements = GENERATE(1'000'000,
@@ -689,7 +689,7 @@ TEST_CASE("generate build parameters", "[ft][index]") {
 }
 
 TEST_CASE("generate build parameters with invalid num_elements", "[ft][index]") {
-    vsag::Options::Instance().logger()->SetLevel(vsag::Logger::Level::DEBUG);
+    vsag::Options::Instance().logger()->SetLevel(vsag::Logger::Level::kDEBUG);
 
     auto metric_type = GENERATE("l2", "IP");
     auto num_elements = GENERATE(-1'000'000, -1, 0, 17'000'001, 1'000'000'000);
@@ -702,7 +702,7 @@ TEST_CASE("generate build parameters with invalid num_elements", "[ft][index]") 
 }
 
 TEST_CASE("generate build parameters with invalid dim", "[ft][index]") {
-    vsag::Options::Instance().logger()->SetLevel(vsag::Logger::Level::DEBUG);
+    vsag::Options::Instance().logger()->SetLevel(vsag::Logger::Level::kDEBUG);
 
     auto metric_type = GENERATE("l2", "IP");
     int64_t num_elements = 1'000'000;
@@ -715,7 +715,7 @@ TEST_CASE("generate build parameters with invalid dim", "[ft][index]") {
 }
 
 TEST_CASE("build index with generated_build_parameters", "[ft][index]") {
-    vsag::Options::Instance().logger()->SetLevel(vsag::Logger::Level::DEBUG);
+    vsag::Options::Instance().logger()->SetLevel(vsag::Logger::Level::kDEBUG);
 
     int64_t num_vectors = 1000;
     int64_t dim = 64;
@@ -768,7 +768,7 @@ TEST_CASE("build index with generated_build_parameters", "[ft][index]") {
 
 TEST_CASE("hnsw + feedback with global optimum id", "[ft][index][hnsw]") {
     auto logger = vsag::Options::Instance().logger();
-    logger->SetLevel(vsag::Logger::Level::DEBUG);
+    logger->SetLevel(vsag::Logger::Level::kDEBUG);
 
     // parameters
     int dim = 128;
@@ -876,7 +876,7 @@ TEST_CASE("hnsw + feedback with global optimum id", "[ft][index][hnsw]") {
 
 TEST_CASE("static hnsw + feedback without global optimum id", "[ft][index][hnsw]") {
     auto logger = vsag::Options::Instance().logger();
-    logger->SetLevel(vsag::Logger::Level::DEBUG);
+    logger->SetLevel(vsag::Logger::Level::kDEBUG);
 
     // parameters
     int dim = 128;
@@ -984,7 +984,7 @@ TEST_CASE("static hnsw + feedback without global optimum id", "[ft][index][hnsw]
 }
 
 TEST_CASE("using indexes that do not support conjunctive graph", "[ft][index]") {
-    vsag::Options::Instance().logger()->SetLevel(vsag::Logger::Level::DEBUG);
+    vsag::Options::Instance().logger()->SetLevel(vsag::Logger::Level::kDEBUG);
     int64_t num_vectors = 1000;
     int64_t dim = 64;
     auto index_name = GENERATE("diskann");
