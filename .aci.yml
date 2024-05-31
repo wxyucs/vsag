@@ -153,7 +153,7 @@ vsag_build_cov_ft_shard0:
           export GTEST_OUTPUT="xml:$(pwd)/vsag/testresult/gtest/"
           bash scripts/deps/install_deps_centos.sh
           echo "install_deps finished at `date +'%Y-%m-%d %H:%M:%S'`"
-          make test_cov CASE="[ft]" SHARD="--shard-count 2 --shard-index 0"
+          make test_cov CASE="[ft]" SHARD="--shard-count 4 --shard-index 0"
           echo "test_cov finished at `date +'%Y-%m-%d %H:%M:%S'`"
           bash scripts/aci/collect_cpp_coverage.sh
           echo "collect_coverage finished at `date +'%Y-%m-%d %H:%M:%S'`"
@@ -200,7 +200,105 @@ vsag_build_cov_ft_shard1:
           export GTEST_OUTPUT="xml:$(pwd)/vsag/testresult/gtest/"
           bash scripts/deps/install_deps_centos.sh
           echo "install_deps finished at `date +'%Y-%m-%d %H:%M:%S'`"
-          make test_cov CASE="[ft]" SHARD="--shard-count 2 --shard-index 1"
+          make test_cov CASE="[ft]" SHARD="--shard-count 4 --shard-index 1"
+          echo "test_cov finished at `date +'%Y-%m-%d %H:%M:%S'`"
+          bash scripts/aci/collect_cpp_coverage.sh
+          echo "collect_coverage finished at `date +'%Y-%m-%d %H:%M:%S'`"
+    - plugin: coverage-client-upload-compass
+      inputs:
+        filePath: vsag/testresult/coverage/cobertura.xml
+  publisher:
+    archiveArtifacts:
+      artifacts: 'vsag/testresult/'
+      allowEmptyArchive: true
+    junit:
+      testResults: 'vsag/testresult/gtest/TEST-*.xml'
+      allowEmptyResults: true
+  timeout: 60
+  allowFailure: false
+
+vsag_build_cov_ft_shard2:
+  stage: BUILD_UT
+  checkRule:
+    - (CHANGE_LINE_NUMBER <= 10 && diffCoverage > 80) || (CHANGE_LINE_NUMBER > 10 && diffCoverage > 90)
+  agent:
+    #resourceClass: S #2C4G
+    #resourceClass: M #4C8G
+    resourceClass: L #8C16G
+  steps:
+    # - plugin: clone
+    - plugin: shell
+      inputs:
+        image: ${image_vsag}
+        command:
+        - |
+          echo "clone source codes..."
+          git clone http://ice_test:${ACI_VAR_ICE_CODE_PASSWORD}@gitlab.alipay-inc.com/octopus/vsag.git
+          cd vsag
+          git checkout ${ACI_COMMIT_REF_NAME}
+          git fetch --tags
+          #
+          echo "running unittests..."
+          osscmd config --host=${OSS_HOST} --id=${OSS_ACCESS_KEY_ID} --key=${OSS_ACCESS_KEY_SECRET}
+          #
+          # download ccache
+          bash scripts/misc/ccache.sh
+          #
+          # compile
+          export PATH=/usr/lib/ccache:$PATH
+          export GTEST_OUTPUT="xml:$(pwd)/vsag/testresult/gtest/"
+          bash scripts/deps/install_deps_centos.sh
+          echo "install_deps finished at `date +'%Y-%m-%d %H:%M:%S'`"
+          make test_cov CASE="[ft]" SHARD="--shard-count 4 --shard-index 2"
+          echo "test_cov finished at `date +'%Y-%m-%d %H:%M:%S'`"
+          bash scripts/aci/collect_cpp_coverage.sh
+          echo "collect_coverage finished at `date +'%Y-%m-%d %H:%M:%S'`"
+    - plugin: coverage-client-upload-compass
+      inputs:
+        filePath: vsag/testresult/coverage/cobertura.xml
+  publisher:
+    archiveArtifacts:
+      artifacts: 'vsag/testresult/'
+      allowEmptyArchive: true
+    junit:
+      testResults: 'vsag/testresult/gtest/TEST-*.xml'
+      allowEmptyResults: true
+  timeout: 60
+  allowFailure: false
+
+vsag_build_cov_ft_shard3:
+  stage: BUILD_UT
+  checkRule:
+    - (CHANGE_LINE_NUMBER <= 10 && diffCoverage > 80) || (CHANGE_LINE_NUMBER > 10 && diffCoverage > 90)
+  agent:
+    #resourceClass: S #2C4G
+    #resourceClass: M #4C8G
+    resourceClass: L #8C16G
+  steps:
+    # - plugin: clone
+    - plugin: shell
+      inputs:
+        image: ${image_vsag}
+        command:
+        - |
+          echo "clone source codes..."
+          git clone http://ice_test:${ACI_VAR_ICE_CODE_PASSWORD}@gitlab.alipay-inc.com/octopus/vsag.git
+          cd vsag
+          git checkout ${ACI_COMMIT_REF_NAME}
+          git fetch --tags
+          #
+          echo "running unittests..."
+          osscmd config --host=${OSS_HOST} --id=${OSS_ACCESS_KEY_ID} --key=${OSS_ACCESS_KEY_SECRET}
+          #
+          # download ccache
+          bash scripts/misc/ccache.sh
+          #
+          # compile
+          export PATH=/usr/lib/ccache:$PATH
+          export GTEST_OUTPUT="xml:$(pwd)/vsag/testresult/gtest/"
+          bash scripts/deps/install_deps_centos.sh
+          echo "install_deps finished at `date +'%Y-%m-%d %H:%M:%S'`"
+          make test_cov CASE="[ft]" SHARD="--shard-count 4 --shard-index 3"
           echo "test_cov finished at `date +'%Y-%m-%d %H:%M:%S'`"
           bash scripts/aci/collect_cpp_coverage.sh
           echo "collect_coverage finished at `date +'%Y-%m-%d %H:%M:%S'`"
@@ -294,7 +392,7 @@ vsag_build_asan_ft_shard0:
           export PATH=/usr/lib/ccache:$PATH
           export GTEST_OUTPUT="xml:$(pwd)/vsag/testresult/gtest/"
           bash scripts/deps/install_deps_centos.sh
-          make test_asan CASE="[ft]" SHARD="--shard-count 2 --shard-index 0"
+          make test_asan CASE="[ft]" SHARD="--shard-count 4 --shard-index 0"
           #
     - plugin: memcheck-log-parser
       inputs:
@@ -342,7 +440,103 @@ vsag_build_asan_ft_shard1:
           export PATH=/usr/lib/ccache:$PATH
           export GTEST_OUTPUT="xml:$(pwd)/vsag/testresult/gtest/"
           bash scripts/deps/install_deps_centos.sh
-          make test_asan CASE="[ft]" SHARD="--shard-count 2 --shard-index 1"
+          make test_asan CASE="[ft]" SHARD="--shard-count 4 --shard-index 1"
+          #
+    - plugin: memcheck-log-parser
+      inputs:
+        tools: "asan ubsan"
+        log_file_path: "testresult/"
+        upload: "true"
+      outputs:
+        - memory_check_error
+  publisher:
+    archiveArtifacts:
+      artifacts: 'vsag/testresult/'
+      allowEmptyArchive: true
+    junit:
+      testResults: 'vsag/testresult/gtest/TEST-*.xml'
+      allowEmptyResults: true
+  timeout: 60
+  allowFailure: false
+
+vsag_build_asan_ft_shard2:
+  stage: BUILD_UT
+  agent:
+    #resourceClass: S #2C4G
+    resourceClass: M #4C8G
+    #resourceClass: L #8C16G
+  steps:
+    # - plugin: clone
+    - plugin: shell
+      inputs:
+        image: ${image_vsag}
+        command:
+        - |
+          echo "clone source codes..."
+          git clone http://ice_test:${ACI_VAR_ICE_CODE_PASSWORD}@gitlab.alipay-inc.com/octopus/vsag.git
+          cd vsag
+          git checkout ${ACI_COMMIT_REF_NAME}
+          git fetch --tags
+          #
+          echo "running unittests..."
+          osscmd config --host=${OSS_HOST} --id=${OSS_ACCESS_KEY_ID} --key=${OSS_ACCESS_KEY_SECRET}
+          #
+          # download ccache
+          bash scripts/misc/ccache.sh
+          #
+          # compile
+          export PATH=/usr/lib/ccache:$PATH
+          export GTEST_OUTPUT="xml:$(pwd)/vsag/testresult/gtest/"
+          bash scripts/deps/install_deps_centos.sh
+          make test_asan CASE="[ft]" SHARD="--shard-count 4 --shard-index 2"
+          #
+    - plugin: memcheck-log-parser
+      inputs:
+        tools: "asan ubsan"
+        log_file_path: "testresult/"
+        upload: "true"
+      outputs:
+        - memory_check_error
+  publisher:
+    archiveArtifacts:
+      artifacts: 'vsag/testresult/'
+      allowEmptyArchive: true
+    junit:
+      testResults: 'vsag/testresult/gtest/TEST-*.xml'
+      allowEmptyResults: true
+  timeout: 60
+  allowFailure: false
+
+vsag_build_asan_ft_shard3:
+  stage: BUILD_UT
+  agent:
+    #resourceClass: S #2C4G
+    resourceClass: M #4C8G
+    #resourceClass: L #8C16G
+  steps:
+    # - plugin: clone
+    - plugin: shell
+      inputs:
+        image: ${image_vsag}
+        command:
+        - |
+          echo "clone source codes..."
+          git clone http://ice_test:${ACI_VAR_ICE_CODE_PASSWORD}@gitlab.alipay-inc.com/octopus/vsag.git
+          cd vsag
+          git checkout ${ACI_COMMIT_REF_NAME}
+          git fetch --tags
+          #
+          echo "running unittests..."
+          osscmd config --host=${OSS_HOST} --id=${OSS_ACCESS_KEY_ID} --key=${OSS_ACCESS_KEY_SECRET}
+          #
+          # download ccache
+          bash scripts/misc/ccache.sh
+          #
+          # compile
+          export PATH=/usr/lib/ccache:$PATH
+          export GTEST_OUTPUT="xml:$(pwd)/vsag/testresult/gtest/"
+          bash scripts/deps/install_deps_centos.sh
+          make test_asan CASE="[ft]" SHARD="--shard-count 4 --shard-index 3"
           #
     - plugin: memcheck-log-parser
       inputs:
@@ -365,13 +559,13 @@ merge_vsag_coverage:
   stage: MERGE_COVERAGE
   aciTags: DOCKER
   checkRule:
-    - (CHANGE_LINE_NUMBER <= 20 && diffCoverage > 70) || (CHANGE_LINE_NUMBER > 20 && diffCoverage > 80)
+    - (CHANGE_LINE_NUMBER >= 0 && coverage >= 90) && ( (CHANGE_LINE_NUMBER <= 20 && diffCoverage > 70) || (CHANGE_LINE_NUMBER > 20 && diffCoverage > 80) )
   variables:
     - CHANGE_LINE_NUMBER
   steps:
     - plugin: coverage-merge
       inputs:
-        job_names: "vsag_build_cov_ut, vsag_build_cov_ft_shard0, vsag_build_cov_ft_shard1, vsag_build_asan_ut, vsag_build_asan_ft_shard0, vsag_build_asan_ft_shard1"
+        job_names: "vsag_build_cov_ut, vsag_build_cov_ft_shard0, vsag_build_cov_ft_shard1, vsag_build_cov_ft_shard2, vsag_build_cov_ft_shard3, vsag_build_asan_ut, vsag_build_asan_ft_shard0, vsag_build_asan_ft_shard1, vsag_build_asan_ft_shard2, vsag_build_asan_ft_shard3"
     - plugin: coverage-client-upload-compass
       inputs:
         filePath: ./merge_report/cobertura.xml
