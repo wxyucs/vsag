@@ -12,6 +12,8 @@
 
 namespace vsag {
 
+static std::shared_ptr<DefaultAllocator> _default_allocator = std::make_shared<DefaultAllocator>();
+
 Options&
 Options::Instance() {
     static Options s_instance;
@@ -21,9 +23,9 @@ Options::Instance() {
 Allocator*
 Options::allocator() {
     if (not global_allocator_) {
-        this->set_allocator(std::make_unique<DefaultAllocator>());
+        this->set_allocator(_default_allocator.get());
     }
-    return global_allocator_.get();
+    return global_allocator_;
 }
 
 LoggerPtr

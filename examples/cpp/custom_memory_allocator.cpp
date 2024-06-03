@@ -31,8 +31,9 @@ public:
 
 int
 main() {
+    ExampleAllocator allocator;
     // set allocator before creating any index
-    vsag::Options::Instance().set_allocator(std::make_unique<ExampleAllocator>());
+    vsag::Options::Instance().set_allocator(&allocator);
 
     auto paramesters = R"(
     {

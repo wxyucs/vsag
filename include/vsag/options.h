@@ -2,6 +2,7 @@
 
 #include <atomic>
 #include <memory>
+#include <mutex>
 #include <string>
 
 #include "vsag/allocator.h"
@@ -41,12 +42,12 @@ public:
     allocator();
 
     inline bool
-    set_allocator(std::unique_ptr<Allocator> allocator) {
+    set_allocator(Allocator* allocator) {
         if (global_allocator_) {
             // logger_->warn("global allocator will only be set once.");
             return false;
         }
-        global_allocator_ = std::move(allocator);
+        global_allocator_ = allocator;
         return true;
     }
 
@@ -73,11 +74,11 @@ private:
     // In a single query, the space size used to store disk vectors.
     std::atomic<size_t> sector_size_ = 512;
 
-    // The allocator will only be set once.
-    std::unique_ptr<Allocator> global_allocator_;
-
     // The size of the maximum memory allocated each time (default is 128MB)
     std::atomic<size_t> block_size_limit_ = 128 * 1024 * 1024;
+
+    // The allocator will only be set once.
+    Allocator* global_allocator_ = nullptr;
 
     LoggerPtr logger_ = nullptr;
 };
