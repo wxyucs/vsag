@@ -18,3 +18,6 @@ target_link_libraries(example_conjugate_graph vsag)
 
 add_executable (custom_memory_allocator custom_memory_allocator.cpp)
 target_link_libraries(custom_memory_allocator vsag)
+
+add_executable (custom_logger custom_logger.cpp)
+target_link_libraries(custom_logger vsag)

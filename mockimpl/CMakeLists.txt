@@ -3,6 +3,8 @@ add_library (vsag_mockimpl SHARED vsag/simpleflat.cpp vsag/factory.cpp ../src/bi
 add_library (vsag_mockimpl_static STATIC vsag/simpleflat.cpp vsag/factory.cpp ../src/bitset_impl.cpp)
 target_link_libraries (vsag_mockimpl roaring)
 target_link_libraries (vsag_mockimpl_static roaring)
+add_dependencies (vsag_mockimpl version_mockimpl roaringbitmap)
+add_dependencies (vsag_mockimpl_static version_mockimpl roaringbitmap)
 
 add_executable (example_diskann_mockimpl ../examples/cpp/example_diskann.cpp)
 target_link_libraries (example_diskann_mockimpl vsag_mockimpl)
@@ -21,8 +23,8 @@ add_custom_target (version_mockimpl
                    -D GIT_EXECUTABLE=${GIT_EXECUTABLE}
                    -P ${CMAKE_SOURCE_DIR}/cmake/GenerateVersionHeader.cmake
   )
-add_dependencies (vsag_mockimpl version_mockimpl roaringbitmap)
-add_dependencies (vsag_mockimpl_static version_mockimpl roaringbitmap)
+add_dependencies (vsag_mockimpl version_mockimpl)
+add_dependencies (vsag_mockimpl_static version_mockimpl)
 
 if (ENABLE_TESTS)
     add_executable (tests_mockimpl

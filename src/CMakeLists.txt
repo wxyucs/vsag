@@ -18,3 +18,4 @@ set (VSAG_DEP_LIBS diskann pthread m dl simd fmt::fmt-header-only nlohmann_json:
 target_link_libraries (vsag ${VSAG_DEP_LIBS})
 target_link_libraries (vsag_static ${VSAG_DEP_LIBS})
 add_dependencies (vsag spdlog roaringbitmap)
+add_dependencies (vsag_static spdlog roaringbitmap)

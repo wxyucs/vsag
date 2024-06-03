@@ -31,6 +31,7 @@ Factory::CreateIndex(const std::string& origin_name, const std::string& paramete
         if (name == INDEX_HNSW) {
             // read parameters from json, throw exception if not exists
             auto params = CreateHnswParameters::FromJson(parameters);
+            logger::debug("created a hnsw index");
             return std::make_shared<HNSW>(params.space,
                                           params.max_degree,
                                           params.ef_construction,
@@ -40,6 +41,7 @@ Factory::CreateIndex(const std::string& origin_name, const std::string& paramete
         } else if (name == INDEX_FRESH_HNSW) {
             // read parameters from json, throw exception if not exists
             auto params = CreateFreshHnswParameters::FromJson(parameters);
+            logger::debug("created a fresh-hnsw index");
             return std::make_shared<HNSW>(params.space,
                                           params.max_degree,
                                           params.ef_construction,
@@ -48,6 +50,7 @@ Factory::CreateIndex(const std::string& origin_name, const std::string& paramete
         } else if (name == INDEX_DISKANN) {
             // read parameters from json, throw exception if not exists
             auto params = CreateDiskannParameters::FromJson(parameters);
+            logger::debug("created a diskann index");
             return std::make_shared<DiskANN>(params.metric,
                                              params.dtype,
                                              params.max_degree,

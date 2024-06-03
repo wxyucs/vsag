@@ -38,14 +38,13 @@ TEST_CASE("sse l2 simd16", "[ut][simd][sse]") {
 TEST_CASE("sse ip simd4", "[ut][simd][sse]") {
 #if defined(ENABLE_SSE)
     if (cpuinfo_has_x86_sse()) {
-        size_t dim = 8;
+        size_t dim = 20;
         auto vectors = fixtures::generate_vectors(2, dim);
 
         fixtures::dist_t distance =
             vsag::InnerProductSIMD4ExtSSE(vectors.data(), vectors.data() + dim, &dim);
         fixtures::dist_t expected_distance =
             vsag::InnerProduct(vectors.data(), vectors.data() + dim, &dim);
-        // REQUIRE(distance == expected_distance);
         REQUIRE(distance == expected_distance);
     }
 #endif
