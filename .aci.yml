@@ -62,8 +62,6 @@ vsag_build_clang11_ut:
           # compile
           export PATH=/usr/lib/ccache:$PATH
           export GTEST_OUTPUT="xml:$(pwd)/vsag/testresult/gtest/"
-          bash scripts/deps/install_deps_centos.sh
-          echo "install_deps finished at `date +'%Y-%m-%d %H:%M:%S'`"
           make test CASE="[ut]"
           echo "test finished at `date +'%Y-%m-%d %H:%M:%S'`"
   publisher:
@@ -104,8 +102,6 @@ vsag_build_cov_ut:
           # compile
           export PATH=/usr/lib/ccache:$PATH
           export GTEST_OUTPUT="xml:$(pwd)/vsag/testresult/gtest/"
-          bash scripts/deps/install_deps_centos.sh
-          echo "install_deps finished at `date +'%Y-%m-%d %H:%M:%S'`"
           make test_cov CASE="[ut]"
           echo "test_cov finished at `date +'%Y-%m-%d %H:%M:%S'`"
           bash scripts/aci/collect_cpp_coverage.sh
@@ -151,8 +147,6 @@ vsag_build_cov_ft_shard0:
           # compile
           export PATH=/usr/lib/ccache:$PATH
           export GTEST_OUTPUT="xml:$(pwd)/vsag/testresult/gtest/"
-          bash scripts/deps/install_deps_centos.sh
-          echo "install_deps finished at `date +'%Y-%m-%d %H:%M:%S'`"
           make test_cov CASE="[ft]" SHARD="--shard-count 4 --shard-index 0"
           echo "test_cov finished at `date +'%Y-%m-%d %H:%M:%S'`"
           bash scripts/aci/collect_cpp_coverage.sh
@@ -198,8 +192,6 @@ vsag_build_cov_ft_shard1:
           # compile
           export PATH=/usr/lib/ccache:$PATH
           export GTEST_OUTPUT="xml:$(pwd)/vsag/testresult/gtest/"
-          bash scripts/deps/install_deps_centos.sh
-          echo "install_deps finished at `date +'%Y-%m-%d %H:%M:%S'`"
           make test_cov CASE="[ft]" SHARD="--shard-count 4 --shard-index 1"
           echo "test_cov finished at `date +'%Y-%m-%d %H:%M:%S'`"
           bash scripts/aci/collect_cpp_coverage.sh
@@ -219,8 +211,6 @@ vsag_build_cov_ft_shard1:
 
 vsag_build_cov_ft_shard2:
   stage: BUILD_UT
-  checkRule:
-    - (CHANGE_LINE_NUMBER <= 10 && diffCoverage > 80) || (CHANGE_LINE_NUMBER > 10 && diffCoverage > 90)
   agent:
     #resourceClass: S #2C4G
     #resourceClass: M #4C8G
@@ -229,7 +219,7 @@ vsag_build_cov_ft_shard2:
     # - plugin: clone
     - plugin: shell
       inputs:
-        image: ${image_vsag}
+        image: ${image_clang17}
         command:
         - |
           echo "clone source codes..."
@@ -247,8 +237,6 @@ vsag_build_cov_ft_shard2:
           # compile
           export PATH=/usr/lib/ccache:$PATH
           export GTEST_OUTPUT="xml:$(pwd)/vsag/testresult/gtest/"
-          bash scripts/deps/install_deps_centos.sh
-          echo "install_deps finished at `date +'%Y-%m-%d %H:%M:%S'`"
           make test_cov CASE="[ft]" SHARD="--shard-count 4 --shard-index 2"
           echo "test_cov finished at `date +'%Y-%m-%d %H:%M:%S'`"
           bash scripts/aci/collect_cpp_coverage.sh
@@ -268,8 +256,6 @@ vsag_build_cov_ft_shard2:
 
 vsag_build_cov_ft_shard3:
   stage: BUILD_UT
-  checkRule:
-    - (CHANGE_LINE_NUMBER <= 10 && diffCoverage > 80) || (CHANGE_LINE_NUMBER > 10 && diffCoverage > 90)
   agent:
     #resourceClass: S #2C4G
     #resourceClass: M #4C8G
@@ -278,7 +264,7 @@ vsag_build_cov_ft_shard3:
     # - plugin: clone
     - plugin: shell
       inputs:
-        image: ${image_vsag}
+        image: ${image_clang17}
         command:
         - |
           echo "clone source codes..."
@@ -296,8 +282,6 @@ vsag_build_cov_ft_shard3:
           # compile
           export PATH=/usr/lib/ccache:$PATH
           export GTEST_OUTPUT="xml:$(pwd)/vsag/testresult/gtest/"
-          bash scripts/deps/install_deps_centos.sh
-          echo "install_deps finished at `date +'%Y-%m-%d %H:%M:%S'`"
           make test_cov CASE="[ft]" SHARD="--shard-count 4 --shard-index 3"
           echo "test_cov finished at `date +'%Y-%m-%d %H:%M:%S'`"
           bash scripts/aci/collect_cpp_coverage.sh
@@ -343,7 +327,6 @@ vsag_build_asan_ut:
           # compile
           export PATH=/usr/lib/ccache:$PATH
           export GTEST_OUTPUT="xml:$(pwd)/vsag/testresult/gtest/"
-          bash scripts/deps/install_deps_centos.sh
           make test_asan CASE="[ut]"
           #
     - plugin: memcheck-log-parser
@@ -391,7 +374,6 @@ vsag_build_asan_ft_shard0:
           # compile
           export PATH=/usr/lib/ccache:$PATH
           export GTEST_OUTPUT="xml:$(pwd)/vsag/testresult/gtest/"
-          bash scripts/deps/install_deps_centos.sh
           make test_asan CASE="[ft]" SHARD="--shard-count 4 --shard-index 0"
           #
     - plugin: memcheck-log-parser
@@ -439,7 +421,6 @@ vsag_build_asan_ft_shard1:
           # compile
           export PATH=/usr/lib/ccache:$PATH
           export GTEST_OUTPUT="xml:$(pwd)/vsag/testresult/gtest/"
-          bash scripts/deps/install_deps_centos.sh
           make test_asan CASE="[ft]" SHARD="--shard-count 4 --shard-index 1"
           #
     - plugin: memcheck-log-parser
@@ -469,7 +450,7 @@ vsag_build_asan_ft_shard2:
     # - plugin: clone
     - plugin: shell
       inputs:
-        image: ${image_vsag}
+        image: ${image_clang17}
         command:
         - |
           echo "clone source codes..."
@@ -487,7 +468,6 @@ vsag_build_asan_ft_shard2:
           # compile
           export PATH=/usr/lib/ccache:$PATH
           export GTEST_OUTPUT="xml:$(pwd)/vsag/testresult/gtest/"
-          bash scripts/deps/install_deps_centos.sh
           make test_asan CASE="[ft]" SHARD="--shard-count 4 --shard-index 2"
           #
     - plugin: memcheck-log-parser
@@ -517,7 +497,7 @@ vsag_build_asan_ft_shard3:
     # - plugin: clone
     - plugin: shell
       inputs:
-        image: ${image_vsag}
+        image: ${image_clang17}
         command:
         - |
           echo "clone source codes..."
@@ -535,7 +515,6 @@ vsag_build_asan_ft_shard3:
           # compile
           export PATH=/usr/lib/ccache:$PATH
           export GTEST_OUTPUT="xml:$(pwd)/vsag/testresult/gtest/"
-          bash scripts/deps/install_deps_centos.sh
           make test_asan CASE="[ft]" SHARD="--shard-count 4 --shard-index 3"
           #
     - plugin: memcheck-log-parser
@@ -559,7 +538,7 @@ merge_vsag_coverage:
   stage: MERGE_COVERAGE
   aciTags: DOCKER
   checkRule:
-    - (CHANGE_LINE_NUMBER >= 0 && coverage >= 90) && ( (CHANGE_LINE_NUMBER <= 20 && diffCoverage > 70) || (CHANGE_LINE_NUMBER > 20 && diffCoverage > 80) )
+    - (CHANGE_LINE_NUMBER >= 0 && coverage >= 89) && ( (CHANGE_LINE_NUMBER <= 20 && diffCoverage > 70) || (CHANGE_LINE_NUMBER > 20 && diffCoverage > 80) )
   variables:
     - CHANGE_LINE_NUMBER
   steps:

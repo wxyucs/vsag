@@ -430,7 +430,7 @@ TEST_CASE("remove vectors from the index", "[ft][index]") {
     }
     )";
 
-    if (index_name != "diskann") {  // index that supports remove
+    if ((std::string)index_name != "diskann") {  // index that supports remove
         // remove half data
 
         int correct = 0;

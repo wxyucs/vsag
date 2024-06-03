@@ -44,8 +44,11 @@ endif ()
 
 add_library(diskann STATIC ${DISKANN_SOURCES})
 add_dependencies(diskann aio boost openblas)
+if (CMAKE_HOST_SYSTEM_PROCESSOR STREQUAL "x86_64" AND ENABLE_INTEL_MKL)
+  add_dependencies(diskann mkl)
+endif()
 target_link_libraries(diskann
   libaio.a
   ${BLAS_LIBRARIES}
   gfortran
-  )
+)

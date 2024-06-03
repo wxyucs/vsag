@@ -23,6 +23,10 @@ option (ENABLE_CCACHE "Whether to open ccache" OFF)
 option (ENABLE_COVERAGE "Enable gcov (debug, Linux builds only)" OFF)
 option (ENABLE_INTEL_MKL "Enable intel-mkl (x86 platform only)" ON)
 
+if (ENABLE_WERROR)
+    add_compile_options(-Werror)
+endif()
+
 if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
     if (CMAKE_CXX_COMPILER_VERSION VERSION_EQUAL 17 OR CMAKE_CXX_COMPILER_VERSION VERSION_GREATER 17)
         set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -gdwarf-4")

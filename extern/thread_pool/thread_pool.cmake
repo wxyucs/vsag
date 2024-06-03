@@ -9,4 +9,3 @@ FetchContent_Declare(
 
 FetchContent_MakeAvailable(thread_pool)
 include_directories(${thread_pool_SOURCE_DIR}/)
-

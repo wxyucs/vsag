@@ -54,7 +54,7 @@ TEST_CASE("sse ip simd4", "[ut][simd][sse]") {
 TEST_CASE("sse ip simd16", "[ut][simd][sse]") {
 #if defined(ENABLE_SSE)
     if (cpuinfo_has_x86_sse()) {
-        size_t dim = 16;
+        size_t dim = 32;
         auto vectors = fixtures::generate_vectors(2, dim);
 
         fixtures::dist_t distance =

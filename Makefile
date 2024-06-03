@@ -47,10 +47,24 @@ test:                   ## Build and run unit tests.
 	./build/tests/functests -d yes ${UT_FILTER} --allow-running-no-tests ${UT_SHARD}
 	./build/mockimpl/tests_mockimpl -d yes ${UT_FILTER} --allow-running-no-tests ${UT_SHARD}
 
-.PHONY: test_asan
-test_asan:              ## Build and run unit tests with AddressSanitizer option.
+.PHONY: asan
+asan:                   ## Build with AddressSanitizer option.
 	cmake ${VSAG_CMAKE_ARGS} -DCMAKE_BUILD_TYPE=Debug -DENABLE_ASAN=ON -DENABLE_CCACHE=ON
 	cmake --build build --parallel ${COMPILE_JOBS}
+
+.PHONY: test_asan
+test_asan: asan         ## Run unit tests with AddressSanitizer option.
+	./build/tests/unittests -d yes ${UT_FILTER} --allow-running-no-tests ${UT_SHARD}
+	./build/tests/functests -d yes ${UT_FILTER} --allow-running-no-tests ${UT_SHARD}
+	./build/mockimpl/tests_mockimpl -d yes ${UT_FILTER} --allow-running-no-tests ${UT_SHARD}
+
+.PHONY: tsan
+tsan:                   ## Build with ThreadSanitizer option.
+	cmake ${VSAG_CMAKE_ARGS} -DCMAKE_BUILD_TYPE=Debug -DENABLE_TSAN=ON -DENABLE_CCACHE=ON
+	cmake --build build --parallel ${COMPILE_JOBS}
+
+.PHONY: test_tsan
+test_tsan: tsan         ## Run unit tests with ThreadSanitizer option.
 	./build/tests/unittests -d yes ${UT_FILTER} --allow-running-no-tests ${UT_SHARD}
 	./build/tests/functests -d yes ${UT_FILTER} --allow-running-no-tests ${UT_SHARD}
 	./build/mockimpl/tests_mockimpl -d yes ${UT_FILTER} --allow-running-no-tests ${UT_SHARD}
@@ -70,5 +84,5 @@ clean:                  ## Clear build/ directory.
 	rm -rf build/*
 
 .PHONY: install
-install: release          ## Build and install the release version of vsag.
+install:                ## Build and install the release version of vsag.
 	cmake --install build/

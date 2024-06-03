@@ -1,10 +1,10 @@
 # install python3-devel
-yum install -y python3-devel
+yum install -y gfortran python3-devel
 
-# install openmp
+# install openmp for alibaba clang 11
 yum install -b current -y libomp11-devel libomp11
 
-# install intel mkl
+# install Intel MKL
 yum install -y ca-certificates
 yum-config-manager --add-repo https://yum.repos.intel.com/mkl/setup/intel-mkl.repo
 rpm --import https://yum.repos.intel.com/intel-gpg-keys/GPG-PUB-KEY-INTEL-SW-PRODUCTS-2019.PUB

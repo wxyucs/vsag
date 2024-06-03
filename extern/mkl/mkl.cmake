@@ -1,17 +1,12 @@
 # find_package(MKL CONFIG REQUIRED)
 
-if (CMAKE_HOST_SYSTEM_PROCESSOR STREQUAL "x86_64")
+if (CMAKE_HOST_SYSTEM_PROCESSOR STREQUAL "x86_64" AND ENABLE_INTEL_MKL)
     set(POSSIBLE_OMP_PATHS "/opt/intel/oneapi/compiler/latest/linux/compiler/lib/intel64_lin/libiomp5.so;/usr/lib/x86_64-linux-gnu/libiomp5.so;/opt/intel/lib/intel64_lin/libiomp5.so;/opt/intel/compilers_and_libraries_2020.4.304/linux/compiler/lib/intel64_lin/libiomp5.so")
     foreach(POSSIBLE_OMP_PATH ${POSSIBLE_OMP_PATHS})
         if (EXISTS ${POSSIBLE_OMP_PATH})
             get_filename_component(OMP_PATH ${POSSIBLE_OMP_PATH} DIRECTORY)
         endif()
     endforeach()
-
-    if(NOT OMP_PATH)
-        message(FATAL_ERROR "Could not find Intel OMP in standard locations")
-    endif()
-    link_directories(${OMP_PATH})
 
     set(POSSIBLE_MKL_LIB_PATHS "/opt/intel/oneapi/mkl/latest/lib/intel64/libmkl_core.so;/usr/lib/x86_64-linux-gnu/libmkl_core.so;/opt/intel/mkl/lib/intel64/libmkl_core.so")
     foreach(POSSIBLE_MKL_LIB_PATH ${POSSIBLE_MKL_LIB_PATHS})
@@ -27,19 +22,35 @@ if (CMAKE_HOST_SYSTEM_PROCESSOR STREQUAL "x86_64")
         endif()
     endforeach()
 
-    if(NOT MKL_PATH)
-        message(FATAL_ERROR "Could not find Intel MKL in standard locations")
-    endif()
-    if(NOT MKL_INCLUDE_PATH)
-        message(FATAL_ERROR "Could not find Intel MKL in standard locations")
-    endif()
+    if(NOT MKL_PATH OR NOT OMP_PATH)
+        message("Could not find Intel OMP or MKL in standard locations. Download MKL package.")
+        # yum install -y intel-mkl-64bit-2020.0-088
+        ExternalProject_Add(
+            mkl
+            URL http://aivolvo-dev.cn-hangzhou-alipay-b.oss-cdn.aliyun-inc.com/vsag%2Fthird-party%2Fintel-mkl-64bit-2020.0-088.tar.gz
+            URL_HASH MD5=07a5c134a2ba88cfe3cdc331ca29c0aa
+            DOWNLOAD_DIR ${CMAKE_BINARY_DIR}/mkl_download
+            SOURCE_DIR ${CMAKE_BINARY_DIR}/mkl
+            CONFIGURE_COMMAND ""
+            BUILD_COMMAND ""
+            INSTALL_COMMAND ""
+            LOG_DOWNLOAD ON
+        )
 
-    if (EXISTS ${MKL_PATH}/libmkl_def.so.2)
-        set(MKL_DEF_SO ${MKL_PATH}/libmkl_def.so.2)
-    elseif(EXISTS ${MKL_PATH}/libmkl_def.so)
-        set(MKL_DEF_SO ${MKL_PATH}/libmkl_def.so)
+        ExternalProject_Get_Property(mkl SOURCE_DIR)
+        set(MKL_INSTALL_DIR ${SOURCE_DIR})
+        set(OMP_PATH ${MKL_INSTALL_DIR}/compilers_and_libraries/linux/lib/intel64_lin/)
+        link_directories(${OMP_PATH})
+        set(MKL_PATH ${MKL_INSTALL_DIR}/mkl/lib/intel64_lin/)
+        set(MKL_INCLUDE_PATH ${MKL_INSTALL_DIR}/mkl/include)
     else()
-        message(FATAL_ERROR "Despite finding MKL, libmkl_def.so was not found in expected locations.")
+        if (EXISTS ${MKL_PATH}/libmkl_def.so.2)
+            set(MKL_DEF_SO ${MKL_PATH}/libmkl_def.so.2)
+        elseif(EXISTS ${MKL_PATH}/libmkl_def.so)
+            set(MKL_DEF_SO ${MKL_PATH}/libmkl_def.so)
+        else()
+            message(FATAL_ERROR "Despite finding MKL, libmkl_def.so was not found in expected locations.")
+        endif()
     endif()
 
     link_directories (${MKL_PATH})
@@ -54,8 +65,12 @@ if (CMAKE_HOST_SYSTEM_PROCESSOR STREQUAL "x86_64")
         ${MKL_PATH}/libmkl_gf_lp64.so
         ${MKL_PATH}/libmkl_core.so
         ${MKL_PATH}/libmkl_intel_thread.so
-        iomp5
+        ${OMP_PATH}/libiomp5.so
     )
+
+    foreach(mkllib ${BLAS_LIBRARIES})
+        install(FILES ${mkllib} DESTINATION ${CMAKE_INSTALL_LIBDIR})
+    endforeach()
     message ("enable intel-mkl as blas backend")
 else ()
     set (BLAS_LIBRARIES

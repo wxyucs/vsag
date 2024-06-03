@@ -1,0 +1,35 @@
+version: "1.5"
+
+parameters:
+  image: reg.docker.alibaba-inc.com/tbase/tbase:dev-20240529-1-clang17
+
+stages:
+  - PACKAGE
+
+PACKAGE_VSAG:
+  id: PACKAGE_VSAG
+  stage: PACKAGE
+  component: ant-package-build
+  inputs:
+    image: ${{parameters.image}}
+    script: |
+      hostname -i
+      cd code-repo/
+      make release CMAKE_INSTALL_PREFIX=`pwd`/install
+      make install
+      packageName="vsag-${{pipeline.currentTimestamp}}-${{vcs.commitShortSha}}.tar.gz"
+      cd install
+      tar -zcvf $packageName *
+      ossutil config -e ${{parameters.VOLVO_OSS_HOST}} -i ${{secrets.VOLVO_OSS_ID}} -k ${{secrets.VOLVO_OSS_KEY}} -L EN
+      ossutil cp $packageName oss://aivolvo-dev/vsag/packages/$packageName
+      md5sum $packageName > package_message.txt
+      echo "oss://aivolvo-dev/vsag/packages/$packageName" >> package_message.txt
+      echo "http://aivolvo-dev.${{parameters.VOLVO_OSS_HOST}}/vsag/packages/$packageName" >> package_message.txt
+    artifacts:
+      - name: libvsag
+        type: file
+        path: code-repo/install/vsag-${{pipeline.currentTimestamp}}-${{vcs.commitShortSha}}.tar.gz
+      - name: package_message
+        type: file
+        path: code-repo/install/package_message.txt
+
