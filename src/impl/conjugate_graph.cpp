@@ -40,56 +40,40 @@ tl::expected<uint32_t, Error>
 ConjugateGraph::EnhanceResult(std::priority_queue<std::pair<float, size_t>>& results,
                               const std::function<float(int64_t)>& distance_of_tag) const {
     int64_t k = results.size();
-    bool find_new_local_optimum = false;
+    int64_t look_at_k = std::min(LOOK_AT_K, k);
     std::priority_queue<std::pair<float, size_t>> old_results(results);
-    std::unordered_set<int64_t> results_set;
-    int64_t local_optimum_tag_id;
-    float local_optimum_dist;
+    std::vector<int64_t> to_be_visited(look_at_k);
+    std::unordered_set<int64_t> visited_set;
     uint32_t successfully_enhanced = 0;
     float distance = 0;
 
-    // find current local optimum
-    for (int64_t j = old_results.size() - 1; j >= 0; --j) {
-        local_optimum_dist = old_results.top().first;
-        local_optimum_tag_id = old_results.top().second;
-        results_set.insert(local_optimum_tag_id);
+    // initialize visited_set
+    for (int j = old_results.size() - 1; j >= 0; j--) {
+        visited_set.insert(old_results.top().second);
+        if (j < look_at_k) {
+            to_be_visited[j] = old_results.top().second;
+        }
         old_results.pop();
     }
 
-    // multi-rounds enhancement for routing to global optimum
-    for (int i = 0; i < ENHANCE_ROUND; i++) {
-        const std::unordered_set<int64_t>& neighbors = get_neighbors(local_optimum_tag_id);
+    // add neighbors in conjugate graph to enhance result
+    for (int j = 0; j < look_at_k; j++) {
+        const std::unordered_set<int64_t>& neighbors = get_neighbors(to_be_visited[j]);
 
         for (auto neighbor_tag_id : neighbors) {
-            if (results_set.find(neighbor_tag_id) != results_set.end()) {
+            if (not visited_set.insert(neighbor_tag_id).second) {
                 continue;
             }
             distance = distance_of_tag(neighbor_tag_id);
-
             // insert into results
             if (distance < results.top().first) {
                 results.emplace(distance, neighbor_tag_id);
-                results_set.insert(neighbor_tag_id);
+                results.pop();
+                successfully_enhanced++;
             }
-
-            // update current local optimum
-            if (distance < local_optimum_dist) {
-                find_new_local_optimum = true;
-                local_optimum_tag_id = neighbor_tag_id;
-                local_optimum_dist = distance;
-            }
-        }
-
-        if (not find_new_local_optimum) {
-            break;
         }
     }
 
-    // result clean up
-    for (auto j = results.size(); j > k; j--) {
-        results.pop();
-        successfully_enhanced++;
-    }
     return successfully_enhanced;
 }
 

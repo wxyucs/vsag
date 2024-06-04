@@ -24,6 +24,9 @@ const static int64_t EXPANSION_NUM = 1000000;
 const static int64_t DEFAULT_MAX_ELEMENT = 500;
 const static int MINIMAL_M = 8;
 const static int MAXIMAL_M = 64;
+const static uint32_t GENERATE_SEARCH_K = 50;
+const static uint32_t GENERATE_SEARCH_L = 400;
+const static float GENERATE_OMEGA = 0.51;
 
 class Filter : public hnswlib::BaseFilterFunctor {
 public:
@@ -647,6 +650,74 @@ bool
 HNSW::CheckGraphIntegrity() const {
     auto* hnsw = static_cast<hnswlib::HierarchicalNSW*>(alg_hnsw.get());
     return hnsw->checkReverseConnection();
+}
+
+tl::expected<uint32_t, Error>
+HNSW::pretrain(const std::vector<int64_t>& base_tag_ids,
+               uint32_t k,
+               const std::string& parameters) {
+    if (not use_conjugate_graph_) {
+        LOG_ERROR_AND_RETURNS(ErrorType::UNSUPPORTED_INDEX_OPERATION,
+                              "no conjugate graph used for pretrain");
+    }
+    if (empty_index_) {
+        return 0;
+    }
+
+    uint32_t add_edges = 0;
+    int64_t topk_neighbor_tag_id;
+    const float* topk_data;
+    std::shared_ptr<float[]> generated_data(new float[dim_]);
+    Dataset base, generated_query;
+    base.Dim(dim_).NumElements(1).Owner(false);
+    generated_query.Dim(dim_).NumElements(1).Float32Vectors(generated_data.get()).Owner(false);
+
+    for (const int64_t& base_tag_id : base_tag_ids) {
+        try {
+            base.Float32Vectors(this->alg_hnsw->getDataByLabel(base_tag_id));
+        } catch (const std::runtime_error& e) {
+            LOG_ERROR_AND_RETURNS(
+                ErrorType::INVALID_ARGUMENT,
+                fmt::format(
+                    "failed to pretrain(invalid argument): bas tag id ({}) doesn't belong to index",
+                    base_tag_id));
+        }
+
+        auto result = this->knn_search(base,
+                                       vsag::GENERATE_SEARCH_K,
+                                       fmt::format(R"(
+                                        {{
+                                            "hnsw": {{
+                                                "ef_search": {},
+                                                "use_conjugate_graph": true
+                                            }}
+                                        }})",
+                                                   vsag::GENERATE_SEARCH_L));
+
+        for (int i = 0; i < result->GetDim(); i++) {
+            topk_neighbor_tag_id = result->GetIds()[i];
+            if (topk_neighbor_tag_id == base_tag_id) {
+                continue;
+            }
+            topk_data = this->alg_hnsw->getDataByLabel(topk_neighbor_tag_id);
+
+            for (int d = 0; d < dim_; d++) {
+                generated_data.get()[d] = vsag::GENERATE_OMEGA * base.GetFloat32Vectors()[d] +
+                                          (1 - vsag::GENERATE_OMEGA) * topk_data[d];
+            }
+
+            auto feedback_result = this->Feedback(generated_query, k, parameters, base_tag_id);
+            if (feedback_result.has_value()) {
+                add_edges += *feedback_result;
+            } else {
+                LOG_ERROR_AND_RETURNS(ErrorType::INVALID_ARGUMENT,
+                                      "failed to feedback(invalid argument): ",
+                                      feedback_result.error().message);
+            }
+        }
+    }
+
+    return add_edges;
 }
 
 }  // namespace vsag

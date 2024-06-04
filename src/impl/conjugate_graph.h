@@ -10,7 +10,7 @@
 
 namespace vsag {
 
-static const int ENHANCE_ROUND = 2;
+static const int64_t LOOK_AT_K = 20;
 static const uint32_t MAGIC_NUM = 0x43475048;  // means "CGPH"
 static const uint32_t VERSION = 1;
 static const int FOOTER_SIZE = 4096;  // 4KB

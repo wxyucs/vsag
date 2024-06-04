@@ -71,6 +71,13 @@ public:
         SAFE_CALL(return this->feedback(query, k, parameters, global_optimum_tag_id));
     };
 
+    tl::expected<uint32_t, Error>
+    Pretrain(const std::vector<int64_t>& base_tag_ids,
+             uint32_t k,
+             const std::string& parameters) override {
+        SAFE_CALL(return this->pretrain(base_tag_ids, k, parameters));
+    };
+
 public:
     tl::expected<BinarySet, Error>
     Serialize() const override {
@@ -151,6 +158,9 @@ private:
 
     tl::expected<Dataset, Error>
     brute_force(const Dataset& query, int64_t k);
+
+    tl::expected<uint32_t, Error>
+    pretrain(const std::vector<int64_t>& base_tag_ids, uint32_t k, const std::string& parameters);
 
     tl::expected<BinarySet, Error>
     serialize() const;

@@ -983,7 +983,7 @@ TEST_CASE("static hnsw + feedback without global optimum id", "[ft][index][hnsw]
     REQUIRE(std::fabs(recall[1] - 1.0) < 1e-7);
 }
 
-TEST_CASE("using indexes that do not support conjunctive graph", "[ft][index]") {
+TEST_CASE("using indexes that do not support conjugate graph", "[ft][index]") {
     vsag::Options::Instance().logger()->SetLevel(vsag::Logger::Level::kDEBUG);
     int64_t num_vectors = 1000;
     int64_t dim = 64;
@@ -1012,4 +1012,131 @@ TEST_CASE("using indexes that do not support conjunctive graph", "[ft][index]") 
     REQUIRE_THROWS(index->Feedback(query, k, search_parameters));
 
     REQUIRE_THROWS(index->Pretrain(base_tag_ids, k, search_parameters));
+}
+
+TEST_CASE("hnsw with pretrained by conjugate graph", "[ft][index][hnsw]") {
+    auto logger = vsag::Options::Instance().logger();
+    logger->SetLevel(vsag::Logger::Level::kDEBUG);
+
+    // parameters
+    int dim = 128;
+    int base_elements = 10000;
+    int query_elements = 1000;
+    int ef_search = 10;
+    int64_t k = 10;
+    auto metric_type = GENERATE("l2");
+    std::set<int64_t> failed_base_set;
+    constexpr auto search_parameters_json = R"(
+        {{
+            "hnsw": {{
+                "ef_search": {},
+                "use_conjugate_graph_search": true
+            }}
+        }}
+        )";
+    auto search_parameters = fmt::format(search_parameters_json, ef_search);
+    constexpr auto build_parameter_json = R"(
+    {{
+        "dtype": "float32",
+        "metric_type": "{}",
+        "dim": {},
+        "hnsw": {{
+            "max_degree": 16,
+            "ef_construction": 200,
+            "use_conjugate_graph": true,
+            "use_static": true
+        }}
+    }}
+    )";
+    auto build_parameter = fmt::format(build_parameter_json, metric_type, dim);
+
+    // generate data (use base[0: query_num] as query)
+    vsag::Dataset base, query;
+    std::shared_ptr<int64_t[]> base_ids(new int64_t[base_elements]);
+    std::shared_ptr<float[]> base_data(new float[dim * base_elements]);
+    std::mt19937 rng;
+    rng.seed(47);
+    std::uniform_real_distribution<> distribution_real(-1, 1);
+    for (int i = 0; i < base_elements; i++) {
+        base_ids[i] = i;
+
+        for (int d = 0; d < dim; d++) {
+            base_data[d + i * dim] = distribution_real(rng);
+        }
+    }
+    base.Dim(dim)
+        .NumElements(base_elements)
+        .Ids(base_ids.get())
+        .Float32Vectors(base_data.get())
+        .Owner(false);
+    query.Dim(dim).NumElements(1).Owner(false);
+
+    // Create index
+    std::shared_ptr<vsag::Index> hnsw;
+    auto index = vsag::Factory::CreateIndex("hnsw", build_parameter);
+    REQUIRE(index.has_value());
+    hnsw = index.value();
+
+    // Build index
+    {
+        auto build_result = hnsw->Build(base);
+        REQUIRE(build_result.has_value());
+    }
+
+    // Search without empty conjugate graph
+    {
+        int correct = 0;
+        logger->Debug("====Search Stage====");
+        logger->Debug(fmt::format("Memory Usage: {:.3f} KB", hnsw->GetMemoryUsage() / 1024.0));
+
+        for (int i = 0; i < query_elements; i++) {
+            query.Float32Vectors(base_data.get() + i * dim);
+
+            auto result = hnsw->KnnSearch(query, k, search_parameters);
+            int64_t global_optimum = i;  // global optimum is itself
+            int64_t local_optimum = result->GetIds()[0];
+
+            if (local_optimum != global_optimum) {
+                failed_base_set.emplace(global_optimum);
+            }
+
+            if (local_optimum == global_optimum) {
+                correct++;
+            }
+        }
+        logger->Debug(fmt::format("Recall: {:.4f}", correct / (1.0 * query_elements)));
+    }
+
+    // Pretrain
+    {
+        logger->Debug("====Pretrain Stage====");
+        logger->Debug(fmt::format("Before Pretrain, Memory Usage: {:.3f} KB",
+                                  hnsw->GetMemoryUsage() / 1024.0));
+        std::vector<int64_t> failed_base_vec(failed_base_set.begin(), failed_base_set.end());
+        REQUIRE(hnsw->Pretrain(failed_base_vec, k, search_parameters).has_value());
+        logger->Debug(fmt::format("After Pretrain, Memory Usage: {:.3f} KB",
+                                  hnsw->GetMemoryUsage() / 1024.0));
+    }
+
+    // Search with pretrained conjugate graph
+    {
+        int correct = 0;
+        logger->Debug("====Enhanced Search Stage====");
+        logger->Debug(fmt::format("Memory Usage: {:.3f} KB", hnsw->GetMemoryUsage() / 1024.0));
+
+        for (int i = 0; i < query_elements; i++) {
+            query.Float32Vectors(base_data.get() + i * dim);
+
+            auto result = hnsw->KnnSearch(query, k, search_parameters);
+            int64_t global_optimum = i;  // global optimum is itself
+            int64_t local_optimum = result->GetIds()[0];
+
+            if (local_optimum == global_optimum) {
+                correct++;
+            }
+        }
+        logger->Debug(fmt::format("Enhanced Recall: {:.4f}", correct / (1.0 * query_elements)));
+
+        REQUIRE(fabs(correct / (1.0 * query_elements) - 1.0) < 1e-7);
+    }
 }

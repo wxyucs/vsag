@@ -1374,10 +1374,8 @@ class HierarchicalNSW : public AlgorithmInterface<float> {
     }
 
 
-    template<typename data_t>
-    std::vector<data_t> getDataByLabel(labeltype label) const {
-        // lock all operations with element by label
-        std::unique_lock <std::mutex> lock_label(getLabelOpMutex(label));
+    const float* getDataByLabel(labeltype label) const override {
+        std::lock_guard<std::mutex> lock_label(getLabelOpMutex(label));
 
         std::unique_lock <std::mutex> lock_table(label_lookup_lock);
         auto search = label_lookup_.find(label);
@@ -1388,14 +1386,9 @@ class HierarchicalNSW : public AlgorithmInterface<float> {
         lock_table.unlock();
 
         char* data_ptrv = getDataByInternalId(internalId);
-        size_t dim = *((size_t *) dist_func_param_);
-        std::vector<data_t> data;
-        data_t* data_ptr = (data_t*) data_ptrv;
-        for (int i = 0; i < dim; i++) {
-            data.push_back(*data_ptr);
-            data_ptr += 1;
-        }
-        return data;
+        float* data_ptr = (float*) data_ptrv;
+
+        return data_ptr;
     }
 
 

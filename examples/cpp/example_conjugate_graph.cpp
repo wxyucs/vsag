@@ -70,7 +70,7 @@ float_hnsw_conjugate() {
         int correct = 0;
         std::cout << "====Search Stage====" << std::endl;
         std::cout << std::fixed << std::setprecision(3)
-                  << "Memory Uasage:" << hnsw->GetMemoryUsage() / 1024.0 << " KB" << std::endl;
+                  << "Memory Usage:" << hnsw->GetMemoryUsage() / 1024.0 << " KB" << std::endl;
 
         for (int i = 0; i < query_elements; i++) {
             vsag::Dataset query;
@@ -117,7 +117,7 @@ float_hnsw_conjugate() {
         int correct = 0;
         std::cout << "====Enhanced Search Stage====" << std::endl;
         std::cout << std::fixed << std::setprecision(3)
-                  << "Memory Uasage:" << hnsw->GetMemoryUsage() / 1024.0 << " KB" << std::endl;
+                  << "Memory Usage:" << hnsw->GetMemoryUsage() / 1024.0 << " KB" << std::endl;
 
         for (int i = 0; i < query_elements; i++) {
             vsag::Dataset query;

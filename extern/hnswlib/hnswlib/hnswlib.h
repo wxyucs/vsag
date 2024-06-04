@@ -186,6 +186,8 @@ class AlgorithmInterface {
 
     virtual float getDistanceByLabel(labeltype label, const void *data_point) = 0;
 
+    virtual const float* getDataByLabel(labeltype label) const = 0;
+
     virtual std::priority_queue<std::pair<float, labeltype>> bruteForce(const void* data_point, int64_t k) = 0;
 
     virtual void resizeIndex(size_t new_max_elements) = 0;
