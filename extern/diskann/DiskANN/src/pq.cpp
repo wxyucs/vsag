@@ -13,10 +13,18 @@
 // block size for reading/processing large files and matrices in blocks
 #define BLOCK_SIZE 5000000
 
+namespace vsag {
+
+extern PQDistanceFunc
+GetPQDistanceFunc();
+
+}
+
 namespace diskann
 {
 FixedChunkPQTable::FixedChunkPQTable()
 {
+    func = vsag::GetPQDistanceFunc();
 }
 
 FixedChunkPQTable::~FixedChunkPQTable()
@@ -283,11 +291,7 @@ void FixedChunkPQTable::populate_chunk_distances(const float *query_vec, float *
         for (size_t j = chunk_offsets[chunk]; j < chunk_offsets[chunk + 1]; j++)
         {
             const float *centers_dim_vec = tables_tr + (256 * j);
-            for (size_t idx = 0; idx < 256; idx++)
-            {
-                double diff = centers_dim_vec[idx] - (query_vec[j]);
-                chunk_dists[idx] += (float)(diff * diff);
-            }
+            func(centers_dim_vec, query_vec[j], chunk_dists);
         }
     }
 }

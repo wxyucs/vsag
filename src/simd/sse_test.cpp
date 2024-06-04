@@ -7,19 +7,6 @@
 #include "cpuinfo.h"
 #include "fixtures.h"
 
-namespace vsag {
-
-extern float
-L2SqrSIMD16ExtSSE(const void* pVect1v, const void* pVect2v, const void* qty_ptr);
-
-extern float
-InnerProductSIMD4ExtSSE(const void* pVect1v, const void* pVect2v, const void* qty_ptr);
-
-extern float
-InnerProductSIMD16ExtSSE(const void* pVect1v, const void* pVect2v, const void* qty_ptr);
-
-}  // namespace vsag
-
 TEST_CASE("sse l2 simd16", "[ut][simd][sse]") {
 #if defined(ENABLE_SSE)
     if (cpuinfo_has_x86_sse()) {
@@ -61,6 +48,25 @@ TEST_CASE("sse ip simd16", "[ut][simd][sse]") {
         fixtures::dist_t expected_distance =
             vsag::InnerProduct(vectors.data(), vectors.data() + dim, &dim);
         REQUIRE(distance == expected_distance);
+    }
+#endif
+}
+
+TEST_CASE("sse pq calculation", "[ut][simd][sse]") {
+#if defined(ENABLE_SSE)
+    if (cpuinfo_has_x86_sse()) {
+        size_t dim = 256;
+        float single_dim_value = 0.571;
+        float results_expected[256]{0.0f};
+        float results[256]{0.0f};
+        auto vectors = fixtures::generate_vectors(1, dim);
+
+        vsag::PQDistanceSSEFloat256(vectors.data(), single_dim_value, results);
+        vsag::PQDistanceFloat256(vectors.data(), single_dim_value, results_expected);
+
+        for (int i = 0; i < dim; ++i) {
+            REQUIRE(fabs(results_expected[i] - results[i]) < 0.001);
+        }
     }
 #endif
 }

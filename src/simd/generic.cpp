@@ -34,4 +34,14 @@ InnerProductDistance(const void* pVect1, const void* pVect2, const void* qty_ptr
     return 1.0f - InnerProduct(pVect1, pVect2, qty_ptr);
 }
 
+void
+PQDistanceFloat256(const void* single_dim_centers, float single_dim_val, void* result) {
+    const float* float_centers = (const float*)single_dim_centers;
+    float* float_result = (float*)result;
+    for (size_t idx = 0; idx < 256; idx++) {
+        double diff = float_centers[idx] - single_dim_val;
+        float_result[idx] += (float)(diff * diff);
+    }
+}
+
 }  // namespace vsag

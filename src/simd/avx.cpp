@@ -126,4 +126,19 @@ InnerProductSIMD16ExtAVX(const void* pVect1v, const void* pVect2v, const void* q
     return sum;
 }
 
+void
+PQDistanceAVXFloat256(const void* single_dim_centers, float single_dim_val, void* result) {
+    const float* float_centers = (const float*)single_dim_centers;
+    float* float_result = (float*)result;
+    for (size_t idx = 0; idx < 256; idx += 8) {
+        __m256 v_centers_dim = _mm256_loadu_ps(float_centers + idx);
+        __m256 v_query_vec = _mm256_set1_ps(single_dim_val);
+        __m256 v_diff = _mm256_sub_ps(v_centers_dim, v_query_vec);
+        __m256 v_diff_sq = _mm256_mul_ps(v_diff, v_diff);
+        __m256 v_chunk_dists = _mm256_loadu_ps(&float_result[idx]);
+        v_chunk_dists = _mm256_add_ps(v_chunk_dists, v_diff_sq);
+        _mm256_storeu_ps(&float_result[idx], v_chunk_dists);
+    }
+}
+
 }  // namespace vsag

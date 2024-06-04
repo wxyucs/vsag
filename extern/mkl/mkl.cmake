@@ -51,6 +51,11 @@ if (CMAKE_HOST_SYSTEM_PROCESSOR STREQUAL "x86_64" AND ENABLE_INTEL_MKL)
         else()
             message(FATAL_ERROR "Despite finding MKL, libmkl_def.so was not found in expected locations.")
         endif()
+        add_library(mkl UNKNOWN IMPORTED)
+        set_target_properties(mkl PROPERTIES
+            IMPORTED_LOCATION ${MKL_PATH}
+            INTERFACE_INCLUDE_DIRECTORIES ${MKL_INCLUDE_PATH}
+        )
     endif()
 
     link_directories (${MKL_PATH})

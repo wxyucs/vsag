@@ -85,6 +85,17 @@ GetInnerProductDistanceFunc(size_t dim) {
     }
 }
 
+PQDistanceFunc
+GetPQDistanceFunc() {
+#ifdef ENABLE_AVX
+    return PQDistanceAVXFloat256;
+#endif
+#ifdef ENABLE_SSE
+    return PQDistanceSSEFloat256;
+#endif
+    return PQDistanceFloat256;
+}
+
 DistanceFunc
 GetL2DistanceFunc(size_t dim) {
     if (dim % 16 == 0) {

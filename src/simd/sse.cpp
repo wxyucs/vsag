@@ -266,4 +266,19 @@ InnerProductDistanceSIMD4ExtResidualsSSE(const void* pVect1v,
     return 1.0f - (res + res_tail);
 }
 
+void
+PQDistanceSSEFloat256(const void* single_dim_centers, float single_dim_val, void* result) {
+    const float* float_centers = (const float*)single_dim_centers;
+    float* float_result = (float*)result;
+    for (size_t idx = 0; idx < 256; idx += 4) {
+        __m128 v_centers_dim = _mm_loadu_ps(float_centers + idx);
+        __m128 v_query_vec = _mm_set1_ps(single_dim_val);
+        __m128 v_diff = _mm_sub_ps(v_centers_dim, v_query_vec);
+        __m128 v_diff_sq = _mm_mul_ps(v_diff, v_diff);
+        __m128 v_chunk_dists = _mm_loadu_ps(&float_result[idx]);
+        v_chunk_dists = _mm_add_ps(v_chunk_dists, v_diff_sq);
+        _mm_storeu_ps(&float_result[idx], v_chunk_dists);
+    }
+}
+
 }  // namespace vsag

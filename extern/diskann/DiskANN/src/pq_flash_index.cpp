@@ -2137,7 +2137,7 @@ int64_t PQFlashIndex<T, LabelT>::cached_beam_search_memory(const T *query, const
             std::vector<AlignedRead> sorted_read_reqs;
             std::vector<uint32_t> ids;
             int cur_loc = 0;
-            while (sorted_read_reqs.size() < beam_width && loc < io_limit) {
+            while (sorted_read_reqs.size() < beam_width && loc < io_limit && loc < full_retset.size()) {
                 auto id = full_retset[loc].id;
                 if (not use_bsa || reorder_retset.empty() || reorder_retset.size() < k_search ||
                     distance_ranks.top() + this->errors[id] > full_retset[loc].distance) {

@@ -12,6 +12,12 @@
 #define MAX_PQ_TRAINING_SET_SIZE 256000
 #define MAX_PQ_CHUNKS 512
 
+namespace vsag {
+
+typedef void (*PQDistanceFunc)(const void* single_dim_centers, float single_dim_val, void* result);
+
+}
+
 namespace diskann
 {
 class FixedChunkPQTable
@@ -24,6 +30,7 @@ class FixedChunkPQTable
     float *centroid = nullptr;
     float *tables_tr = nullptr; // same as pq_tables, but col-major
     float *rotmat_tr = nullptr;
+    vsag::PQDistanceFunc func;
 
   public:
     FixedChunkPQTable();
