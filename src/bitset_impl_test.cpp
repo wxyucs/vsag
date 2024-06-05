@@ -4,7 +4,7 @@
 #include <catch2/catch_message.hpp>
 #include <catch2/catch_test_macros.hpp>
 #include <iostream>
-#include <roaring/roaring.hh>
+#include <roaring.hh>
 
 using namespace roaring;
 

@@ -3,9 +3,9 @@
 #include <cstdint>
 #include <memory>
 #include <mutex>
+#include <roaring.hh>
 #include <vector>
 
-#include "roaring/roaring.hh"
 #include "vsag/bitset.h"
 
 namespace vsag {

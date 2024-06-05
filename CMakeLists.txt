@@ -185,8 +185,8 @@ endif ()
 
 # pybinds
 if (ENABLE_PYBINDS)
-    include (extern/pybind11/pybind11.cmake)
     find_package (Python3 REQUIRED COMPONENTS Interpreter Development)
+    include (extern/pybind11/pybind11.cmake)
     pybind11_add_module (pyvsag python_bindings/binding.cpp)
     target_link_libraries (pyvsag PRIVATE pybind11::module vsag)
 endif ()
