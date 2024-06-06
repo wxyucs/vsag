@@ -27,35 +27,6 @@ TEST_CASE("build, add and memory usage", "[ut][conjugate_graph]") {
     REQUIRE(conjugate_graph->GetMemoryUsage() == 60 + vsag::FOOTER_SIZE);
 }
 
-TEST_CASE("footer basic usage", "[ut][conjugate_graph]") {
-    vsag::SerializationFooter footer;
-
-    SECTION("footer size exceeds 4KB") {
-        for (int i = 0; i <= 430; i++) {
-            footer.set_value(std::to_string(i), i);
-        }
-        REQUIRE_THROWS(footer.set_value(std::to_string(431), 431));
-    }
-
-    SECTION("invalid key") {
-        REQUIRE_THROWS(footer.get_value("999"));
-    }
-
-    SECTION("invalid json") {
-        std::shared_ptr<int8_t[]> bin(new int8_t[vsag::FOOTER_SIZE]);
-
-        for (int i = 0; i < 10; i++) {
-            footer.set_value(std::to_string(i), i);
-        }
-        std::memcpy(reinterpret_cast<char*>(bin.get()), &footer, sizeof(footer));
-        REQUIRE(std::stoi(footer.get_value("0")) == 0);
-
-        vsag::SerializationFooter invalid_footer;
-        std::memcpy(reinterpret_cast<char*>(&invalid_footer), bin.get(), 10);
-        REQUIRE_THROWS(invalid_footer.get_value("0"));
-    }
-}
-
 TEST_CASE("serialize and deserialize with binary", "[ut][conjugate_graph]") {
     std::shared_ptr<vsag::ConjugateGraph> conjugate_graph =
         std::make_shared<vsag::ConjugateGraph>();
@@ -112,11 +83,17 @@ TEST_CASE("serialize and deserialize with binary", "[ut][conjugate_graph]") {
         vsag::Binary binary = *conjugate_graph->Serialize();
 
         nlohmann::json json;
-        json["MAGIC_NUM"] = 0xABCD1234;
-        json["VERSION"] = vsag::VERSION;
+        json[vsag::SERIALIZE_MAGIC_NUM] = std::to_string(0xABCD1234);
+        json[vsag::SERIALIZE_VERSION] = vsag::VERSION;
         std::string json_str = json.dump();
+        uint32_t serialized_data_size = json_str.size();
+        std::memcpy(binary.data.get() + binary.size - vsag::FOOTER_SIZE,
+                    reinterpret_cast<const char*>(&serialized_data_size),
+                    sizeof(serialized_data_size));
         std::memcpy(
-            binary.data.get() + binary.size - vsag::FOOTER_SIZE, json_str.c_str(), json_str.size());
+            binary.data.get() + binary.size - vsag::FOOTER_SIZE + sizeof(serialized_data_size),
+            json_str.c_str(),
+            json_str.size());
 
         REQUIRE(conjugate_graph->Deserialize(binary).error().type == vsag::ErrorType::READ_ERROR);
         REQUIRE(conjugate_graph->GetMemoryUsage() == 4 + vsag::FOOTER_SIZE);
@@ -130,11 +107,17 @@ TEST_CASE("serialize and deserialize with binary", "[ut][conjugate_graph]") {
         vsag::Binary binary = *conjugate_graph->Serialize();
 
         nlohmann::json json;
-        json["MAGIC_NUM"] = vsag::MAGIC_NUM;
-        json["VERSION"] = 2;
+        json[vsag::SERIALIZE_MAGIC_NUM] = vsag::MAGIC_NUM;
+        json[vsag::SERIALIZE_VERSION] = std::to_string(2);
         std::string json_str = json.dump();
+        uint32_t serialized_data_size = json_str.size();
+        std::memcpy(binary.data.get() + binary.size - vsag::FOOTER_SIZE,
+                    reinterpret_cast<const char*>(&serialized_data_size),
+                    sizeof(serialized_data_size));
         std::memcpy(
-            binary.data.get() + binary.size - vsag::FOOTER_SIZE, json_str.c_str(), json_str.size());
+            binary.data.get() + binary.size - vsag::FOOTER_SIZE + sizeof(serialized_data_size),
+            json_str.c_str(),
+            json_str.size());
 
         REQUIRE(conjugate_graph->Deserialize(binary).error().type == vsag::ErrorType::READ_ERROR);
         REQUIRE(conjugate_graph->GetMemoryUsage() == 4 + vsag::FOOTER_SIZE);
@@ -181,9 +164,12 @@ TEST_CASE("serialize and deserialize with stream", "[ut][conjugate_graph]") {
         out_stream.seekg(conjugate_graph->GetMemoryUsage() - vsag::FOOTER_SIZE, std::ios::beg);
 
         nlohmann::json json;
-        json["MAGIC_NUM"] = 0xABCD1234;
-        json["VERSION"] = vsag::VERSION;
+        json[vsag::SERIALIZE_MAGIC_NUM] = std::to_string(0xABCD1234);
+        json[vsag::SERIALIZE_VERSION] = vsag::VERSION;
         std::string json_str = json.dump();
+        uint32_t serialized_data_size = json_str.size();
+        out_stream.write(reinterpret_cast<const char*>(&serialized_data_size),
+                         sizeof(serialized_data_size));
         out_stream.write(json_str.c_str(), json_str.size());
         out_stream.close();
 
@@ -201,38 +187,18 @@ TEST_CASE("serialize and deserialize with stream", "[ut][conjugate_graph]") {
         out_stream.seekg(conjugate_graph->GetMemoryUsage() - vsag::FOOTER_SIZE, std::ios::beg);
 
         nlohmann::json json;
-        json["MAGIC_NUM"] = vsag::MAGIC_NUM;
-        json["VERSION"] = 2;
+        json[vsag::SERIALIZE_MAGIC_NUM] = vsag::MAGIC_NUM;
+        json[vsag::SERIALIZE_VERSION] = std::to_string(2);
         std::string json_str = json.dump();
+        uint32_t serialized_data_size = json_str.size();
+        out_stream.write(reinterpret_cast<const char*>(&serialized_data_size),
+                         sizeof(serialized_data_size));
         out_stream.write(json_str.c_str(), json_str.size());
         out_stream.close();
 
         std::fstream in_stream(dir.path + "conjugate_graph.bin", std::ios::in | std::ios::binary);
         REQUIRE(conjugate_graph->Deserialize(in_stream).error().type ==
                 vsag::ErrorType::READ_ERROR);
-        in_stream.close();
-    }
-
-    SECTION("more bits") {
-        fixtures::temp_dir dir("conjugate_graph_test_deserialize_on_not_empty_index");
-        std::fstream out_stream(dir.path + "conjugate_graph.bin", std::ios::out | std::ios::binary);
-        auto serialize_result = conjugate_graph->Serialize(out_stream);
-        REQUIRE(serialize_result.has_value());
-
-        nlohmann::json json;
-        json["MAGIC_NUM"] = vsag::MAGIC_NUM;
-        json["VERSION"] = vsag::VERSION;
-        std::string json_str = json.dump();
-        out_stream.write(json_str.c_str(), json_str.size());
-        out_stream.close();
-
-        std::fstream in_stream(dir.path + "conjugate_graph.bin", std::ios::in | std::ios::binary);
-        REQUIRE(conjugate_graph->Deserialize(in_stream).has_value());
-
-        REQUIRE(conjugate_graph->GetMemoryUsage() == 60 + vsag::FOOTER_SIZE);
-        REQUIRE(conjugate_graph->AddNeighbor(0, 2) == false);
-        REQUIRE(conjugate_graph->AddNeighbor(0, 1) == false);
-        REQUIRE(conjugate_graph->AddNeighbor(1, 0) == false);
         in_stream.close();
     }
 

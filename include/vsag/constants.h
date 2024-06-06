@@ -71,4 +71,8 @@ constexpr const char* STATSTIC_RANGE_IO_TIME = "range_io_time";
 //Error message
 constexpr const char* MESSAGE_PARAMETER = "invalid parameter";
 
+// Serialize key
+constexpr const char* SERIALIZE_MAGIC_NUM = "MAGIC_NUM";
+constexpr const char* SERIALIZE_VERSION = "VERSION";
+
 }  // namespace vsag

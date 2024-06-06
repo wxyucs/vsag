@@ -3,7 +3,7 @@
 namespace vsag {
 
 ConjugateGraph::ConjugateGraph() {
-    clean();
+    clear();
 }
 
 tl::expected<bool, Error>
@@ -84,24 +84,6 @@ ConjugateGraph::GetMemoryUsage() const {
 
 template <typename T>
 static void
-write_var_to_mem(char** dest, const T& ref) {
-    std::memcpy(*dest, (char*)&ref, sizeof(T));
-    *dest += sizeof(T);
-}
-
-template <typename T>
-static void
-read_var_from_bin(const Binary& binary, uint32_t* offset, T* dest) {
-    if (*offset + sizeof(T) > binary.size) {
-        throw std::out_of_range("Offset is out of bounds for binary data.");
-    }
-
-    std::memcpy(reinterpret_cast<char*>(dest), binary.data.get() + *offset, sizeof(T));
-    *offset += sizeof(T);
-}
-
-template <typename T>
-static void
 read_var_from_stream(std::istream& in_stream, uint32_t* offset, T* dest) {
     in_stream.read((char*)dest, sizeof(T));
     *offset += sizeof(T);
@@ -112,30 +94,27 @@ read_var_from_stream(std::istream& in_stream, uint32_t* offset, T* dest) {
 }
 
 void
-ConjugateGraph::clean() {
-    memory_usage_ = sizeof(memory_usage_) + sizeof(footer_);
-    footer_.set_value("MAGIC_NUM", MAGIC_NUM);
-    footer_.set_value("VERSION", VERSION);
+ConjugateGraph::clear() {
+    memory_usage_ = sizeof(memory_usage_) + FOOTER_SIZE;
+    footer_.Clear();
 }
 
 tl::expected<Binary, Error>
 ConjugateGraph::Serialize() const {
-    std::shared_ptr<int8_t[]> bin(new int8_t[memory_usage_]);
-
-    char* dest = reinterpret_cast<char*>(bin.get());
-    write_var_to_mem(&dest, memory_usage_);
-    for (auto item : conjugate_graph_) {
-        auto neighbor_set = item.second;
-        write_var_to_mem(&dest, item.first);
-        write_var_to_mem(&dest, neighbor_set.size());
-
-        for (auto neighbor_tag_id : neighbor_set) {
-            write_var_to_mem(&dest, neighbor_tag_id);
-        }
+    std::stringstream out_ss(std::ios::in | std::ios::out | std::ios::binary);
+    auto result = this->Serialize(out_ss);
+    if (not result) {
+        return tl::unexpected(result.error());
     }
-    write_var_to_mem(&dest, footer_);
 
-    Binary binary{.data = bin, .size = memory_usage_};
+    out_ss.seekg(0, std::ios_base::end);
+    size_t size = out_ss.tellg();
+    out_ss.seekg(0, std::ios_base::beg);
+
+    std::shared_ptr<int8_t[]> data(new int8_t[size]);
+    out_ss.read(reinterpret_cast<char*>(data.get()), size);
+
+    Binary binary{.data = data, .size = size};
     return binary;
 }
 
@@ -155,53 +134,17 @@ ConjugateGraph::Serialize(std::ostream& out_stream) const {
         }
     }
 
-    out_stream.write((char*)&footer_, sizeof(footer_));
+    footer_.Serialize(out_stream);
 
     return {};
 }
 
 tl::expected<void, Error>
 ConjugateGraph::Deserialize(const Binary& binary) {
-    try {
-        uint32_t offset = 0;
-        uint32_t footer_offset = 0;
-        size_t neighbor_size = 0;
-        int64_t from_tag_id = 0;
-        int64_t to_tag_id = 0;
-
-        conjugate_graph_.clear();
-
-        read_var_from_bin(binary, &offset, &memory_usage_);
-        if (memory_usage_ <= FOOTER_SIZE) {
-            throw std::runtime_error(
-                fmt::format("Incorrect header: memory_usage_({})", memory_usage_));
-        }
-        footer_offset = memory_usage_ - FOOTER_SIZE;
-
-        read_var_from_bin(binary, &footer_offset, &footer_);
-        if (std::stoul(footer_.get_value("MAGIC_NUM")) != MAGIC_NUM or
-            std::stoul(footer_.get_value("VERSION")) != VERSION) {
-            throw std::runtime_error("Incorrect footer");
-        }
-
-        offset = sizeof(memory_usage_);
-        while (offset != memory_usage_ - FOOTER_SIZE) {
-            read_var_from_bin(binary, &offset, &from_tag_id);
-            read_var_from_bin(binary, &offset, &neighbor_size);
-            for (int i = 0; i < neighbor_size; i++) {
-                read_var_from_bin(binary, &offset, &to_tag_id);
-                conjugate_graph_[from_tag_id].insert(to_tag_id);
-            }
-        }
-
-        return {};
-    } catch (const std::out_of_range& e) {
-        clean();
-        LOG_ERROR_AND_RETURNS(ErrorType::READ_ERROR, "failed to deserialize: ", e.what());
-    } catch (const std::runtime_error& e) {
-        clean();
-        LOG_ERROR_AND_RETURNS(ErrorType::READ_ERROR, "failed to deserialize: ", e.what());
-    }
+    std::stringstream ss(std::ios::in | std::ios::out | std::ios::binary);
+    ss.write(reinterpret_cast<const char*>(binary.data.get()), binary.size);
+    ss.seekg(0, std::ios::beg);
+    return this->Deserialize(ss);
 }
 
 tl::expected<void, Error>
@@ -223,14 +166,9 @@ ConjugateGraph::Deserialize(std::istream& in_stream) {
                 fmt::format("Incorrect header: memory_usage_({})", memory_usage_));
         }
         footer_offset = memory_usage_ - FOOTER_SIZE;
-
         in_stream.seekg(cur_pos);
         in_stream.seekg(footer_offset, std::ios::cur);
-        read_var_from_stream(in_stream, &footer_offset, &footer_);
-        if (std::stoul(footer_.get_value("MAGIC_NUM")) != MAGIC_NUM or
-            std::stoul(footer_.get_value("VERSION")) != VERSION) {
-            throw std::runtime_error("Incorrect footer");
-        }
+        footer_.Deserialize(in_stream);
 
         offset = sizeof(memory_usage_);
         in_stream.seekg(cur_pos);
@@ -246,7 +184,7 @@ ConjugateGraph::Deserialize(std::istream& in_stream) {
 
         return {};
     } catch (const std::runtime_error& e) {
-        clean();
+        clear();
         LOG_ERROR_AND_RETURNS(ErrorType::READ_ERROR, "failed to deserialize: ", e.what());
     }
 }
