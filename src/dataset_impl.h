@@ -52,10 +52,11 @@ public:
 
     int64_t
     GetNumElements() const override {
-        if (this->data_.find(NUM_ELEMENTS) == this->data_.end()) {
-            return 0;
+        if (auto iter = this->data_.find(NUM_ELEMENTS); iter != this->data_.end()) {
+            return std::get<int64_t>(iter->second);
         }
-        return std::get<int64_t>(this->data_.at(NUM_ELEMENTS));
+
+        return 0;
     }
 
     DatasetPtr
@@ -66,10 +67,11 @@ public:
 
     int64_t
     GetDim() const override {
-        if (this->data_.find(DIM) == this->data_.end()) {
-            return 0;
+        if (auto iter = this->data_.find(DIM); iter != this->data_.end()) {
+            return std::get<int64_t>(iter->second);
         }
-        return std::get<int64_t>(this->data_.at(DIM));
+
+        return 0;
     }
 
     DatasetPtr
@@ -80,10 +82,11 @@ public:
 
     const int64_t*
     GetIds() const override {
-        if (this->data_.find(IDS) == this->data_.end()) {
-            return nullptr;
+        if (auto iter = this->data_.find(IDS); iter != this->data_.end()) {
+            return std::get<const int64_t*>(iter->second);
         }
-        return std::get<const int64_t*>(this->data_.at(IDS));
+
+        return nullptr;
     }
 
     DatasetPtr
@@ -94,10 +97,11 @@ public:
 
     const float*
     GetDistances() const override {
-        if (this->data_.find(DISTS) == this->data_.end()) {
-            return nullptr;
+        if (auto iter = this->data_.find(DISTS); iter != this->data_.end()) {
+            return std::get<const float*>(iter->second);
         }
-        return std::get<const float*>(this->data_.at(DISTS));
+
+        return nullptr;
     }
 
     DatasetPtr
@@ -108,10 +112,11 @@ public:
 
     const int8_t*
     GetInt8Vectors() const override {
-        if (this->data_.find(INT8_VECTORS) == this->data_.end()) {
-            return nullptr;
+        if (auto iter = this->data_.find(INT8_VECTORS); iter != this->data_.end()) {
+            return std::get<const int8_t*>(iter->second);
         }
-        return std::get<const int8_t*>(this->data_.at(INT8_VECTORS));
+
+        return nullptr;
     }
 
     DatasetPtr
@@ -122,10 +127,11 @@ public:
 
     const float*
     GetFloat32Vectors() const override {
-        if (this->data_.find(FLOAT32_VECTORS) == this->data_.end()) {
-            return nullptr;
+        if (auto iter = this->data_.find(FLOAT32_VECTORS); iter != this->data_.end()) {
+            return std::get<const float*>(iter->second);
         }
-        return std::get<const float*>(this->data_.at(FLOAT32_VECTORS));
+
+        return nullptr;
     }
 
 private:

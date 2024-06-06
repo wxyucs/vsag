@@ -626,12 +626,12 @@ TEST_CASE("invalid pretrain", "[ut][hnsw]") {
         std::make_shared<hnswlib::L2Space>(dim), max_degree, ef_construction, false, false, true);
 
     auto [base_ids, base_vectors] = fixtures::generate_ids_and_vectors(num_base, dim);
-    vsag::Dataset base;
-    base.NumElements(num_base)
-        .Dim(dim)
-        .Ids(base_ids.data())
-        .Float32Vectors(base_vectors.data())
-        .Owner(false);
+    auto base = vsag::Dataset::Make();
+    base->NumElements(num_base)
+        ->Dim(dim)
+        ->Ids(base_ids.data())
+        ->Float32Vectors(base_vectors.data())
+        ->Owner(false);
     // build index
     auto buildindex = index->Build(base);
     REQUIRE(buildindex.has_value());

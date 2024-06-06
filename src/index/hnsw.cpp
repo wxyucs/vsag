@@ -668,13 +668,14 @@ HNSW::pretrain(const std::vector<int64_t>& base_tag_ids,
     int64_t topk_neighbor_tag_id;
     const float* topk_data;
     std::shared_ptr<float[]> generated_data(new float[dim_]);
-    Dataset base, generated_query;
-    base.Dim(dim_).NumElements(1).Owner(false);
-    generated_query.Dim(dim_).NumElements(1).Float32Vectors(generated_data.get()).Owner(false);
+    auto base = Dataset::Make();
+    auto generated_query = Dataset::Make();
+    base->Dim(dim_)->NumElements(1)->Owner(false);
+    generated_query->Dim(dim_)->NumElements(1)->Float32Vectors(generated_data.get())->Owner(false);
 
     for (const int64_t& base_tag_id : base_tag_ids) {
         try {
-            base.Float32Vectors(this->alg_hnsw->getDataByLabel(base_tag_id));
+            base->Float32Vectors(this->alg_hnsw->getDataByLabel(base_tag_id));
         } catch (const std::runtime_error& e) {
             LOG_ERROR_AND_RETURNS(
                 ErrorType::INVALID_ARGUMENT,
@@ -694,15 +695,15 @@ HNSW::pretrain(const std::vector<int64_t>& base_tag_ids,
                                         }})",
                                                    vsag::GENERATE_SEARCH_L));
 
-        for (int i = 0; i < result->GetDim(); i++) {
-            topk_neighbor_tag_id = result->GetIds()[i];
+        for (int i = 0; i < result.value()->GetDim(); i++) {
+            topk_neighbor_tag_id = result.value()->GetIds()[i];
             if (topk_neighbor_tag_id == base_tag_id) {
                 continue;
             }
             topk_data = this->alg_hnsw->getDataByLabel(topk_neighbor_tag_id);
 
             for (int d = 0; d < dim_; d++) {
-                generated_data.get()[d] = vsag::GENERATE_OMEGA * base.GetFloat32Vectors()[d] +
+                generated_data.get()[d] = vsag::GENERATE_OMEGA * base->GetFloat32Vectors()[d] +
                                           (1 - vsag::GENERATE_OMEGA) * topk_data[d];
             }
 

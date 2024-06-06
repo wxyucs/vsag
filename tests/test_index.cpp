@@ -1056,7 +1056,8 @@ TEST_CASE("hnsw with pretrained by conjugate graph", "[ft][index][hnsw]") {
     auto build_parameter = fmt::format(build_parameter_json, metric_type, dim);
 
     // generate data (use base[0: query_num] as query)
-    vsag::Dataset base, query;
+    auto base = vsag::Dataset::Make();
+    auto query = vsag::Dataset::Make();
     std::shared_ptr<int64_t[]> base_ids(new int64_t[base_elements]);
     std::shared_ptr<float[]> base_data(new float[dim * base_elements]);
     std::mt19937 rng;
@@ -1069,12 +1070,12 @@ TEST_CASE("hnsw with pretrained by conjugate graph", "[ft][index][hnsw]") {
             base_data[d + i * dim] = distribution_real(rng);
         }
     }
-    base.Dim(dim)
-        .NumElements(base_elements)
-        .Ids(base_ids.get())
-        .Float32Vectors(base_data.get())
-        .Owner(false);
-    query.Dim(dim).NumElements(1).Owner(false);
+    base->Dim(dim)
+        ->NumElements(base_elements)
+        ->Ids(base_ids.get())
+        ->Float32Vectors(base_data.get())
+        ->Owner(false);
+    query->Dim(dim)->NumElements(1)->Owner(false);
 
     // Create index
     std::shared_ptr<vsag::Index> hnsw;
@@ -1095,11 +1096,11 @@ TEST_CASE("hnsw with pretrained by conjugate graph", "[ft][index][hnsw]") {
         logger->Debug(fmt::format("Memory Usage: {:.3f} KB", hnsw->GetMemoryUsage() / 1024.0));
 
         for (int i = 0; i < query_elements; i++) {
-            query.Float32Vectors(base_data.get() + i * dim);
+            query->Float32Vectors(base_data.get() + i * dim);
 
             auto result = hnsw->KnnSearch(query, k, search_parameters);
             int64_t global_optimum = i;  // global optimum is itself
-            int64_t local_optimum = result->GetIds()[0];
+            int64_t local_optimum = result.value()->GetIds()[0];
 
             if (local_optimum != global_optimum) {
                 failed_base_set.emplace(global_optimum);
@@ -1130,11 +1131,11 @@ TEST_CASE("hnsw with pretrained by conjugate graph", "[ft][index][hnsw]") {
         logger->Debug(fmt::format("Memory Usage: {:.3f} KB", hnsw->GetMemoryUsage() / 1024.0));
 
         for (int i = 0; i < query_elements; i++) {
-            query.Float32Vectors(base_data.get() + i * dim);
+            query->Float32Vectors(base_data.get() + i * dim);
 
             auto result = hnsw->KnnSearch(query, k, search_parameters);
             int64_t global_optimum = i;  // global optimum is itself
-            int64_t local_optimum = result->GetIds()[0];
+            int64_t local_optimum = result.value()->GetIds()[0];
 
             if (local_optimum == global_optimum) {
                 correct++;
