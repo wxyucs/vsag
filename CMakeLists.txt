@@ -99,6 +99,11 @@ set(common_configure_envs
     "ACLOCAL_PATH=${ACLOCAL_PATH}"
 )
 
+# set the default compilation parallelism of thirdparties
+if (NOT NUM_BUILDING_JOBS)
+  set (NUM_BUILDING_JOBS 4)
+endif ()
+
 # thirdparties
 include (cmake/CheckSIMDCompilerFlag.cmake)
 include (ExternalProject)
@@ -206,9 +211,9 @@ endif ()
 # version
 find_package (Git)
 add_custom_target (version
-  ${CMAKE_COMMAND} -D SRC=${CMAKE_SOURCE_DIR}/src/version.h.in
-                   -D DST=${CMAKE_SOURCE_DIR}/src/version.h
+  ${CMAKE_COMMAND} -D SRC=${CMAKE_CURRENT_SOURCE_DIR}/src/version.h.in
+                   -D DST=${CMAKE_CURRENT_SOURCE_DIR}/src/version.h
                    -D GIT_EXECUTABLE=${GIT_EXECUTABLE}
-                   -P ${CMAKE_SOURCE_DIR}/cmake/GenerateVersionHeader.cmake
+                   -P ${CMAKE_CURRENT_SOURCE_DIR}/cmake/GenerateVersionHeader.cmake
   )
 add_dependencies (vsag version)

@@ -18,10 +18,10 @@ install(TARGETS vsag_mockimpl vsag_mockimpl_static
 
 find_package (Git)
 add_custom_target (version_mockimpl
-  ${CMAKE_COMMAND} -D SRC=${CMAKE_SOURCE_DIR}/mockimpl/vsag/version.h.in
-                   -D DST=${CMAKE_SOURCE_DIR}/mockimpl/vsag/version.h
+  ${CMAKE_COMMAND} -D SRC=${CMAKE_CURRENT_SOURCE_DIR}/vsag/version.h.in
+                   -D DST=${CMAKE_CURRENT_SOURCE_DIR}/vsag/version.h
                    -D GIT_EXECUTABLE=${GIT_EXECUTABLE}
-                   -P ${CMAKE_SOURCE_DIR}/cmake/GenerateVersionHeader.cmake
+                   -P ${CMAKE_CURRENT_SOURCE_DIR}/../cmake/GenerateVersionHeader.cmake
   )
 add_dependencies (vsag_mockimpl version_mockimpl)
 add_dependencies (vsag_mockimpl_static version_mockimpl)

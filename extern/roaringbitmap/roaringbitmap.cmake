@@ -8,6 +8,3 @@ FetchContent_Declare(
 set(ROARING_USE_CPM OFF)
 set(ENABLE_ROARING_TESTS OFF)
 FetchContent_MakeAvailable(roaringbitmap)
-
-include_directories(${roaringbitmap_BINARY_DIR})
-
