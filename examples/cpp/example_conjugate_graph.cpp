@@ -16,7 +16,7 @@ float_hnsw_conjugate() {
     int64_t k = 10;
 
     // generate data (use base[0: query_num] as query)
-    vsag::Dataset base;
+    auto base = vsag::Dataset::Make();
     std::shared_ptr<int64_t[]> base_ids(new int64_t[base_elements]);
     std::shared_ptr<float[]> base_data(new float[dim * base_elements]);
     std::mt19937 rng;
@@ -29,11 +29,11 @@ float_hnsw_conjugate() {
             base_data[d + i * dim] = distribution_real(rng);
         }
     }
-    base.Dim(dim)
-        .NumElements(base_elements)
-        .Ids(base_ids.get())
-        .Float32Vectors(base_data.get())
-        .Owner(false);
+    base->Dim(dim)
+        ->NumElements(base_elements)
+        ->Ids(base_ids.get())
+        ->Float32Vectors(base_data.get())
+        ->Owner(false);
 
     // create index
     nlohmann::json hnsw_parameters{{"max_degree", max_degree},
@@ -73,12 +73,15 @@ float_hnsw_conjugate() {
                   << "Memory Usage:" << hnsw->GetMemoryUsage() / 1024.0 << " KB" << std::endl;
 
         for (int i = 0; i < query_elements; i++) {
-            vsag::Dataset query;
-            query.Dim(dim).Float32Vectors(base_data.get() + i * dim).NumElements(1).Owner(false);
+            auto query = vsag::Dataset::Make();
+            query->Dim(dim)
+                ->Float32Vectors(base_data.get() + i * dim)
+                ->NumElements(1)
+                ->Owner(false);
 
             auto result = hnsw->KnnSearch(query, k, search_parameters.dump());
             int64_t global_optimum = i;  // global optimum is itself
-            int64_t local_optimum = result->GetIds()[0];
+            int64_t local_optimum = result.value()->GetIds()[0];
 
             if (local_optimum != global_optimum) {
                 failed_queries.emplace(i, global_optimum);
@@ -99,11 +102,11 @@ float_hnsw_conjugate() {
         int error_fixed = 0;
         std::cout << "====Feedback Stage====" << std::endl;
         for (auto item : failed_queries) {
-            vsag::Dataset query;
-            query.Dim(dim)
-                .Float32Vectors(base_data.get() + item.first * dim)
-                .NumElements(1)
-                .Owner(false);
+            auto query = vsag::Dataset::Make();
+            query->Dim(dim)
+                ->Float32Vectors(base_data.get() + item.first * dim)
+                ->NumElements(1)
+                ->Owner(false);
             error_fixed += *hnsw->Feedback(query, 1, search_parameters.dump(), item.second);
         }
         std::cout << "Fixed queries num: " << error_fixed << std::endl;
@@ -120,12 +123,15 @@ float_hnsw_conjugate() {
                   << "Memory Usage:" << hnsw->GetMemoryUsage() / 1024.0 << " KB" << std::endl;
 
         for (int i = 0; i < query_elements; i++) {
-            vsag::Dataset query;
-            query.Dim(dim).Float32Vectors(base_data.get() + i * dim).NumElements(1).Owner(false);
+            auto query = vsag::Dataset::Make();
+            query->Dim(dim)
+                ->Float32Vectors(base_data.get() + i * dim)
+                ->NumElements(1)
+                ->Owner(false);
 
             auto result = hnsw->KnnSearch(query, k, search_parameters.dump());
             int64_t global_optimum = i;  // global optimum is itself
-            int64_t local_optimum = result->GetIds()[0];
+            int64_t local_optimum = result.value()->GetIds()[0];
 
             if (local_optimum == global_optimum) {
                 correct++;

@@ -17,28 +17,28 @@ SimpleFlat::SimpleFlat(const std::string& metric_type, int64_t dim)
 }
 
 tl::expected<std::vector<int64_t>, Error>
-SimpleFlat::Build(const Dataset& base) {
+SimpleFlat::Build(const DatasetPtr& base) {
     std::vector<int64_t> failed_ids;
     if (not this->data_.empty()) {
         return tl::unexpected(Error(ErrorType::BUILD_TWICE, ""));
     }
 
-    if (this->dim_ != base.GetDim()) {
+    if (this->dim_ != base->GetDim()) {
         return tl::unexpected(Error(ErrorType::DIMENSION_NOT_EQUAL, ""));
     }
 
-    int64_t raw_length = base.GetNumElements();
+    int64_t raw_length = base->GetNumElements();
 
     this->ids_.resize(raw_length);
     this->data_.resize(raw_length * this->dim_);
     int64_t actual_add_size = 0;
     for (int i = 0; i < raw_length; ++i) {
         auto end = ids_.begin() + actual_add_size;
-        if (actual_add_size == 0 || std::find(ids_.begin(), end, base.GetIds()[i]) == end) {
-            std::memcpy(this->ids_.data() + actual_add_size, base.GetIds() + i, sizeof(int64_t));
+        if (actual_add_size == 0 || std::find(ids_.begin(), end, base->GetIds()[i]) == end) {
+            std::memcpy(this->ids_.data() + actual_add_size, base->GetIds() + i, sizeof(int64_t));
 
             std::memcpy(this->data_.data() + actual_add_size * this->dim_,
-                        base.GetFloat32Vectors() + i * this->dim_,
+                        base->GetFloat32Vectors() + i * this->dim_,
                         this->dim_ * sizeof(float));
             actual_add_size++;
         } else {
@@ -54,29 +54,29 @@ SimpleFlat::Build(const Dataset& base) {
 }
 
 tl::expected<std::vector<int64_t>, Error>
-SimpleFlat::Add(const Dataset& base) {
+SimpleFlat::Add(const DatasetPtr& base) {
     std::vector<int64_t> failed_ids;
     if (not this->data_.empty()) {
-        if (this->dim_ != base.GetDim()) {
+        if (this->dim_ != base->GetDim()) {
             return tl::unexpected(Error(ErrorType::DIMENSION_NOT_EQUAL, ""));
         }
     }
 
     int64_t num_elements_existed = this->num_elements_;
 
-    this->ids_.resize(num_elements_existed + base.GetNumElements());
-    this->data_.resize((num_elements_existed + base.GetNumElements()) * this->dim_);
+    this->ids_.resize(num_elements_existed + base->GetNumElements());
+    this->data_.resize((num_elements_existed + base->GetNumElements()) * this->dim_);
 
     int64_t actual_add_size = 0;
-    for (int i = 0; i < base.GetNumElements(); ++i) {
+    for (int i = 0; i < base->GetNumElements(); ++i) {
         int64_t cur_size = num_elements_existed + actual_add_size;
         if (num_elements_existed + actual_add_size == 0 ||
-            std::find(ids_.begin(), ids_.begin() + cur_size, base.GetIds()[i]) ==
+            std::find(ids_.begin(), ids_.begin() + cur_size, base->GetIds()[i]) ==
                 ids_.begin() + cur_size) {
-            std::memcpy(this->ids_.data() + cur_size, base.GetIds() + i, sizeof(int64_t));
+            std::memcpy(this->ids_.data() + cur_size, base->GetIds() + i, sizeof(int64_t));
 
             std::memcpy(this->data_.data() + cur_size * this->dim_,
-                        base.GetFloat32Vectors() + i * this->dim_,
+                        base->GetFloat32Vectors() + i * this->dim_,
                         this->dim_ * sizeof(float));
             actual_add_size++;
         } else {
@@ -91,14 +91,14 @@ SimpleFlat::Add(const Dataset& base) {
     return std::move(failed_ids);
 }
 
-tl::expected<Dataset, Error>
-SimpleFlat::KnnSearch(const Dataset& query,
+tl::expected<DatasetPtr, Error>
+SimpleFlat::KnnSearch(const DatasetPtr& query,
                       int64_t k,
                       const std::string& parameters,
                       BitsetPtr invalid) const {
-    int64_t dim = query.GetDim();
+    int64_t dim = query->GetDim();
     k = std::min(k, GetNumElements());
-    int64_t num_elements = query.GetNumElements();
+    int64_t num_elements = query->GetNumElements();
     if (num_elements != 1) {
         return tl::unexpected(Error(ErrorType::INTERNAL_ERROR, ""));
     }
@@ -106,11 +106,11 @@ SimpleFlat::KnnSearch(const Dataset& query,
         return tl::unexpected(Error(ErrorType::DIMENSION_NOT_EQUAL, ""));
     }
 
-    std::vector<rs> knn_result = knn_search(query.GetFloat32Vectors(), k, invalid);
+    std::vector<rs> knn_result = knn_search(query->GetFloat32Vectors(), k, invalid);
 
-    Dataset result;
+    auto result = Dataset::Make();
     if (knn_result.size() == 0) {
-        result.Dim(0).NumElements(1);
+        result->Dim(0)->NumElements(1);
         return result;
     }
 
@@ -120,17 +120,17 @@ SimpleFlat::KnnSearch(const Dataset& query,
         ids[kk] = knn_result[knn_result.size() - 1 - kk].second;
         dists[kk] = knn_result[knn_result.size() - 1 - kk].first;
     }
-    result.NumElements(1).Dim(knn_result.size()).Ids(ids).Distances(dists);
+    result->NumElements(1)->Dim(knn_result.size())->Ids(ids)->Distances(dists);
     return std::move(result);
 }
 
-tl::expected<Dataset, Error>
-SimpleFlat::RangeSearch(const Dataset& query,
+tl::expected<DatasetPtr, Error>
+SimpleFlat::RangeSearch(const DatasetPtr& query,
                         float radius,
                         const std::string& parameters,
                         BitsetPtr invalid) const {
-    int64_t nq = query.GetNumElements();
-    int64_t dim = query.GetDim();
+    int64_t nq = query->GetNumElements();
+    int64_t dim = query->GetDim();
     if (this->dim_ != dim) {
         return tl::unexpected(Error(ErrorType::DIMENSION_NOT_EQUAL, ""));
     }
@@ -139,11 +139,11 @@ SimpleFlat::RangeSearch(const Dataset& query,
         return tl::unexpected(Error(ErrorType::INTERNAL_ERROR, ""));
     }
 
-    auto range_result = range_search(query.GetFloat32Vectors(), radius, invalid);
+    auto range_result = range_search(query->GetFloat32Vectors(), radius, invalid);
 
-    Dataset result;
+    auto result = Dataset::Make();
     if (range_result.size() == 0) {
-        result.Dim(0).NumElements(1);
+        result->Dim(0)->NumElements(1);
         return result;
     }
 
@@ -153,7 +153,7 @@ SimpleFlat::RangeSearch(const Dataset& query,
         ids[kk] = range_result[range_result.size() - 1 - kk].second;
         dists[kk] = range_result[range_result.size() - 1 - kk].first;
     }
-    result.NumElements(1).Dim(range_result.size()).Ids(ids).Distances(dists);
+    result->NumElements(1)->Dim(range_result.size())->Ids(ids)->Distances(dists);
     return std::move(result);
 }
 

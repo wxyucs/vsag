@@ -11,6 +11,7 @@
 #include <map>
 
 #include "iostream"
+#include "vsag/dataset.h"
 #include "vsag/vsag.h"
 
 namespace py = pybind11;
@@ -49,31 +50,31 @@ public:
 public:
     void
     Build(py::array_t<float> vectors, py::array_t<int64_t> ids, size_t num_elements, size_t dim) {
-        vsag::Dataset dataset;
-        dataset.Owner(false)
-            .Dim(dim)
-            .NumElements(num_elements)
-            .Ids(ids.mutable_data())
-            .Float32Vectors(vectors.mutable_data());
+        auto dataset = vsag::Dataset::Make();
+        dataset->Owner(false)
+            ->Dim(dim)
+            ->NumElements(num_elements)
+            ->Ids(ids.mutable_data())
+            ->Float32Vectors(vectors.mutable_data());
         index_->Build(dataset);
     }
 
     py::object
     KnnSearch(py::array_t<float> vector, size_t k, std::string& parameters) {
-        vsag::Dataset query;
+        auto query = vsag::Dataset::Make();
         size_t data_num = 1;
-        query.NumElements(data_num)
-            .Dim(vector.size())
-            .Float32Vectors(vector.mutable_data())
-            .Owner(false);
+        query->NumElements(data_num)
+            ->Dim(vector.size())
+            ->Float32Vectors(vector.mutable_data())
+            ->Owner(false);
 
         auto labels = py::array_t<int64_t>(k);
         auto dists = py::array_t<float>(k);
         if (auto result = index_->KnnSearch(query, k, parameters); result.has_value()) {
             auto labels_data = labels.mutable_data();
             auto dists_data = dists.mutable_data();
-            auto ids = result->GetIds();
-            auto distances = result->GetDistances();
+            auto ids = result.value()->GetIds();
+            auto distances = result.value()->GetDistances();
             for (int i = 0; i < data_num * k; ++i) {
                 labels_data[i] = ids[i];
                 dists_data[i] = distances[i];
@@ -85,19 +86,19 @@ public:
 
     py::object
     RangeSearch(py::array_t<float> point, float threshold, std::string& parameters) {
-        vsag::Dataset query;
+        auto query = vsag::Dataset::Make();
         size_t data_num = 1;
-        query.NumElements(data_num)
-            .Dim(point.size())
-            .Float32Vectors(point.mutable_data())
-            .Owner(false);
+        query->NumElements(data_num)
+            ->Dim(point.size())
+            ->Float32Vectors(point.mutable_data())
+            ->Owner(false);
 
         py::array_t<int64_t> labels;
         py::array_t<float> dists;
         if (auto result = index_->RangeSearch(query, threshold, parameters); result.has_value()) {
-            auto ids = result->GetIds();
-            auto distances = result->GetDistances();
-            auto k = result->GetDim();
+            auto ids = result.value()->GetIds();
+            auto distances = result.value()->GetDistances();
+            auto k = result.value()->GetDim();
             labels.resize({k});
             dists.resize({k});
             auto labels_data = labels.mutable_data();

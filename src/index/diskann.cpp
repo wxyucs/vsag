@@ -156,14 +156,14 @@ DiskANN::DiskANN(diskann::Metric metric,
 }
 
 tl::expected<std::vector<int64_t>, Error>
-DiskANN::build(const Dataset& base) {
+DiskANN::build(const DatasetPtr& base) {
     try {
-        if (base.GetNumElements() == 0) {
+        if (base->GetNumElements() == 0) {
             empty_index_ = true;
             return std::vector<int64_t>();
         }
 
-        auto data_dim = base.GetDim();
+        auto data_dim = base->GetDim();
         CHECK_ARGUMENT(data_dim == dim_,
                        fmt::format("base.dim({}) must be equal to index.dim({})", data_dim, dim_));
 
@@ -171,9 +171,9 @@ DiskANN::build(const Dataset& base) {
             LOG_ERROR_AND_RETURNS(ErrorType::BUILD_TWICE, "failed to build index: build twice");
         }
 
-        auto vectors = base.GetFloat32Vectors();
-        auto ids = base.GetIds();
-        auto data_num = base.GetNumElements();
+        auto vectors = base->GetFloat32Vectors();
+        auto ids = base->GetIds();
+        auto data_num = base->GetNumElements();
 
         std::vector<size_t> failed_locs;
         {
@@ -240,8 +240,8 @@ DiskANN::build(const Dataset& base) {
     }
 }
 
-tl::expected<Dataset, Error>
-DiskANN::knn_search(const Dataset& query,
+tl::expected<DatasetPtr, Error>
+DiskANN::knn_search(const DatasetPtr& query,
                     int64_t k,
                     const std::string& parameters,
                     BitsetPtr invalid) const {
@@ -249,8 +249,8 @@ DiskANN::knn_search(const Dataset& query,
 
     // cannot perform search on empty index
     if (empty_index_) {
-        Dataset ret;
-        ret.Dim(0).NumElements(1);
+        auto ret = Dataset::Make();
+        ret->Dim(0)->NumElements(1);
         return ret;
     }
 
@@ -261,8 +261,8 @@ DiskANN::knn_search(const Dataset& query,
         }
 
         // check query vector
-        auto query_num = query.GetNumElements();
-        auto query_dim = query.GetDim();
+        auto query_num = query->GetNumElements();
+        auto query_dim = query->GetDim();
         CHECK_ARGUMENT(
             query_dim == dim_,
             fmt::format("query.dim({}) must be equal to index.dim({})", query_dim, dim_));
@@ -311,7 +311,7 @@ DiskANN::knn_search(const Dataset& query,
                 {
                     Timer timer(time_cost);
                     if (preload_) {
-                        k = index_->cached_beam_search_memory(query.GetFloat32Vectors() + i * dim_,
+                        k = index_->cached_beam_search_memory(query->GetFloat32Vectors() + i * dim_,
                                                               k,
                                                               ef_search,
                                                               labels + i * k,
@@ -322,7 +322,7 @@ DiskANN::knn_search(const Dataset& query,
                                                               reorder,
                                                               query_stats + i);
                     } else {
-                        k = index_->cached_beam_search(query.GetFloat32Vectors() + i * dim_,
+                        k = index_->cached_beam_search(query->GetFloat32Vectors() + i * dim_,
                                                        k,
                                                        ef_search,
                                                        labels + i * k,
@@ -353,8 +353,8 @@ DiskANN::knn_search(const Dataset& query,
             }
         }
 
-        Dataset result;
-        result.NumElements(query.GetNumElements()).Dim(0);
+        auto result = Dataset::Make();
+        result->NumElements(query->GetNumElements())->Dim(0);
 
         if (k == 0) {
             delete[] distances;
@@ -365,7 +365,7 @@ DiskANN::knn_search(const Dataset& query,
             ids[i] = static_cast<int64_t>(labels[i]);
         }
 
-        result.NumElements(query_num).Dim(k).Distances(distances).Ids(ids);
+        result->NumElements(query_num)->Dim(k)->Distances(distances)->Ids(ids);
         return std::move(result);
     } catch (const std::invalid_argument& e) {
         LOG_ERROR_AND_RETURNS(ErrorType::INVALID_ARGUMENT,
@@ -374,8 +374,8 @@ DiskANN::knn_search(const Dataset& query,
     }
 }
 
-tl::expected<Dataset, Error>
-DiskANN::range_search(const Dataset& query,
+tl::expected<DatasetPtr, Error>
+DiskANN::range_search(const DatasetPtr& query,
                       float radius,
                       const std::string& parameters,
                       BitsetPtr invalid) const {
@@ -383,8 +383,8 @@ DiskANN::range_search(const Dataset& query,
 
     // cannot perform search on empty index
     if (empty_index_) {
-        Dataset ret;
-        ret.Dim(0).NumElements(1);
+        auto ret = Dataset::Make();
+        ret->Dim(0)->NumElements(1);
         return ret;
     }
 
@@ -396,8 +396,8 @@ DiskANN::range_search(const Dataset& query,
         }
 
         // check query vector
-        int64_t query_num = query.GetNumElements();
-        int64_t query_dim = query.GetDim();
+        int64_t query_num = query->GetNumElements();
+        int64_t query_dim = query->GetDim();
         CHECK_ARGUMENT(
             query_dim == dim_,
             fmt::format("query.dim({}) must be equal to index.dim({})", query_dim, dim_));
@@ -439,7 +439,7 @@ DiskANN::range_search(const Dataset& query,
             double time_cost = 0;
             {
                 Timer timer(time_cost);
-                index_->range_search(query.GetFloat32Vectors(),
+                index_->range_search(query->GetFloat32Vectors(),
                                      radius,
                                      ef_search,
                                      ef_search * 2,
@@ -469,8 +469,8 @@ DiskANN::range_search(const Dataset& query,
 
         int64_t k = labels.size();
 
-        Dataset result;
-        result.Dim(0).NumElements(query_num);
+        auto result = Dataset::Make();
+        result->Dim(0)->NumElements(query_num);
         if (k == 0) {
             return std::move(result);
         }
@@ -482,7 +482,7 @@ DiskANN::range_search(const Dataset& query,
             dis[i] = range_distances[i];
         }
 
-        result.NumElements(query_num).Dim(k).Distances(dis).Ids(ids);
+        result->NumElements(query_num)->Dim(k)->Distances(dis)->Ids(ids);
         return std::move(result);
     } catch (const std::invalid_argument& e) {
         LOG_ERROR_AND_RETURNS(ErrorType::INVALID_ARGUMENT,
@@ -751,7 +751,7 @@ deserialize_vector_from_binary(const Binary& binary_data) {
 }
 
 tl::expected<Index::Checkpoint, Error>
-DiskANN::continue_build(const Dataset& base, const BinarySet& binary_set) {
+DiskANN::continue_build(const DatasetPtr& base, const BinarySet& binary_set) {
     try {
         BuildStatus build_status = BuildStatus::BEGIN;
         if (not binary_set.GetKeys().empty()) {
@@ -760,10 +760,10 @@ DiskANN::continue_build(const Dataset& base, const BinarySet& binary_set) {
             build_status = from_binary<BuildStatus>(status_binary);
         }
         CHECK_ARGUMENT(
-            base.GetDim() == dim_,
-            fmt::format("base.dim({}) must be equal to index.dim({})", base.GetDim(), dim_));
+            base->GetDim() == dim_,
+            fmt::format("base.dim({}) must be equal to index.dim({})", base->GetDim(), dim_));
         CHECK_ARGUMENT(
-            base.GetNumElements() >= DATA_LIMIT,
+            base->GetNumElements() >= DATA_LIMIT,
             "number of elements must be greater equal than " + std::to_string(DATA_LIMIT));
         if (this->index_ && status_ != IndexStatus::BUILDING) {
             LOG_ERROR_AND_RETURNS(ErrorType::BUILD_TWICE, "failed to build index: build twice");
@@ -804,8 +804,8 @@ DiskANN::continue_build(const Dataset& base, const BinarySet& binary_set) {
                 SlowTaskTimer t(fmt::format("diskann build (pq)"));
                 auto failed_locs =
                     deserialize_vector_from_binary<size_t>(after_binary_set.Get(BUILD_FAILED_LOC));
-                diskann::generate_disk_quantized_data<float>(base.GetFloat32Vectors(),
-                                                             base.GetNumElements(),
+                diskann::generate_disk_quantized_data<float>(base->GetFloat32Vectors(),
+                                                             base->GetNumElements(),
                                                              dim_,
                                                              failed_locs,
                                                              pq_pivots_stream_,
@@ -826,8 +826,8 @@ DiskANN::continue_build(const Dataset& base, const BinarySet& binary_set) {
                 auto failed_locs =
                     deserialize_vector_from_binary<size_t>(after_binary_set.Get(BUILD_FAILED_LOC));
                 convert_binary_to_stream(binary_set.Get(DISKANN_GRAPH), graph_stream_);
-                diskann::create_disk_layout<float>(base.GetFloat32Vectors(),
-                                                   base.GetNumElements(),
+                diskann::create_disk_layout<float>(base->GetFloat32Vectors(),
+                                                   base->GetNumElements(),
                                                    dim_,
                                                    failed_locs,
                                                    graph_stream_,
@@ -853,13 +853,13 @@ DiskANN::continue_build(const Dataset& base, const BinarySet& binary_set) {
 }
 
 tl::expected<void, Error>
-DiskANN::build_partial_graph(const Dataset& base,
+DiskANN::build_partial_graph(const DatasetPtr& base,
                              const BinarySet& binary_set,
                              BinarySet& after_binary_set,
                              int round) {
-    auto vectors = base.GetFloat32Vectors();
-    auto ids = base.GetIds();
-    auto data_num = base.GetNumElements();
+    auto vectors = base->GetFloat32Vectors();
+    auto ids = base->GetIds();
+    auto data_num = base->GetNumElements();
     std::vector<int64_t> tags(ids, ids + data_num);
     {
         // build graph

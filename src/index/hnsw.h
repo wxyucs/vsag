@@ -33,12 +33,12 @@ public:
          bool use_conjugate_graph = false);
 
     tl::expected<std::vector<int64_t>, Error>
-    Build(const Dataset& base) override {
+    Build(const DatasetPtr& base) override {
         SAFE_CALL(return this->build(base));
     }
 
     tl::expected<std::vector<int64_t>, Error>
-    Add(const Dataset& base) override {
+    Add(const DatasetPtr& base) override {
         SAFE_CALL(return this->add(base));
     }
 
@@ -47,16 +47,16 @@ public:
         SAFE_CALL(return this->remove(id));
     }
 
-    tl::expected<Dataset, Error>
-    KnnSearch(const Dataset& query,
+    tl::expected<DatasetPtr, Error>
+    KnnSearch(const DatasetPtr& query,
               int64_t k,
               const std::string& parameters,
               BitsetPtr invalid = nullptr) const override {
         SAFE_CALL(return this->knn_search(query, k, parameters, invalid));
     }
 
-    tl::expected<Dataset, Error>
-    RangeSearch(const Dataset& query,
+    tl::expected<DatasetPtr, Error>
+    RangeSearch(const DatasetPtr& query,
                 float radius,
                 const std::string& parameters,
                 BitsetPtr invalid = nullptr) const override {
@@ -64,7 +64,7 @@ public:
     }
 
     tl::expected<uint32_t, Error>
-    Feedback(const Dataset& query,
+    Feedback(const DatasetPtr& query,
              int64_t k,
              const std::string& parameters,
              int64_t global_optimum_tag_id = std::numeric_limits<int64_t>::max()) override {
@@ -127,37 +127,37 @@ public:
 
 private:
     tl::expected<std::vector<int64_t>, Error>
-    build(const Dataset& base);
+    build(const DatasetPtr& base);
 
     tl::expected<std::vector<int64_t>, Error>
-    add(const Dataset& base);
+    add(const DatasetPtr& base);
 
     tl::expected<bool, Error>
     remove(int64_t id);
 
-    tl::expected<Dataset, Error>
-    knn_search(const Dataset& query,
+    tl::expected<DatasetPtr, Error>
+    knn_search(const DatasetPtr& query,
                int64_t k,
                const std::string& parameters,
                BitsetPtr invalid = nullptr) const;
 
-    tl::expected<Dataset, Error>
-    range_search(const Dataset& query,
+    tl::expected<DatasetPtr, Error>
+    range_search(const DatasetPtr& query,
                  float radius,
                  const std::string& parameters,
                  BitsetPtr invalid = nullptr) const;
 
     tl::expected<uint32_t, Error>
-    feedback(const Dataset& query,
+    feedback(const DatasetPtr& query,
              int64_t k,
              const std::string& parameters,
              int64_t global_optimum_tag_id);
 
     tl::expected<uint32_t, Error>
-    feedback(const Dataset& result, int64_t global_optimum_tag_id, int64_t k);
+    feedback(const DatasetPtr& result, int64_t global_optimum_tag_id, int64_t k);
 
-    tl::expected<Dataset, Error>
-    brute_force(const Dataset& query, int64_t k);
+    tl::expected<DatasetPtr, Error>
+    brute_force(const DatasetPtr& query, int64_t k);
 
     tl::expected<uint32_t, Error>
     pretrain(const std::vector<int64_t>& base_tag_ids, uint32_t k, const std::string& parameters);

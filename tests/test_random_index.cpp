@@ -98,8 +98,8 @@ TEST_CASE("Random Index Test", "[ft][random]") {
         data[i] = distrib_real(rng) * mold;
     }
 
-    vsag::Dataset dataset;
-    dataset.Dim(dim).NumElements(max_elements).Ids(ids).Float32Vectors(data);
+    auto dataset = vsag::Dataset::Make();
+    dataset->Dim(dim)->NumElements(max_elements)->Ids(ids)->Float32Vectors(data);
 
     std::shared_ptr<vsag::Index> hnsw;
     auto index = vsag::Factory::CreateIndex("hnsw", index_parameters.dump());
@@ -108,12 +108,12 @@ TEST_CASE("Random Index Test", "[ft][random]") {
     hnsw->Build(dataset);
 
     for (int i = 0; i < max_elements; i++) {
-        vsag::Dataset query;
-        query.NumElements(1).Dim(dim).Float32Vectors(data + i * dim).Owner(false);
+        auto query = vsag::Dataset::Make();
+        query->NumElements(1)->Dim(dim)->Float32Vectors(data + i * dim)->Owner(false);
         auto knn_result = hnsw->KnnSearch(query, k, parameters.dump());
         REQUIRE(knn_result.has_value());
 
-        REQUIRE(knn_result.value().GetDim() == std::min(k, (int64_t)max_elements));
+        REQUIRE(knn_result.value()->GetDim() == std::min(k, (int64_t)max_elements));
         auto range_result = hnsw->RangeSearch(query, threshold, parameters.dump());
         REQUIRE(range_result.has_value());
     }
@@ -126,11 +126,11 @@ TEST_CASE("Random Index Test", "[ft][random]") {
     diskann->Build(dataset);
 
     for (int i = 0; i < max_elements; i++) {
-        vsag::Dataset query;
-        query.NumElements(1).Dim(dim).Float32Vectors(data + i * dim).Owner(false);
+        auto query = vsag::Dataset::Make();
+        query->NumElements(1)->Dim(dim)->Float32Vectors(data + i * dim)->Owner(false);
         auto knn_result = diskann->KnnSearch(query, k, parameters.dump());
         REQUIRE(knn_result.has_value());
-        REQUIRE(knn_result.value().GetDim() == std::min(k, (int64_t)max_elements));
+        REQUIRE(knn_result.value()->GetDim() == std::min(k, (int64_t)max_elements));
         auto range_result = diskann->RangeSearch(query, threshold, parameters.dump());
         REQUIRE(range_result.has_value());
     }

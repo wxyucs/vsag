@@ -65,8 +65,8 @@ TEST_CASE("HNSW range search", "[ft][hnsw]") {
         data[i] = distrib_real(rng);
     }
 
-    vsag::Dataset dataset;
-    dataset.Dim(dim).NumElements(max_elements).Ids(ids).Float32Vectors(data);
+    auto dataset = vsag::Dataset::Make();
+    dataset->Dim(dim)->NumElements(max_elements)->Ids(ids)->Float32Vectors(data);
     hnsw->Build(dataset);
 
     REQUIRE(hnsw->GetNumElements() == max_elements);
@@ -76,29 +76,29 @@ TEST_CASE("HNSW range search", "[ft][hnsw]") {
     for (int64_t i = 0; i < dim; ++i) {
         query_data[i] = distrib_real(rng);
     }
-    vsag::Dataset query;
-    query.Dim(dim).NumElements(1).Float32Vectors(query_data);
+    auto query = vsag::Dataset::Make();
+    query->Dim(dim)->NumElements(1)->Float32Vectors(query_data);
     nlohmann::json parameters{
         {"hnsw", {{"ef_search", ef_search}}},
     };
     auto result = hnsw->RangeSearch(query, radius, parameters.dump());
     REQUIRE(result.has_value());
-    REQUIRE(result->GetNumElements() == 1);
+    REQUIRE(result.value()->GetNumElements() == 1);
 
     auto expected = vsag::l2_and_filtering(dim, max_elements, data, query_data, radius);
-    if (expected->Count() != result->GetDim()) {
+    if (expected->Count() != result.value()->GetDim()) {
         std::cout << "not 100% recall: expect " << expected->Count() << " return "
-                  << result->GetDim() << std::endl;
+                  << result.value()->GetDim() << std::endl;
     }
 
     // check no false recall
-    for (int64_t i = 0; i < result->GetDim(); ++i) {
-        auto offset = result->GetIds()[i];
+    for (int64_t i = 0; i < result.value()->GetDim(); ++i) {
+        auto offset = result.value()->GetIds()[i];
         CHECK(expected->Test(offset));
     }
 
     // recall > 99%
-    CHECK((expected->Count() - result->GetDim()) * 100 < max_elements);
+    CHECK((expected->Count() - result.value()->GetDim()) * 100 < max_elements);
 }
 
 TEST_CASE("HNSW filtering knn search", "[ft][hnsw]") {
@@ -139,16 +139,16 @@ TEST_CASE("HNSW filtering knn search", "[ft][hnsw]") {
         data[i] = distrib_real(rng);
     }
 
-    vsag::Dataset dataset;
-    dataset.Dim(dim).NumElements(max_elements).Ids(ids).Float32Vectors(data);
+    auto dataset = vsag::Dataset::Make();
+    dataset->Dim(dim)->NumElements(max_elements)->Ids(ids)->Float32Vectors(data);
     hnsw->Build(dataset);
 
     REQUIRE(hnsw->GetNumElements() == max_elements);
 
     // Query the elements for themselves and measure recall 1@1
     for (int i = 0; i < max_elements; i++) {
-        vsag::Dataset query;
-        query.NumElements(1).Dim(dim).Float32Vectors(data + i * dim).Owner(false);
+        auto query = vsag::Dataset::Make();
+        query->NumElements(1)->Dim(dim)->Float32Vectors(data + i * dim)->Owner(false);
 
         nlohmann::json parameters{
             {"hnsw", {{"ef_search", ef_search}}},
@@ -160,10 +160,11 @@ TEST_CASE("HNSW filtering knn search", "[ft][hnsw]") {
 
         auto result = hnsw->KnnSearch(query, k, parameters.dump(), filter);
         REQUIRE(result.has_value());
-        REQUIRE(result->GetDim() == max_elements - num_deleted * (max_elements / label_num));
-        for (int64_t j = 0; j < result->GetDim(); ++j) {
+        REQUIRE(result.value()->GetDim() ==
+                max_elements - num_deleted * (max_elements / label_num));
+        for (int64_t j = 0; j < result.value()->GetDim(); ++j) {
             // deleted ids NOT in result
-            REQUIRE(filter->Test(result->GetIds()[j] & 0xFFFFFFFFLL) == false);
+            REQUIRE(filter->Test(result.value()->GetIds()[j] & 0xFFFFFFFFLL) == false);
         }
     }
 }
@@ -203,8 +204,8 @@ TEST_CASE("HNSW Filtering Test", "[ft][hnsw]") {
         data[i] = distrib_real(rng);
     }
 
-    vsag::Dataset dataset;
-    dataset.Dim(dim).NumElements(max_elements).Ids(ids).Float32Vectors(data);
+    auto dataset = vsag::Dataset::Make();
+    dataset->Dim(dim)->NumElements(max_elements)->Ids(ids)->Float32Vectors(data);
     hnsw->Build(dataset);
 
     REQUIRE(hnsw->GetNumElements() == max_elements);
@@ -215,8 +216,8 @@ TEST_CASE("HNSW Filtering Test", "[ft][hnsw]") {
     float correct_range = 0.0f;
     float recall_range = 0.0f;
     for (int i = 0; i < max_elements; i++) {
-        vsag::Dataset query;
-        query.NumElements(1).Dim(dim).Float32Vectors(data + i * dim).Owner(false);
+        auto query = vsag::Dataset::Make();
+        query->NumElements(1)->Dim(dim)->Float32Vectors(data + i * dim)->Owner(false);
         nlohmann::json parameters{
             {"hnsw", {{"ef_search", ef_search}}},
         };
@@ -228,10 +229,10 @@ TEST_CASE("HNSW Filtering Test", "[ft][hnsw]") {
 
         if (auto result = hnsw->RangeSearch(query, radius, parameters.dump(), filter);
             result.has_value()) {
-            REQUIRE(result->GetDim() == max_elements - num_deleted);
-            for (int64_t j = 0; j < result->GetDim(); ++j) {
+            REQUIRE(result.value()->GetDim() == max_elements - num_deleted);
+            for (int64_t j = 0; j < result.value()->GetDim(); ++j) {
                 // deleted ids NOT in result
-                REQUIRE(filter->Test(result->GetIds()[j]) == false);
+                REQUIRE(filter->Test(result.value()->GetIds()[j]) == false);
             }
         } else {
             std::cerr << "failed to range search on index: internalError" << std::endl;
@@ -241,9 +242,9 @@ TEST_CASE("HNSW Filtering Test", "[ft][hnsw]") {
         if (auto result = hnsw->KnnSearch(query, k, parameters.dump(), filter);
             result.has_value()) {
             REQUIRE(result.has_value());
-            for (int64_t j = 0; j < result->GetDim(); ++j) {
+            for (int64_t j = 0; j < result.value()->GetDim(); ++j) {
                 // deleted ids NOT in result
-                REQUIRE(filter->Test(result->GetIds()[j]) == false);
+                REQUIRE(filter->Test(result.value()->GetIds()[j]) == false);
             }
         } else {
             std::cerr << "failed to knn search on index: internalError" << std::endl;
@@ -256,18 +257,18 @@ TEST_CASE("HNSW Filtering Test", "[ft][hnsw]") {
         }
         if (auto result = hnsw->RangeSearch(query, radius, parameters.dump(), ones);
             result.has_value()) {
-            REQUIRE(result->GetDim() == 0);
-            REQUIRE(result->GetDistances() == nullptr);
-            REQUIRE(result->GetIds() == nullptr);
+            REQUIRE(result.value()->GetDim() == 0);
+            REQUIRE(result.value()->GetDistances() == nullptr);
+            REQUIRE(result.value()->GetIds() == nullptr);
         } else if (result.error().type == vsag::ErrorType::INTERNAL_ERROR) {
             std::cerr << "failed to range search on index: internalError" << std::endl;
             exit(-1);
         }
 
         if (auto result = hnsw->KnnSearch(query, k, parameters.dump(), ones); result.has_value()) {
-            REQUIRE(result->GetDim() == 0);
-            REQUIRE(result->GetDistances() == nullptr);
-            REQUIRE(result->GetIds() == nullptr);
+            REQUIRE(result.value()->GetDim() == 0);
+            REQUIRE(result.value()->GetDistances() == nullptr);
+            REQUIRE(result.value()->GetIds() == nullptr);
         } else if (result.error().type == vsag::ErrorType::INTERNAL_ERROR) {
             std::cerr << "failed to knn search on index: internalError" << std::endl;
             exit(-1);
@@ -276,8 +277,13 @@ TEST_CASE("HNSW Filtering Test", "[ft][hnsw]") {
         vsag::BitsetPtr zeros = vsag::Bitset::Make();
 
         if (auto result = hnsw->KnnSearch(query, k, parameters.dump(), zeros); result.has_value()) {
-            correct_knn += vsag::knn_search_recall(
-                data, ids, max_elements, data + i * dim, dim, result->GetIds(), result->GetDim());
+            correct_knn += vsag::knn_search_recall(data,
+                                                   ids,
+                                                   max_elements,
+                                                   data + i * dim,
+                                                   dim,
+                                                   result.value()->GetIds(),
+                                                   result.value()->GetDim());
         } else if (result.error().type == vsag::ErrorType::INTERNAL_ERROR) {
             std::cerr << "failed to knn search on index: internalError" << std::endl;
             exit(-1);
@@ -285,8 +291,8 @@ TEST_CASE("HNSW Filtering Test", "[ft][hnsw]") {
 
         if (auto result = hnsw->RangeSearch(query, radius, parameters.dump(), zeros);
             result.has_value()) {
-            if (result->GetNumElements() == 1) {
-                if (result->GetDim() != 0 && result->GetIds()[0] == ids[i]) {
+            if (result.value()->GetNumElements() == 1) {
+                if (result.value()->GetDim() != 0 && result.value()->GetIds()[0] == ids[i]) {
                     correct_range++;
                 }
             }
@@ -337,25 +343,25 @@ TEST_CASE("HNSW small dimension", "[ft][hnsw]") {
         data[i] = distrib_real(rng);
     }
 
-    vsag::Dataset dataset;
-    dataset.Dim(dim).NumElements(max_elements).Ids(ids).Float32Vectors(data);
+    auto dataset = vsag::Dataset::Make();
+    dataset->Dim(dim)->NumElements(max_elements)->Ids(ids)->Float32Vectors(data);
     hnsw->Add(dataset);
     return;
 
     // Query the elements for themselves and measure recall 1@1
     float correct = 0;
     for (int i = 0; i < max_elements; i++) {
-        vsag::Dataset query;
-        query.NumElements(1).Dim(dim).Float32Vectors(data + i * dim).Owner(false);
+        auto query = vsag::Dataset::Make();
+        query->NumElements(1)->Dim(dim)->Float32Vectors(data + i * dim)->Owner(false);
         nlohmann::json parameters{
             {"hnsw", {{"ef_search", ef_search}}},
         };
         int64_t k = 10;
         if (auto result = hnsw->KnnSearch(query, k, parameters.dump()); result.has_value()) {
-            if (result->GetIds()[0] == i) {
+            if (result.value()->GetIds()[0] == i) {
                 correct++;
             }
-            REQUIRE(result->GetDim() == k);
+            REQUIRE(result.value()->GetDim() == k);
         } else if (result.error().type == vsag::ErrorType::INTERNAL_ERROR) {
             std::cerr << "failed to perform knn search on index" << std::endl;
         }
@@ -411,8 +417,8 @@ TEST_CASE("HNSW Random Id", "[ft][hnsw]") {
         data[i] = distrib_real(rng);
     }
 
-    vsag::Dataset dataset;
-    dataset.Dim(dim).NumElements(max_elements).Ids(ids).Float32Vectors(data);
+    auto dataset = vsag::Dataset::Make();
+    dataset->Dim(dim)->NumElements(max_elements)->Ids(ids)->Float32Vectors(data);
     auto failed_ids = hnsw->Build(dataset);
 
     float rate = hnsw->GetNumElements() / (float)max_elements;
@@ -429,17 +435,17 @@ TEST_CASE("HNSW Random Id", "[ft][hnsw]") {
             continue;
         }
         unique_ids.insert(ids[i]);
-        vsag::Dataset query;
-        query.NumElements(1).Dim(dim).Float32Vectors(data + i * dim).Owner(false);
+        auto query = vsag::Dataset::Make();
+        query->NumElements(1)->Dim(dim)->Float32Vectors(data + i * dim)->Owner(false);
         nlohmann::json parameters{
             {"hnsw", {{"ef_search", ef_search}}},
         };
         int64_t k = 10;
         if (auto result = hnsw->KnnSearch(query, k, parameters.dump()); result.has_value()) {
-            if (result->GetIds()[0] == ids[i]) {
+            if (result.value()->GetIds()[0] == ids[i]) {
                 correct++;
             }
-            REQUIRE(result->GetDim() == k);
+            REQUIRE(result.value()->GetDim() == k);
         } else if (result.error().type == vsag::ErrorType::INTERNAL_ERROR) {
             std::cerr << "failed to perform knn search on index" << std::endl;
         }
@@ -483,24 +489,24 @@ TEST_CASE("pq infer knn search time recall", "[ft][hnsw]") {
         data[i] = distrib_real(rng);
     }
 
-    vsag::Dataset dataset;
-    dataset.Dim(dim).NumElements(max_elements).Ids(ids).Float32Vectors(data);
+    auto dataset = vsag::Dataset::Make();
+    dataset->Dim(dim)->NumElements(max_elements)->Ids(ids)->Float32Vectors(data);
     hnsw->Build(dataset);
 
     // Query the elements for themselves and measure recall 1@1
     float correct = 0;
     for (int i = 0; i < max_elements; i++) {
-        vsag::Dataset query;
-        query.NumElements(1).Dim(dim).Float32Vectors(data + i * dim).Owner(false);
+        auto query = vsag::Dataset::Make();
+        query->NumElements(1)->Dim(dim)->Float32Vectors(data + i * dim)->Owner(false);
         nlohmann::json parameters{
             {"hnsw", {{"ef_search", ef_search}}},
         };
         int64_t k = 10;
         if (auto result = hnsw->KnnSearch(query, k, parameters.dump()); result.has_value()) {
-            if (result->GetIds()[0] == i) {
+            if (result.value()->GetIds()[0] == i) {
                 correct++;
             }
-            REQUIRE(result->GetDim() == k);
+            REQUIRE(result.value()->GetDim() == k);
         } else if (result.error().type == vsag::ErrorType::INTERNAL_ERROR) {
             std::cerr << "failed to perform knn search on index" << std::endl;
         }
@@ -544,8 +550,8 @@ TEST_CASE("hnsw serialize", "[ft][hnsw]") {
         data[i] = distrib_real(rng);
     }
 
-    vsag::Dataset dataset;
-    dataset.Dim(dim).NumElements(max_elements).Ids(ids).Float32Vectors(data);
+    auto dataset = vsag::Dataset::Make();
+    dataset->Dim(dim)->NumElements(max_elements)->Ids(ids)->Float32Vectors(data);
     hnsw->Build(dataset);
 
     // Serialize(single-file)
@@ -689,15 +695,20 @@ TEST_CASE("hnsw serialize", "[ft][hnsw]") {
     // Query the elements for themselves and measure recall 1@10
     float correct = 0;
     for (int i = 0; i < max_elements; i++) {
-        vsag::Dataset query;
-        query.NumElements(1).Dim(dim).Float32Vectors(data + i * dim).Owner(false);
+        auto query = vsag::Dataset::Make();
+        query->NumElements(1)->Dim(dim)->Float32Vectors(data + i * dim)->Owner(false);
         nlohmann::json parameters{
             {"hnsw", {{"ef_search", ef_search}}},
         };
         int64_t k = 10;
         if (auto result = hnsw->KnnSearch(query, k, parameters.dump()); result.has_value()) {
-            correct += vsag::knn_search_recall(
-                data, ids, max_elements, data + i * dim, dim, result->GetIds(), result->GetDim());
+            correct += vsag::knn_search_recall(data,
+                                               ids,
+                                               max_elements,
+                                               data + i * dim,
+                                               dim,
+                                               result.value()->GetIds(),
+                                               result.value()->GetDim());
         } else if (result.error().type == vsag::ErrorType::INTERNAL_ERROR) {
             std::cerr << "failed to perform search on index" << std::endl;
         }

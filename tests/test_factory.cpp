@@ -36,22 +36,22 @@ TEST_CASE("index params", "[ft][factory]") {
         data[i] = distrib_real(rng);
     }
 
-    vsag::Dataset dataset;
-    dataset.Dim(dim).NumElements(max_elements).Ids(ids).Float32Vectors(data);
+    auto dataset = vsag::Dataset::Make();
+    dataset->Dim(dim)->NumElements(max_elements)->Ids(ids)->Float32Vectors(data);
     hnsw->Build(dataset);
 
     // Query the elements for themselves and measure recall 1@1
     float correct = 0;
     for (int i = 0; i < max_elements; i++) {
-        vsag::Dataset query;
-        query.NumElements(1).Dim(dim).Float32Vectors(data + i * dim).Owner(false);
+        auto query = vsag::Dataset::Make();
+        query->NumElements(1)->Dim(dim)->Float32Vectors(data + i * dim)->Owner(false);
 
         nlohmann::json parameters{
             {"hnsw", {{"ef_search", ef_search}}},
         };
         int64_t k = 10;
         if (auto result = hnsw->KnnSearch(query, k, parameters.dump()); result.has_value()) {
-            if (result->GetIds()[0] == i) {
+            if (result.value()->GetIds()[0] == i) {
                 correct++;
             }
         } else if (result.error().type == vsag::ErrorType::INTERNAL_ERROR) {

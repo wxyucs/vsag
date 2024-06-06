@@ -23,12 +23,12 @@ TEST_CASE("build & add", "[ut][hnsw]") {
     int64_t incorrect_dim = 63;
     std::vector<float> vectors(incorrect_dim);
 
-    vsag::Dataset dataset;
-    dataset.Dim(incorrect_dim)
-        .NumElements(1)
-        .Ids(ids.data())
-        .Float32Vectors(vectors.data())
-        .Owner(false);
+    auto dataset = vsag::Dataset::Make();
+    dataset->Dim(incorrect_dim)
+        ->NumElements(1)
+        ->Ids(ids.data())
+        ->Float32Vectors(vectors.data())
+        ->Owner(false);
 
     SECTION("build with incorrect dim") {
         auto result = index->Build(dataset);
@@ -55,13 +55,17 @@ TEST_CASE("knn_search", "[ut][hnsw]") {
     const int64_t num_elements = 10;
     auto [ids, vectors] = fixtures::generate_ids_and_vectors(num_elements, dim);
 
-    vsag::Dataset dataset;
-    dataset.Dim(dim).NumElements(1).Ids(ids.data()).Float32Vectors(vectors.data()).Owner(false);
+    auto dataset = vsag::Dataset::Make();
+    dataset->Dim(dim)
+        ->NumElements(1)
+        ->Ids(ids.data())
+        ->Float32Vectors(vectors.data())
+        ->Owner(false);
     auto result = index->Build(dataset);
     REQUIRE(result.has_value());
 
-    vsag::Dataset query;
-    query.NumElements(1).Dim(dim).Float32Vectors(vectors.data()).Owner(false);
+    auto query = vsag::Dataset::Make();
+    query->NumElements(1)->Dim(dim)->Float32Vectors(vectors.data())->Owner(false);
     int64_t k = 10;
     nlohmann::json params{
         {"hnsw", {{"ef_search", 100}}},
@@ -96,16 +100,16 @@ TEST_CASE("knn_search", "[ut][hnsw]") {
     }
 
     SECTION("query length is not 1") {
-        vsag::Dataset query;
-        query.NumElements(2).Dim(dim).Float32Vectors(vectors.data()).Owner(false);
+        auto query = vsag::Dataset::Make();
+        query->NumElements(2)->Dim(dim)->Float32Vectors(vectors.data())->Owner(false);
         auto result = index->KnnSearch(query, k, params.dump());
         REQUIRE_FALSE(result.has_value());
         REQUIRE(result.error().type == vsag::ErrorType::INVALID_ARGUMENT);
     }
 
     SECTION("dimension not equal") {
-        vsag::Dataset query;
-        query.NumElements(1).Dim(dim - 1).Float32Vectors(vectors.data()).Owner(false);
+        auto query = vsag::Dataset::Make();
+        query->NumElements(1)->Dim(dim - 1)->Float32Vectors(vectors.data())->Owner(false);
         auto result = index->KnnSearch(query, k, params.dump());
         REQUIRE_FALSE(result.has_value());
         REQUIRE(result.error().type == vsag::ErrorType::INVALID_ARGUMENT);
@@ -124,28 +128,32 @@ TEST_CASE("range_search", "[ut][hnsw]") {
     const int64_t num_elements = 10;
     auto [ids, vectors] = fixtures::generate_ids_and_vectors(num_elements, dim);
 
-    vsag::Dataset dataset;
-    dataset.Dim(dim).NumElements(1).Ids(ids.data()).Float32Vectors(vectors.data()).Owner(false);
+    auto dataset = vsag::Dataset::Make();
+    dataset->Dim(dim)
+        ->NumElements(1)
+        ->Ids(ids.data())
+        ->Float32Vectors(vectors.data())
+        ->Owner(false);
     auto result = index->Build(dataset);
     REQUIRE(result.has_value());
 
-    vsag::Dataset query;
-    query.NumElements(1).Dim(dim).Float32Vectors(vectors.data()).Owner(false);
+    auto query = vsag::Dataset::Make();
+    query->NumElements(1)->Dim(dim)->Float32Vectors(vectors.data())->Owner(false);
     float radius = 9.9f;
     nlohmann::json params{
         {"hnsw", {{"ef_search", 100}}},
     };
 
     SECTION("invalid parameter radius equals to 0") {
-        vsag::Dataset query;
-        query.NumElements(1).Dim(dim).Float32Vectors(vectors.data()).Owner(false);
+        auto query = vsag::Dataset::Make();
+        query->NumElements(1)->Dim(dim)->Float32Vectors(vectors.data())->Owner(false);
         auto result = index->RangeSearch(query, 0, params.dump());
         REQUIRE(result.has_value());
     }
 
     SECTION("invalid parameter radius less than 0") {
-        vsag::Dataset query;
-        query.NumElements(1).Dim(dim).Float32Vectors(vectors.data()).Owner(false);
+        auto query = vsag::Dataset::Make();
+        query->NumElements(1)->Dim(dim)->Float32Vectors(vectors.data())->Owner(false);
         auto result = index->RangeSearch(query, -1, params.dump());
         REQUIRE_FALSE(result.has_value());
         REQUIRE(result.error().type == vsag::ErrorType::INVALID_ARGUMENT);
@@ -168,8 +176,8 @@ TEST_CASE("range_search", "[ut][hnsw]") {
     }
 
     SECTION("query length is not 1") {
-        vsag::Dataset query;
-        query.NumElements(2).Dim(dim).Float32Vectors(vectors.data()).Owner(false);
+        auto query = vsag::Dataset::Make();
+        query->NumElements(2)->Dim(dim)->Float32Vectors(vectors.data())->Owner(false);
         auto result = index->RangeSearch(query, radius, params.dump());
         REQUIRE_FALSE(result.has_value());
         REQUIRE(result.error().type == vsag::ErrorType::INVALID_ARGUMENT);
@@ -212,8 +220,12 @@ TEST_CASE("deserialize on not empty index", "[ut][hnsw]") {
     const int64_t num_elements = 10;
     auto [ids, vectors] = fixtures::generate_ids_and_vectors(num_elements, dim);
 
-    vsag::Dataset dataset;
-    dataset.Dim(dim).NumElements(1).Ids(ids.data()).Float32Vectors(vectors.data()).Owner(false);
+    auto dataset = vsag::Dataset::Make();
+    dataset->Dim(dim)
+        ->NumElements(1)
+        ->Ids(ids.data())
+        ->Float32Vectors(vectors.data())
+        ->Owner(false);
     auto result = index->Build(dataset);
     REQUIRE(result.has_value());
 
@@ -262,17 +274,21 @@ TEST_CASE("static hnsw", "[ut][hnsw]") {
     const int64_t num_elements = 10;
     auto [ids, vectors] = fixtures::generate_ids_and_vectors(num_elements, dim);
 
-    vsag::Dataset dataset;
-    dataset.Dim(dim).NumElements(9).Ids(ids.data()).Float32Vectors(vectors.data()).Owner(false);
+    auto dataset = vsag::Dataset::Make();
+    dataset->Dim(dim)
+        ->NumElements(9)
+        ->Ids(ids.data())
+        ->Float32Vectors(vectors.data())
+        ->Owner(false);
     auto result = index->Build(dataset);
     REQUIRE(result.has_value());
 
-    vsag::Dataset one_vector;
-    one_vector.Dim(dim)
-        .NumElements(1)
-        .Ids(ids.data() + 9)
-        .Float32Vectors(vectors.data() + 9 * dim)
-        .Owner(false);
+    auto one_vector = vsag::Dataset::Make();
+    one_vector->Dim(dim)
+        ->NumElements(1)
+        ->Ids(ids.data() + 9)
+        ->Float32Vectors(vectors.data() + 9 * dim)
+        ->Owner(false);
     result = index->Add(one_vector);
     REQUIRE_FALSE(result.has_value());
     REQUIRE(result.error().type == vsag::ErrorType::UNSUPPORTED_INDEX_OPERATION);
@@ -308,15 +324,23 @@ TEST_CASE("hnsw add vector with duplicated id", "[ut][hnsw]") {
     std::vector<int64_t> ids{1};
     std::vector<float> vectors(dim);
 
-    vsag::Dataset first_time;
-    first_time.Dim(dim).NumElements(1).Ids(ids.data()).Float32Vectors(vectors.data()).Owner(false);
+    auto first_time = vsag::Dataset::Make();
+    first_time->Dim(dim)
+        ->NumElements(1)
+        ->Ids(ids.data())
+        ->Float32Vectors(vectors.data())
+        ->Owner(false);
     auto result = index->Add(first_time);
     REQUIRE(result.has_value());
     // expect failed id list emtpy
     REQUIRE(result.value().empty());
 
-    vsag::Dataset second_time;
-    second_time.Dim(dim).NumElements(1).Ids(ids.data()).Float32Vectors(vectors.data()).Owner(false);
+    auto second_time = vsag::Dataset::Make();
+    second_time->Dim(dim)
+        ->NumElements(1)
+        ->Ids(ids.data())
+        ->Float32Vectors(vectors.data())
+        ->Owner(false);
     auto result2 = index->Add(second_time);
     REQUIRE(result2.has_value());
     // expected failed id list == {1}
@@ -335,12 +359,12 @@ TEST_CASE("build with reversed edges", "[ut][hnsw]") {
     const int64_t num_elements = 1000;
     auto [ids, vectors] = fixtures::generate_ids_and_vectors(num_elements, dim);
 
-    vsag::Dataset dataset;
-    dataset.Dim(dim)
-        .NumElements(num_elements)
-        .Ids(ids.data())
-        .Float32Vectors(vectors.data())
-        .Owner(false);
+    auto dataset = vsag::Dataset::Make();
+    dataset->Dim(dim)
+        ->NumElements(num_elements)
+        ->Ids(ids.data())
+        ->Float32Vectors(vectors.data())
+        ->Owner(false);
 
     auto result = index->Build(dataset);
     REQUIRE(result.has_value());
@@ -431,8 +455,8 @@ TEST_CASE("feedback with invalid argument", "[ut][hnsw]") {
     };
 
     auto [ids, vectors] = fixtures::generate_ids_and_vectors(num_vectors, dim);
-    vsag::Dataset query;
-    query.NumElements(1).Dim(dim).Float32Vectors(vectors.data()).Owner(false);
+    auto query = vsag::Dataset::Make();
+    query->NumElements(1)->Dim(dim)->Float32Vectors(vectors.data())->Owner(false);
 
     SECTION("index feedback with k = 0") {
         REQUIRE(index->Feedback(query, 0, search_parameters.dump(), -1).error().type ==
@@ -462,12 +486,12 @@ TEST_CASE("redundant feedback and empty enhancement", "[ut][hnsw]") {
         std::make_shared<hnswlib::L2Space>(dim), max_degree, ef_construction, false, false, true);
 
     auto [base_ids, base_vectors] = fixtures::generate_ids_and_vectors(num_base, dim);
-    vsag::Dataset base;
-    base.NumElements(num_base)
-        .Dim(dim)
-        .Ids(base_ids.data())
-        .Float32Vectors(base_vectors.data())
-        .Owner(false);
+    auto base = vsag::Dataset::Make();
+    base->NumElements(num_base)
+        ->Dim(dim)
+        ->Ids(base_ids.data())
+        ->Float32Vectors(base_vectors.data())
+        ->Owner(false);
     // build index
     auto buildindex = index->Build(base);
     REQUIRE(buildindex.has_value());
@@ -477,27 +501,28 @@ TEST_CASE("redundant feedback and empty enhancement", "[ut][hnsw]") {
     };
 
     auto [ids, vectors] = fixtures::generate_ids_and_vectors(num_query, dim);
-    vsag::Dataset query;
-    query.NumElements(1).Dim(dim).Float32Vectors(vectors.data()).Owner(false);
+    auto query = vsag::Dataset::Make();
+    query->NumElements(1)->Dim(dim)->Float32Vectors(vectors.data())->Owner(false);
 
     auto search_result = index->KnnSearch(query, k, search_parameters.dump());
     REQUIRE(search_result.has_value());
 
     SECTION("index redundant feedback") {
         auto feedback_result =
-            index->Feedback(query, k, search_parameters.dump(), search_result->GetIds()[0]);
+            index->Feedback(query, k, search_parameters.dump(), search_result.value()->GetIds()[0]);
         REQUIRE(*feedback_result == k - 1);
 
         auto redundant_feedback_result =
-            index->Feedback(query, k, search_parameters.dump(), search_result->GetIds()[0]);
+            index->Feedback(query, k, search_parameters.dump(), search_result.value()->GetIds()[0]);
         REQUIRE(*redundant_feedback_result == 0);
     }
 
     SECTION("index search with empty enhancement") {
         auto enhanced_search_result = index->KnnSearch(query, k, search_parameters.dump());
         REQUIRE(enhanced_search_result.has_value());
-        for (int i = 0; i < search_result->GetNumElements(); i++) {
-            REQUIRE(search_result->GetIds()[i] == enhanced_search_result->GetIds()[i]);
+        for (int i = 0; i < search_result.value()->GetNumElements(); i++) {
+            REQUIRE(search_result.value()->GetIds()[i] ==
+                    enhanced_search_result.value()->GetIds()[i]);
         }
     }
 }
@@ -517,12 +542,12 @@ TEST_CASE("feedback and pretrain without use conjugate graph", "[ut][hnsw]") {
         std::make_shared<hnswlib::L2Space>(dim), max_degree, ef_construction);
 
     auto [base_ids, base_vectors] = fixtures::generate_ids_and_vectors(num_base, dim);
-    vsag::Dataset base;
-    base.NumElements(num_base)
-        .Dim(dim)
-        .Ids(base_ids.data())
-        .Float32Vectors(base_vectors.data())
-        .Owner(false);
+    auto base = vsag::Dataset::Make();
+    base->NumElements(num_base)
+        ->Dim(dim)
+        ->Ids(base_ids.data())
+        ->Float32Vectors(base_vectors.data())
+        ->Owner(false);
     // build index
     auto buildindex = index->Build(base);
     REQUIRE(buildindex.has_value());
@@ -532,8 +557,8 @@ TEST_CASE("feedback and pretrain without use conjugate graph", "[ut][hnsw]") {
     };
 
     auto [ids, vectors] = fixtures::generate_ids_and_vectors(num_query, dim);
-    vsag::Dataset query;
-    query.NumElements(1).Dim(dim).Float32Vectors(vectors.data()).Owner(false);
+    auto query = vsag::Dataset::Make();
+    query->NumElements(1)->Dim(dim)->Float32Vectors(vectors.data())->Owner(false);
 
     auto feedback_result = index->Feedback(query, k, search_parameters.dump());
     REQUIRE(feedback_result.error().type == vsag::ErrorType::UNSUPPORTED_INDEX_OPERATION);
@@ -559,12 +584,12 @@ TEST_CASE("feedback and pretrain on empty index", "[ut][hnsw]") {
         std::make_shared<hnswlib::L2Space>(dim), max_degree, ef_construction, false, false, true);
 
     auto [base_ids, base_vectors] = fixtures::generate_ids_and_vectors(num_base, dim);
-    vsag::Dataset base;
-    base.NumElements(num_base)
-        .Dim(dim)
-        .Ids(base_ids.data())
-        .Float32Vectors(base_vectors.data())
-        .Owner(false);
+    auto base = vsag::Dataset::Make();
+    base->NumElements(num_base)
+        ->Dim(dim)
+        ->Ids(base_ids.data())
+        ->Float32Vectors(base_vectors.data())
+        ->Owner(false);
     // build index
     auto buildindex = index->Build(base);
     REQUIRE(buildindex.has_value());
@@ -574,8 +599,8 @@ TEST_CASE("feedback and pretrain on empty index", "[ut][hnsw]") {
     };
 
     auto [ids, vectors] = fixtures::generate_ids_and_vectors(num_query, dim);
-    vsag::Dataset query;
-    query.NumElements(1).Dim(dim).Float32Vectors(vectors.data()).Owner(false);
+    auto query = vsag::Dataset::Make();
+    query->NumElements(1)->Dim(dim)->Float32Vectors(vectors.data())->Owner(false);
 
     auto feedback_result = index->Feedback(query, k, search_parameters.dump());
     REQUIRE(*feedback_result == 0);

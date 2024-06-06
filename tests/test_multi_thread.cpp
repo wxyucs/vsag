@@ -69,16 +69,17 @@ private:
 
 float
 query_knn(std::shared_ptr<vsag::Index> index,
-          const vsag::Dataset& query,
+          const vsag::DatasetPtr& query,
           int64_t id,
           int64_t k,
           const std::string& parameters,
           vsag::BitsetPtr invalid) {
     if (auto result = index->KnnSearch(query, k, parameters, invalid); result.has_value()) {
-        if (result->GetDim() != 0 && result->GetIds()[0] == id) {
+        if (result.value()->GetDim() != 0 && result.value()->GetIds()[0] == id) {
             return 1.0;
         } else {
-            std::cout << result->GetDim() << " " << result->GetIds()[0] << " " << id << std::endl;
+            std::cout << result.value()->GetDim() << " " << result.value()->GetIds()[0] << " " << id
+                      << std::endl;
         }
     } else if (result.error().type == vsag::ErrorType::INTERNAL_ERROR) {
         std::cerr << "failed to perform knn search on index" << std::endl;
@@ -123,12 +124,12 @@ TEST_CASE("DiskAnn Multi-threading", "[ft][diskann]") {
     for (int i = 0; i < dim * max_elements; i++) data[i] = distrib_real(rng);
 
     // Build index
-    vsag::Dataset dataset;
-    dataset.Dim(dim)
-        .NumElements(max_elements)
-        .Ids(ids.get())
-        .Float32Vectors(data.get())
-        .Owner(false);
+    auto dataset = vsag::Dataset::Make();
+    dataset->Dim(dim)
+        ->NumElements(max_elements)
+        ->Ids(ids.get())
+        ->Float32Vectors(data.get())
+        ->Owner(false);
     auto result = index->Build(dataset);
     REQUIRE(result.has_value());
 
@@ -144,8 +145,8 @@ TEST_CASE("DiskAnn Multi-threading", "[ft][diskann]") {
         int64_t k = 2;
         future_results.push_back(
             pool.enqueue([&index, &ids, dim, &data, i, k, &str_parameters, &zeros]() -> float {
-                vsag::Dataset query;
-                query.NumElements(1).Dim(dim).Float32Vectors(data.get() + i * dim).Owner(false);
+                auto query = vsag::Dataset::Make();
+                query->NumElements(1)->Dim(dim)->Float32Vectors(data.get() + i * dim)->Owner(false);
                 return query_knn(index, query, *(ids.get() + i), k, str_parameters, zeros);
             }));
     }
@@ -184,12 +185,12 @@ TEST_CASE("HNSW Multi-threading", "[ft][hnsw]") {
     for (int i = 0; i < max_elements; i++) ids[i] = i;
     for (int i = 0; i < dim * max_elements; i++) data[i] = distrib_real(rng);
     // Build index
-    vsag::Dataset dataset;
-    dataset.Dim(dim)
-        .NumElements(max_elements)
-        .Ids(ids.get())
-        .Float32Vectors(data.get())
-        .Owner(false);
+    auto dataset = vsag::Dataset::Make();
+    dataset->Dim(dim)
+        ->NumElements(max_elements)
+        ->Ids(ids.get())
+        ->Float32Vectors(data.get())
+        ->Owner(false);
 
     auto result = index->Build(dataset);
     REQUIRE(result.has_value());
@@ -206,8 +207,8 @@ TEST_CASE("HNSW Multi-threading", "[ft][hnsw]") {
         int64_t k = 2;
         future_results.push_back(
             pool.enqueue([&index, &ids, dim, &data, i, k, &str_parameters, &zeros]() -> float {
-                vsag::Dataset query;
-                query.NumElements(1).Dim(dim).Float32Vectors(data.get() + i * dim).Owner(false);
+                auto query = vsag::Dataset::Make();
+                query->NumElements(1)->Dim(dim)->Float32Vectors(data.get() + i * dim)->Owner(false);
                 return query_knn(index, query, *(ids.get() + i), k, str_parameters, zeros);
             }));
     }

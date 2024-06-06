@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstdint>
+#include <memory>
 #include <string>
 #include <unordered_map>
 #include <variant>
@@ -9,126 +10,55 @@
 
 namespace vsag {
 
-class Dataset {
-    using var = std::variant<int64_t, const float*, const int8_t*, const int64_t*>;
+class Dataset;
+using DatasetPtr = std::shared_ptr<Dataset>;
+
+class Dataset : public std::enable_shared_from_this<Dataset> {
+public:
+    static DatasetPtr
+    Make();
+
+    virtual ~Dataset() = default;
+
+    virtual DatasetPtr
+    Owner(bool is_owner) = 0;
 
 public:
-    Dataset() = default;
-    ~Dataset() {
-        if (not owner_) {
-            return;
-        }
-        delete[] this->GetIds();
-        delete[] this->GetDistances();
-        delete[] this->GetInt8Vectors();
-        delete[] this->GetFloat32Vectors();
-    }
+    virtual DatasetPtr
+    NumElements(const int64_t num_elements) = 0;
 
-    Dataset(const Dataset&) = delete;
-    Dataset&
-    operator=(const Dataset&) = delete;
+    virtual int64_t
+    GetNumElements() const = 0;
 
-    Dataset(Dataset&& other) noexcept {
-        this->owner_ = other.owner_;
-        other.owner_ = false;
-        this->data_ = other.data_;
-        other.data_.clear();
-    }
+    virtual DatasetPtr
+    Dim(const int64_t dim) = 0;
 
-    Dataset&
-    Owner(bool is_owner) {
-        this->owner_ = is_owner;
-        return *this;
-    }
+    virtual int64_t
+    GetDim() const = 0;
 
-public:
-    Dataset&
-    NumElements(const int64_t num_elements) {
-        this->data_[NUM_ELEMENTS] = num_elements;
-        return *this;
-    }
+    virtual DatasetPtr
+    Ids(const int64_t* ids) = 0;
 
-    int64_t
-    GetNumElements() const {
-        if (this->data_.find(NUM_ELEMENTS) == this->data_.end()) {
-            return 0;
-        }
-        return std::get<int64_t>(this->data_.at(NUM_ELEMENTS));
-    }
+    virtual const int64_t*
+    GetIds() const = 0;
 
-    Dataset&
-    Dim(const int64_t dim) {
-        this->data_[DIM] = dim;
-        return *this;
-    }
+    virtual DatasetPtr
+    Distances(const float* dists) = 0;
 
-    int64_t
-    GetDim() const {
-        if (this->data_.find(DIM) == this->data_.end()) {
-            return 0;
-        }
-        return std::get<int64_t>(this->data_.at(DIM));
-    }
+    virtual const float*
+    GetDistances() const = 0;
 
-    Dataset&
-    Ids(const int64_t* ids) {
-        this->data_[IDS] = ids;
-        return *this;
-    }
+    virtual DatasetPtr
+    Int8Vectors(const int8_t* vectors) = 0;
 
-    const int64_t*
-    GetIds() const {
-        if (this->data_.find(IDS) == this->data_.end()) {
-            return nullptr;
-        }
-        return std::get<const int64_t*>(this->data_.at(IDS));
-    }
+    virtual const int8_t*
+    GetInt8Vectors() const = 0;
 
-    Dataset&
-    Distances(const float* dists) {
-        this->data_[DISTS] = dists;
-        return *this;
-    }
+    virtual DatasetPtr
+    Float32Vectors(const float* vectors) = 0;
 
-    const float*
-    GetDistances() const {
-        if (this->data_.find(DISTS) == this->data_.end()) {
-            return nullptr;
-        }
-        return std::get<const float*>(this->data_.at(DISTS));
-    }
-
-    Dataset&
-    Int8Vectors(const int8_t* vectors) {
-        this->data_[INT8_VECTORS] = vectors;
-        return *this;
-    }
-
-    const int8_t*
-    GetInt8Vectors() const {
-        if (this->data_.find(INT8_VECTORS) == this->data_.end()) {
-            return nullptr;
-        }
-        return std::get<const int8_t*>(this->data_.at(INT8_VECTORS));
-    }
-
-    Dataset&
-    Float32Vectors(const float* vectors) {
-        this->data_[FLOAT32_VECTORS] = vectors;
-        return *this;
-    }
-
-    const float*
-    GetFloat32Vectors() const {
-        if (this->data_.find(FLOAT32_VECTORS) == this->data_.end()) {
-            return nullptr;
-        }
-        return std::get<const float*>(this->data_.at(FLOAT32_VECTORS));
-    }
-
-private:
-    bool owner_ = true;
-    std::unordered_map<std::string, var> data_;
+    virtual const float*
+    GetFloat32Vectors() const = 0;
 };
 
 };  // namespace vsag

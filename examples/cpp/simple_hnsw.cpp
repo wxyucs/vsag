@@ -37,8 +37,8 @@ main(int argc, char** argv) {
     }
     )";
     auto index = vsag::Factory::CreateIndex("hnsw", hnsw_build_paramesters).value();
-    vsag::Dataset base;
-    base.NumElements(num_vectors).Dim(dim).Ids(ids).Float32Vectors(vectors).Owner(false);
+    auto base = vsag::Dataset::Make();
+    base->NumElements(num_vectors)->Dim(dim)->Ids(ids)->Float32Vectors(vectors)->Owner(false);
     index->Build(base);
 
     // prepare a query vector
@@ -56,14 +56,14 @@ main(int argc, char** argv) {
     }
     )";
     int64_t topk = 10;
-    vsag::Dataset query;
-    query.NumElements(1).Dim(dim).Float32Vectors(query_vector).Owner(true);
+    auto query = vsag::Dataset::Make();
+    query->NumElements(1)->Dim(dim)->Float32Vectors(query_vector)->Owner(true);
     auto result = index->KnnSearch(query, topk, hnsw_search_parameters).value();
 
     // print the results
     std::cout << "results: " << std::endl;
-    for (int64_t i = 0; i < result.GetDim(); ++i) {
-        std::cout << result.GetIds()[i] << ": " << result.GetDistances()[i] << std::endl;
+    for (int64_t i = 0; i < result->GetDim(); ++i) {
+        std::cout << result->GetIds()[i] << ": " << result->GetDistances()[i] << std::endl;
     }
 
     // free memory

@@ -12,22 +12,22 @@ public:
     explicit SimpleFlat(const std::string& metric_type, int64_t dim);
 
     tl::expected<std::vector<int64_t>, Error>
-    Build(const Dataset& base) override;
+    Build(const DatasetPtr& base) override;
 
     virtual tl::expected<std::vector<int64_t>, Error>
-    Add(const Dataset& base) override;
+    Add(const DatasetPtr& base) override;
 
     tl::expected<bool, Error>
     Remove(int64_t id) override;
 
-    tl::expected<Dataset, Error>
-    KnnSearch(const Dataset& query,
+    tl::expected<DatasetPtr, Error>
+    KnnSearch(const DatasetPtr& query,
               int64_t k,
               const std::string& parameters,
               BitsetPtr invalid = nullptr) const override;
 
-    tl::expected<Dataset, Error>
-    RangeSearch(const Dataset& query,
+    tl::expected<DatasetPtr, Error>
+    RangeSearch(const DatasetPtr& query,
                 float radius,
                 const std::string& parameters,
                 BitsetPtr invalid = nullptr) const override;

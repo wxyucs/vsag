@@ -55,25 +55,25 @@ public:
     ~DiskANN() = default;
 
     tl::expected<std::vector<int64_t>, Error>
-    Build(const Dataset& base) override {
+    Build(const DatasetPtr& base) override {
         SAFE_CALL(return this->build(base));
     }
 
     tl::expected<Checkpoint, Error>
-    ContinueBuild(const Dataset& base, const BinarySet& binary_set) override {
+    ContinueBuild(const DatasetPtr& base, const BinarySet& binary_set) override {
         SAFE_CALL(return this->continue_build(base, binary_set));
     }
 
-    tl::expected<Dataset, Error>
-    KnnSearch(const Dataset& query,
+    tl::expected<DatasetPtr, Error>
+    KnnSearch(const DatasetPtr& query,
               int64_t k,
               const std::string& parameters,
               BitsetPtr invalid = nullptr) const override {
         SAFE_CALL(return this->knn_search(query, k, parameters, invalid));
     }
 
-    tl::expected<Dataset, Error>
-    RangeSearch(const Dataset& query,
+    tl::expected<DatasetPtr, Error>
+    RangeSearch(const DatasetPtr& query,
                 float radius,
                 const std::string& parameters,
                 BitsetPtr invalid = nullptr) const override {
@@ -124,19 +124,19 @@ public:
 
 private:
     tl::expected<std::vector<int64_t>, Error>
-    build(const Dataset& base);
+    build(const DatasetPtr& base);
 
     tl::expected<Checkpoint, Error>
-    continue_build(const Dataset& base, const BinarySet& binary_set);
+    continue_build(const DatasetPtr& base, const BinarySet& binary_set);
 
-    tl::expected<Dataset, Error>
-    knn_search(const Dataset& query,
+    tl::expected<DatasetPtr, Error>
+    knn_search(const DatasetPtr& query,
                int64_t k,
                const std::string& parameters,
                BitsetPtr invalid = nullptr) const;
 
-    tl::expected<Dataset, Error>
-    range_search(const Dataset& query,
+    tl::expected<DatasetPtr, Error>
+    range_search(const DatasetPtr& query,
                  float radius,
                  const std::string& parameters,
                  BitsetPtr invalid = nullptr) const;
@@ -151,7 +151,7 @@ private:
     deserialize(const ReaderSet& reader_set);
 
     tl::expected<void, Error>
-    build_partial_graph(const Dataset& base,
+    build_partial_graph(const DatasetPtr& base,
                         const BinarySet& binary_set,
                         BinarySet& after_binary_set,
                         int round);

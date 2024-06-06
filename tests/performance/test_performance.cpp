@@ -198,12 +198,12 @@ public:
         // build
         int64_t total_base = test_dataset->GetNumberOfBase();
         auto ids = range(total_base);
-        Dataset base;
-        base.NumElements(total_base)
-            .Dim(test_dataset->GetDim())
-            .Ids(ids.get())
-            .Float32Vectors(test_dataset->GetTrain().get())
-            .Owner(false);
+        auto base = Dataset::Make();
+        base->NumElements(total_base)
+            ->Dim(test_dataset->GetDim())
+            ->Ids(ids.get())
+            ->Float32Vectors(test_dataset->GetTrain().get())
+            ->Owner(false);
         auto build_start = std::chrono::steady_clock::now();
         if (auto buildindex = index->Build(base); not buildindex.has_value()) {
             std::cerr << "build error: " << buildindex.error().message << std::endl;
@@ -216,28 +216,28 @@ public:
         int64_t correct = 0;
         int64_t total = test_dataset->GetNumberOfQuery();
         spdlog::debug("total: " + std::to_string(total));
-        std::vector<Dataset> results;
+        std::vector<DatasetPtr> results;
         for (int64_t i = 0; i < total; ++i) {
-            Dataset query;
-            query.NumElements(1)
-                .Dim(test_dataset->GetDim())
-                .Float32Vectors(test_dataset->GetTest().get() + i * test_dataset->GetDim())
-                .Owner(false);
+            auto query = Dataset::Make();
+            query->NumElements(1)
+                ->Dim(test_dataset->GetDim())
+                ->Float32Vectors(test_dataset->GetTest().get() + i * test_dataset->GetDim())
+                ->Owner(false);
 
             auto result = index->KnnSearch(query, 10, search_parameters);
             if (not result.has_value()) {
                 std::cerr << "query error: " << result.error().message << std::endl;
                 exit(-1);
             }
-            results.emplace_back(std::move(result.value()));
+            results.emplace_back(result.value());
         }
         auto search_finish = std::chrono::steady_clock::now();
 
         // calculate recall
         for (int64_t i = 0; i < total; ++i) {
-            for (int64_t j = 0; j < results[i].GetDim(); ++j) {
+            for (int64_t j = 0; j < results[i]->GetDim(); ++j) {
                 // 1@10
-                if (results[i].GetIds()[j] == test_dataset->GetNearestNeighbor(i)) {
+                if (results[i]->GetIds()[j] == test_dataset->GetNearestNeighbor(i)) {
                     ++correct;
                     break;
                 }

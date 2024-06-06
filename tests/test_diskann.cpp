@@ -53,21 +53,21 @@ TEST_CASE("DiskAnn Float Recall", "[ft][diskann]") {
     for (int i = 0; i < dim * max_elements; i++) data[i] = distrib_real(rng);
 
     // Build index
-    vsag::Dataset dataset;
-    dataset.Dim(dim).NumElements(max_elements).Ids(ids).Float32Vectors(data);
+    auto dataset = vsag::Dataset::Make();
+    dataset->Dim(dim)->NumElements(max_elements)->Ids(ids)->Float32Vectors(data);
     diskann->Build(dataset);
 
     float correct = 0;
     for (int i = 0; i < max_elements; i++) {
-        vsag::Dataset query;
-        query.NumElements(1).Dim(dim).Float32Vectors(data + i * dim).Owner(false);
+        auto query = vsag::Dataset::Make();
+        query->NumElements(1)->Dim(dim)->Float32Vectors(data + i * dim)->Owner(false);
         nlohmann::json parameters{
             {"diskann", {{"ef_search", ef_search}, {"beam_search", 4}, {"io_limit", 200}}}};
         int64_t k = 2;
         if (auto result = diskann->KnnSearch(query, k, parameters.dump()); result.has_value()) {
-            if (result->GetNumElements() == 1) {
-                REQUIRE(!std::isinf(result->GetDistances()[0]));
-                if (result->GetIds()[0] == i) {
+            if (result.value()->GetNumElements() == 1) {
+                REQUIRE(!std::isinf(result.value()->GetDistances()[0]));
+                if (result.value()->GetIds()[0] == i) {
                     correct++;
                 }
             }
@@ -178,15 +178,15 @@ TEST_CASE("DiskAnn Float Recall", "[ft][diskann]") {
     // Query the elements for themselves and measure recall 1@2
     correct = 0;
     for (int i = 0; i < max_elements; i++) {
-        vsag::Dataset query;
-        query.NumElements(1).Dim(dim).Float32Vectors(data + i * dim).Owner(false);
+        auto query = vsag::Dataset::Make();
+        query->NumElements(1)->Dim(dim)->Float32Vectors(data + i * dim)->Owner(false);
         nlohmann::json parameters{
             {"diskann", {{"ef_search", ef_search}, {"beam_search", 4}, {"io_limit", 200}}}};
         int64_t k = 2;
         if (auto result = diskann->KnnSearch(query, k, parameters.dump()); result.has_value()) {
-            if (result->GetNumElements() == 1) {
-                REQUIRE(!std::isinf(result->GetDistances()[0]));
-                if (result->GetIds()[0] == i) {
+            if (result.value()->GetNumElements() == 1) {
+                REQUIRE(!std::isinf(result.value()->GetDistances()[0]));
+                if (result.value()->GetIds()[0] == i) {
                     correct++;
                 }
             } else if (result.error().type == vsag::ErrorType::INTERNAL_ERROR) {
@@ -226,15 +226,15 @@ TEST_CASE("DiskAnn Float Recall", "[ft][diskann]") {
     // Query the elements for themselves and measure recall 1@2
     correct = 0;
     for (int i = 0; i < max_elements; i++) {
-        vsag::Dataset query;
-        query.NumElements(1).Dim(dim).Float32Vectors(data + i * dim).Owner(false);
+        auto query = vsag::Dataset::Make();
+        query->NumElements(1)->Dim(dim)->Float32Vectors(data + i * dim)->Owner(false);
         nlohmann::json parameters{
             {"diskann", {{"ef_search", ef_search}, {"beam_search", 4}, {"io_limit", 200}}}};
         int64_t k = 2;
         if (auto result = diskann->KnnSearch(query, k, parameters.dump()); result.has_value()) {
-            if (result->GetNumElements() == 1) {
-                REQUIRE(!std::isinf(result->GetDistances()[0]));
-                if (result->GetIds()[0] == i) {
+            if (result.value()->GetNumElements() == 1) {
+                REQUIRE(!std::isinf(result.value()->GetDistances()[0]));
+                if (result.value()->GetIds()[0] == i) {
                     correct++;
                 }
             }
@@ -289,21 +289,21 @@ TEST_CASE("DiskAnn IP Search", "[ft][diskann]") {
     for (int i = 0; i < dim * max_elements; i++) data[i] = distrib_real(rng);
 
     // Build index
-    vsag::Dataset dataset;
-    dataset.Dim(dim).NumElements(max_elements).Ids(ids).Float32Vectors(data);
+    auto dataset = vsag::Dataset::Make();
+    dataset->Dim(dim)->NumElements(max_elements)->Ids(ids)->Float32Vectors(data);
     diskann->Build(dataset);
 
     float correct = 0;
     for (int i = 0; i < max_elements; i++) {
-        vsag::Dataset query;
-        query.NumElements(1).Dim(dim).Float32Vectors(data + i * dim).Owner(false);
+        auto query = vsag::Dataset::Make();
+        query->NumElements(1)->Dim(dim)->Float32Vectors(data + i * dim)->Owner(false);
         nlohmann::json parameters{
             {"diskann", {{"ef_search", ef_search}, {"beam_search", 4}, {"io_limit", 200}}}};
         int64_t k = 2;
         if (auto result = diskann->KnnSearch(query, k, parameters.dump()); result.has_value()) {
-            if (result->GetNumElements() == 1) {
-                REQUIRE(!std::isinf(result->GetDistances()[0]));
-                if (result->GetIds()[0] == i) {
+            if (result.value()->GetNumElements() == 1) {
+                REQUIRE(!std::isinf(result.value()->GetDistances()[0]));
+                if (result.value()->GetIds()[0] == i) {
                     correct++;
                 }
             }
@@ -358,21 +358,21 @@ TEST_CASE("DiskAnn OPQ", "[ft][diskann]") {
     for (int i = 0; i < dim * max_elements; i++) data[i] = distrib_real(rng);
 
     // Build index
-    vsag::Dataset dataset;
-    dataset.Dim(dim).NumElements(max_elements).Ids(ids).Float32Vectors(data);
+    auto dataset = vsag::Dataset::Make();
+    dataset->Dim(dim)->NumElements(max_elements)->Ids(ids)->Float32Vectors(data);
     diskann->Build(dataset);
 
     float correct = 0;
     for (int i = 0; i < max_elements; i++) {
-        vsag::Dataset query;
-        query.NumElements(1).Dim(dim).Float32Vectors(data + i * dim).Owner(false);
+        auto query = vsag::Dataset::Make();
+        query->NumElements(1)->Dim(dim)->Float32Vectors(data + i * dim)->Owner(false);
         nlohmann::json parameters{
             {"diskann", {{"ef_search", ef_search}, {"beam_search", 4}, {"io_limit", 200}}}};
         int64_t k = 2;
         if (auto result = diskann->KnnSearch(query, k, parameters.dump()); result.has_value()) {
-            if (result->GetNumElements() == 1) {
-                REQUIRE(!std::isinf(result->GetDistances()[0]));
-                if (result->GetIds()[0] == i) {
+            if (result.value()->GetNumElements() == 1) {
+                REQUIRE(!std::isinf(result.value()->GetDistances()[0]));
+                if (result.value()->GetIds()[0] == i) {
                     correct++;
                 }
             }
@@ -428,30 +428,30 @@ TEST_CASE("DiskAnn Range Query", "[ft][diskann]") {
     for (int i = 0; i < dim * max_elements; i++) data[i] = distrib_real(rng);
 
     // Build index
-    vsag::Dataset dataset;
-    dataset.Dim(dim).NumElements(max_elements).Ids(ids).Float32Vectors(data);
+    auto dataset = vsag::Dataset::Make();
+    dataset->Dim(dim)->NumElements(max_elements)->Ids(ids)->Float32Vectors(data);
     diskann->Build(dataset);
 
     float correct = 0;
     float true_result = 0;
     float return_result = 0;
     for (int i = 0; i < max_elements; i++) {
-        vsag::Dataset query;
-        query.NumElements(1).Dim(dim).Float32Vectors(data + i * dim).Owner(false);
+        auto query = vsag::Dataset::Make();
+        query->NumElements(1)->Dim(dim)->Float32Vectors(data + i * dim)->Owner(false);
         nlohmann::json parameters{
             {"diskann", {{"ef_search", ef_search}, {"beam_search", 4}, {"io_limit", 200}}}};
         auto range_result =
             vsag::l2_and_filtering(dim, max_elements, data, data + i * dim, threshold);
         if (auto result = diskann->RangeSearch(query, threshold, parameters.dump());
             result.has_value()) {
-            if (result->GetDim() != 0 && result->GetIds()[0] == i) {
+            if (result.value()->GetDim() != 0 && result.value()->GetIds()[0] == i) {
                 correct++;
             }
-            for (int j = 0; j < result->GetDim(); ++j) {
-                REQUIRE(range_result->Test(result->GetIds()[j]));
+            for (int j = 0; j < result.value()->GetDim(); ++j) {
+                REQUIRE(range_result->Test(result.value()->GetIds()[j]));
             }
             true_result += range_result->Count();
-            return_result += result->GetDim();
+            return_result += result.value()->GetDim();
         } else if (result.error().type == vsag::ErrorType::INTERNAL_ERROR) {
             std::cerr << "failed to search on index: internalError" << std::endl;
             exit(-1);
@@ -507,20 +507,20 @@ TEST_CASE("DiskAnn Preload Graph", "[ft][diskann]") {
     for (int i = 0; i < dim * max_elements; i++) data[i] = distrib_real(rng);
 
     // Build index
-    vsag::Dataset dataset;
-    dataset.Dim(dim).NumElements(max_elements).Ids(ids).Float32Vectors(data);
+    auto dataset = vsag::Dataset::Make();
+    dataset->Dim(dim)->NumElements(max_elements)->Ids(ids)->Float32Vectors(data);
     diskann->Build(dataset);
 
     float correct = 0;
     for (int i = 0; i < max_elements; i++) {
-        vsag::Dataset query;
-        query.NumElements(1).Dim(dim).Float32Vectors(data + i * dim).Owner(false);
+        auto query = vsag::Dataset::Make();
+        query->NumElements(1)->Dim(dim)->Float32Vectors(data + i * dim)->Owner(false);
         nlohmann::json parameters{
             {"diskann", {{"ef_search", ef_search}, {"beam_search", 4}, {"io_limit", 200}}}};
         if (auto result = diskann->KnnSearch(query, k, parameters.dump()); result.has_value()) {
-            if (result->GetNumElements() == 1) {
-                REQUIRE(!std::isinf(result->GetDistances()[0]));
-                if (result->GetDim() != 0 && result->GetIds()[0] == i) {
+            if (result.value()->GetNumElements() == 1) {
+                REQUIRE(!std::isinf(result.value()->GetDistances()[0]));
+                if (result.value()->GetDim() != 0 && result.value()->GetIds()[0] == i) {
                     correct++;
                 }
             }
@@ -535,17 +535,17 @@ TEST_CASE("DiskAnn Preload Graph", "[ft][diskann]") {
 
     correct = 0;
     for (int i = 0; i < max_elements; i++) {
-        vsag::Dataset query;
-        query.NumElements(1).Dim(dim).Float32Vectors(data + i * dim).Owner(false);
+        auto query = vsag::Dataset::Make();
+        query->NumElements(1)->Dim(dim)->Float32Vectors(data + i * dim)->Owner(false);
         nlohmann::json parameters{{"diskann",
                                    {{"ef_search", ef_search},
                                     {"beam_search", 4},
                                     {"io_limit", 200},
                                     {"use_reorder", true}}}};
         if (auto result = diskann->KnnSearch(query, k, parameters.dump()); result.has_value()) {
-            if (result->GetNumElements() == 1) {
-                REQUIRE(!std::isinf(result->GetDistances()[0]));
-                if (result->GetDim() != 0 && result->GetIds()[0] == i) {
+            if (result.value()->GetNumElements() == 1) {
+                REQUIRE(!std::isinf(result.value()->GetDistances()[0]));
+                if (result.value()->GetDim() != 0 && result.value()->GetIds()[0] == i) {
                     correct++;
                 }
             }
@@ -560,8 +560,8 @@ TEST_CASE("DiskAnn Preload Graph", "[ft][diskann]") {
 
     correct = 0;
     for (int i = 0; i < max_elements; i++) {
-        vsag::Dataset query;
-        query.NumElements(1).Dim(dim).Float32Vectors(data + i * dim).Owner(false);
+        auto query = vsag::Dataset::Make();
+        query->NumElements(1)->Dim(dim)->Float32Vectors(data + i * dim)->Owner(false);
         nlohmann::json parameters{{"diskann",
                                    {{"ef_search", ef_search},
                                     {"beam_search", 4},
@@ -570,9 +570,9 @@ TEST_CASE("DiskAnn Preload Graph", "[ft][diskann]") {
         float threshold = 0.1;
         if (auto result = diskann->RangeSearch(query, threshold, parameters.dump());
             result.has_value()) {
-            if (result->GetNumElements() == 1) {
-                REQUIRE(!std::isinf(result->GetDistances()[0]));
-                if (result->GetDim() != 0 && result->GetIds()[0] == i) {
+            if (result.value()->GetNumElements() == 1) {
+                REQUIRE(!std::isinf(result.value()->GetDistances()[0]));
+                if (result.value()->GetDim() != 0 && result.value()->GetIds()[0] == i) {
                     correct++;
                 }
             }
@@ -634,8 +634,8 @@ TEST_CASE("DiskAnn Filter Test", "[ft][diskann]") {
     for (int i = 0; i < dim * max_elements; i++) data[i] = distrib_real(rng);
 
     // Build index
-    vsag::Dataset dataset;
-    dataset.Dim(dim).NumElements(max_elements).Ids(ids).Float32Vectors(data);
+    auto dataset = vsag::Dataset::Make();
+    dataset->Dim(dim)->NumElements(max_elements)->Ids(ids)->Float32Vectors(data);
     diskann->Build(dataset);
 
     REQUIRE(max_elements == diskann->GetNumElements());
@@ -645,8 +645,8 @@ TEST_CASE("DiskAnn Filter Test", "[ft][diskann]") {
     float correct_range = 0.0f;
     float recall_range = 0.0f;
     for (int i = 0; i < max_elements; i++) {
-        vsag::Dataset query;
-        query.NumElements(1).Dim(dim).Float32Vectors(data + i * dim).Owner(false);
+        auto query = vsag::Dataset::Make();
+        query->NumElements(1)->Dim(dim)->Float32Vectors(data + i * dim)->Owner(false);
 
         vsag::BitsetPtr invalid = vsag::Bitset::Random(label_num);
         int64_t num_deleted = invalid->Count();
@@ -654,9 +654,10 @@ TEST_CASE("DiskAnn Filter Test", "[ft][diskann]") {
             {"diskann", {{"ef_search", ef_search}, {"beam_search", 4}, {"io_limit", 200}}}};
         if (auto result = diskann->KnnSearch(query, k, parameters.dump(), invalid);
             result.has_value()) {
-            if (result->GetNumElements() == 1) {
-                if (result->GetDim() != 0 && result->GetNumElements() == 1) {
-                    REQUIRE(invalid->Test(ids[i] & 0xFFFFFFFFLL) ^ (ids[i] == result->GetIds()[0]));
+            if (result.value()->GetNumElements() == 1) {
+                if (result.value()->GetDim() != 0 && result.value()->GetNumElements() == 1) {
+                    REQUIRE(invalid->Test(ids[i] & 0xFFFFFFFFLL) ^
+                            (ids[i] == result.value()->GetIds()[0]));
                 }
             }
         } else if (result.error().type == vsag::ErrorType::INTERNAL_ERROR) {
@@ -666,8 +667,9 @@ TEST_CASE("DiskAnn Filter Test", "[ft][diskann]") {
 
         if (auto result = diskann->RangeSearch(query, threshold, parameters.dump(), invalid);
             result.has_value()) {
-            if (result->GetDim() != 0 && result->GetNumElements() == 1) {
-                REQUIRE(invalid->Test(ids[i] & 0xFFFFFFFFLL) ^ (ids[i] == result->GetIds()[0]));
+            if (result.value()->GetDim() != 0 && result.value()->GetNumElements() == 1) {
+                REQUIRE(invalid->Test(ids[i] & 0xFFFFFFFFLL) ^
+                        (ids[i] == result.value()->GetIds()[0]));
             }
         } else if (result.error().type == vsag::ErrorType::INTERNAL_ERROR) {
             std::cerr << "failed to range search on index: internalError" << std::endl;
@@ -679,9 +681,9 @@ TEST_CASE("DiskAnn Filter Test", "[ft][diskann]") {
         }
         if (auto result = diskann->RangeSearch(query, threshold, parameters.dump(), ones);
             result.has_value()) {
-            REQUIRE(result->GetDim() == 0);
-            REQUIRE(result->GetDistances() == nullptr);
-            REQUIRE(result->GetIds() == nullptr);
+            REQUIRE(result.value()->GetDim() == 0);
+            REQUIRE(result.value()->GetDistances() == nullptr);
+            REQUIRE(result.value()->GetIds() == nullptr);
         } else if (result.error().type == vsag::ErrorType::INTERNAL_ERROR) {
             std::cerr << "failed to range search on index: internalError" << std::endl;
             exit(-1);
@@ -689,9 +691,9 @@ TEST_CASE("DiskAnn Filter Test", "[ft][diskann]") {
 
         if (auto result = diskann->KnnSearch(query, k, parameters.dump(), ones);
             result.has_value()) {
-            REQUIRE(result->GetDim() == 0);
-            REQUIRE(result->GetDistances() == nullptr);
-            REQUIRE(result->GetIds() == nullptr);
+            REQUIRE(result.value()->GetDim() == 0);
+            REQUIRE(result.value()->GetDistances() == nullptr);
+            REQUIRE(result.value()->GetIds() == nullptr);
         } else if (result.error().type == vsag::ErrorType::INTERNAL_ERROR) {
             std::cerr << "failed to range search on index: internalError" << std::endl;
             exit(-1);
@@ -701,9 +703,9 @@ TEST_CASE("DiskAnn Filter Test", "[ft][diskann]") {
 
         if (auto result = diskann->KnnSearch(query, k, parameters.dump(), zeros);
             result.has_value()) {
-            if (result->GetNumElements() == 1) {
-                REQUIRE(!std::isinf(result->GetDistances()[0]));
-                if (result->GetDim() != 0 && result->GetIds()[0] == ids[i]) {
+            if (result.value()->GetNumElements() == 1) {
+                REQUIRE(!std::isinf(result.value()->GetDistances()[0]));
+                if (result.value()->GetDim() != 0 && result.value()->GetIds()[0] == ids[i]) {
                     correct_knn++;
                 }
             }
@@ -714,8 +716,8 @@ TEST_CASE("DiskAnn Filter Test", "[ft][diskann]") {
 
         if (auto result = diskann->RangeSearch(query, threshold, parameters.dump(), zeros);
             result.has_value()) {
-            if (result->GetNumElements() == 1) {
-                if (result->GetDim() != 0 && result->GetIds()[0] == ids[i]) {
+            if (result.value()->GetNumElements() == 1) {
+                if (result.value()->GetDim() != 0 && result.value()->GetIds()[0] == ids[i]) {
                     correct_range++;
                 }
             }
@@ -786,8 +788,8 @@ TEST_CASE("DiskAnn Random Id", "[ft][diskann]") {
         data[i] = distrib_real(rng);
     }
     // Build index
-    vsag::Dataset dataset;
-    dataset.Dim(dim).NumElements(max_elements).Ids(ids).Float32Vectors(data);
+    auto dataset = vsag::Dataset::Make();
+    dataset->Dim(dim)->NumElements(max_elements)->Ids(ids)->Float32Vectors(data);
     auto failed_ids = diskann->Build(dataset);
 
     float rate = diskann->GetNumElements() / (float)max_elements;
@@ -803,15 +805,15 @@ TEST_CASE("DiskAnn Random Id", "[ft][diskann]") {
             continue;
         }
         unique_ids.insert(ids[i]);
-        vsag::Dataset query;
-        query.NumElements(1).Dim(dim).Float32Vectors(data + i * dim).Owner(false);
+        auto query = vsag::Dataset::Make();
+        query->NumElements(1)->Dim(dim)->Float32Vectors(data + i * dim)->Owner(false);
         nlohmann::json parameters{
             {"diskann", {{"ef_search", ef_search}, {"beam_search", 4}, {"io_limit", 200}}}};
         int64_t k = 2;
         if (auto result = diskann->KnnSearch(query, k, parameters.dump()); result.has_value()) {
-            if (result->GetNumElements() == 1) {
-                REQUIRE(!std::isinf(result->GetDistances()[0]));
-                if (result->GetDim() != 0 && result->GetIds()[0] == ids[i]) {
+            if (result.value()->GetNumElements() == 1) {
+                REQUIRE(!std::isinf(result.value()->GetDistances()[0]));
+                if (result.value()->GetDim() != 0 && result.value()->GetIds()[0] == ids[i]) {
                     correct++;
                 }
             }
@@ -864,21 +866,21 @@ TEST_CASE("DiskANN small dimension", "[ft][diskann]") {
     }
 
     // Build index
-    vsag::Dataset dataset;
-    dataset.Dim(dim).NumElements(max_elements).Ids(ids).Float32Vectors(data);
+    auto dataset = vsag::Dataset::Make();
+    dataset->Dim(dim)->NumElements(max_elements)->Ids(ids)->Float32Vectors(data);
     diskann->Build(dataset);
 
     float correct = 0;
     for (int i = 0; i < max_elements; i++) {
-        vsag::Dataset query;
-        query.NumElements(1).Dim(dim).Float32Vectors(data + i * dim).Owner(false);
+        auto query = vsag::Dataset::Make();
+        query->NumElements(1)->Dim(dim)->Float32Vectors(data + i * dim)->Owner(false);
         nlohmann::json parameters{
             {"diskann", {{"ef_search", ef_search}, {"beam_search", 4}, {"io_limit", 200}}}};
         int64_t k = 2;
         if (auto result = diskann->KnnSearch(query, k, parameters.dump()); result.has_value()) {
-            if (result->GetNumElements() == 1) {
-                REQUIRE(!std::isinf(result->GetDistances()[0]));
-                if (result->GetIds()[0] == i) {
+            if (result.value()->GetNumElements() == 1) {
+                REQUIRE(!std::isinf(result.value()->GetDistances()[0]));
+                if (result.value()->GetIds()[0] == i) {
                     correct++;
                 }
             }
@@ -928,8 +930,8 @@ TEST_CASE("split building process", "[ft][diskann]") {
         data[i] = distrib_real(rng);
     }
 
-    vsag::Dataset dataset;
-    dataset.Dim(dim).NumElements(max_elements).Ids(ids).Float32Vectors(data);
+    auto dataset = vsag::Dataset::Make();
+    dataset->Dim(dim)->NumElements(max_elements)->Ids(ids)->Float32Vectors(data);
 
     std::shared_ptr<vsag::Index> partial_index;
     auto result_index = vsag::Factory::CreateIndex("diskann", index_parameters.dump());
@@ -956,14 +958,14 @@ TEST_CASE("split building process", "[ft][diskann]") {
         {"diskann", {{"ef_search", 10}, {"beam_search", 4}, {"io_limit", 20}}}};
     float correct = 0;
     for (int i = 0; i < max_elements; i++) {
-        vsag::Dataset query;
-        query.NumElements(1).Dim(dim).Float32Vectors(data + i * dim).Owner(false);
+        auto query = vsag::Dataset::Make();
+        query->NumElements(1)->Dim(dim)->Float32Vectors(data + i * dim)->Owner(false);
         int64_t k = 2;
         if (auto result = partial_index->KnnSearch(query, k, parameters.dump());
             result.has_value()) {
-            if (result->GetNumElements() == 1) {
-                REQUIRE(!std::isinf(result->GetDistances()[0]));
-                if (result->GetIds()[0] == i) {
+            if (result.value()->GetNumElements() == 1) {
+                REQUIRE(!std::isinf(result.value()->GetDistances()[0]));
+                if (result.value()->GetIds()[0] == i) {
                     correct++;
                 }
             }
@@ -983,14 +985,14 @@ TEST_CASE("split building process", "[ft][diskann]") {
     }
     correct = 0;
     for (int i = 0; i < max_elements; i++) {
-        vsag::Dataset query;
-        query.NumElements(1).Dim(dim).Float32Vectors(data + i * dim).Owner(false);
+        auto query = vsag::Dataset::Make();
+        query->NumElements(1)->Dim(dim)->Float32Vectors(data + i * dim)->Owner(false);
         int64_t k = 2;
         if (auto result = partial_index->KnnSearch(query, k, parameters.dump());
             result.has_value()) {
-            if (result->GetNumElements() == 1) {
-                REQUIRE(!std::isinf(result->GetDistances()[0]));
-                if (result->GetIds()[0] == i) {
+            if (result.value()->GetNumElements() == 1) {
+                REQUIRE(!std::isinf(result.value()->GetDistances()[0]));
+                if (result.value()->GetIds()[0] == i) {
                     correct++;
                 }
             }

@@ -87,20 +87,20 @@ HNSW::HNSW(std::shared_ptr<hnswlib::SpaceInterface> space_interface,
 }
 
 tl::expected<std::vector<int64_t>, Error>
-HNSW::build(const Dataset& base) {
+HNSW::build(const DatasetPtr& base) {
     try {
-        if (base.GetNumElements() == 0) {
+        if (base->GetNumElements() == 0) {
             empty_index_ = true;
             return std::vector<int64_t>();
         }
 
-        logger::debug("index.dim={}, base.dim={}", this->dim_, base.GetDim());
+        logger::debug("index.dim={}, base.dim={}", this->dim_, base->GetDim());
 
-        auto base_dim = base.GetDim();
+        auto base_dim = base->GetDim();
         CHECK_ARGUMENT(base_dim == dim_,
                        fmt::format("base.dim({}) must be equal to index.dim({})", base_dim, dim_));
 
-        int64_t num_elements = base.GetNumElements();
+        int64_t num_elements = base->GetNumElements();
         int64_t max_elements_;
         max_elements_ = alg_hnsw->getMaxElements();
         if (max_elements_ < num_elements) {
@@ -110,8 +110,8 @@ HNSW::build(const Dataset& base) {
             alg_hnsw->resizeIndex(max_elements_);
         }
 
-        auto ids = base.GetIds();
-        auto vectors = base.GetFloat32Vectors();
+        auto ids = base->GetIds();
+        auto vectors = base->GetFloat32Vectors();
         std::vector<int64_t> failed_ids;
         {
             SlowTaskTimer t("hnsw graph");
@@ -138,7 +138,7 @@ HNSW::build(const Dataset& base) {
 }
 
 tl::expected<std::vector<int64_t>, Error>
-HNSW::add(const Dataset& base) {
+HNSW::add(const DatasetPtr& base) {
     SlowTaskTimer t("hnsw add", 20);
 
     if (use_static_) {
@@ -146,11 +146,11 @@ HNSW::add(const Dataset& base) {
                               "static index does not support add");
     }
     try {
-        auto base_dim = base.GetDim();
+        auto base_dim = base->GetDim();
         CHECK_ARGUMENT(base_dim == dim_,
                        fmt::format("base.dim({}) must be equal to index.dim({})", base_dim, dim_));
 
-        int64_t num_elements = base.GetNumElements();
+        int64_t num_elements = base->GetNumElements();
         int64_t max_elements_ = alg_hnsw->getMaxElements();
         if (num_elements + alg_hnsw->getCurrentElementCount() > max_elements_) {
             logger::debug("num_elements={}, index.num_elements, max_elements_={}",
@@ -166,8 +166,8 @@ HNSW::add(const Dataset& base) {
             alg_hnsw->resizeIndex(max_elements_);
         }
 
-        auto ids = base.GetIds();
-        auto vectors = base.GetFloat32Vectors();
+        auto ids = base->GetIds();
+        auto vectors = base->GetFloat32Vectors();
         std::vector<int64_t> failed_ids;
         for (int64_t i = 0; i < num_elements; ++i) {
             // noexcept runtime
@@ -184,8 +184,8 @@ HNSW::add(const Dataset& base) {
     }
 }
 
-tl::expected<Dataset, Error>
-HNSW::knn_search(const Dataset& query,
+tl::expected<DatasetPtr, Error>
+HNSW::knn_search(const DatasetPtr& query,
                  int64_t k,
                  const std::string& parameters,
                  BitsetPtr invalid) const {
@@ -193,16 +193,16 @@ HNSW::knn_search(const Dataset& query,
 
     // cannot perform search on empty index
     if (empty_index_) {
-        Dataset ret;
-        ret.Dim(0).NumElements(1);
+        auto ret = Dataset::Make();
+        ret->Dim(0)->NumElements(1);
         return ret;
     }
 
     try {
         // check query vector
-        CHECK_ARGUMENT(query.GetNumElements() == 1, "query dataset should contain 1 vector only");
-        auto vector = query.GetFloat32Vectors();
-        int64_t query_dim = query.GetDim();
+        CHECK_ARGUMENT(query->GetNumElements() == 1, "query dataset should contain 1 vector only");
+        auto vector = query->GetFloat32Vectors();
+        int64_t query_dim = query->GetDim();
         CHECK_ARGUMENT(
             query_dim == dim_,
             fmt::format("query.dim({}) must be equal to index.dim({})", query_dim, dim_));
@@ -240,9 +240,9 @@ HNSW::knn_search(const Dataset& query,
         }
 
         // return result
-        Dataset result;
+        auto result = Dataset::Make();
         if (results.size() == 0) {
-            result.Dim(0).NumElements(1);
+            result->Dim(0)->NumElements(1);
             return result;
         }
 
@@ -260,7 +260,7 @@ HNSW::knn_search(const Dataset& query,
         // return result
         int64_t* ids = new int64_t[results.size()];
         float* dists = new float[results.size()];
-        result.Dim(results.size()).NumElements(1).Ids(ids).Distances(dists);
+        result->Dim(results.size())->NumElements(1)->Ids(ids)->Distances(dists);
         for (int64_t j = results.size() - 1; j >= 0; --j) {
             dists[j] = results.top().first;
             ids[j] = results.top().second;
@@ -275,8 +275,8 @@ HNSW::knn_search(const Dataset& query,
     }
 }
 
-tl::expected<Dataset, Error>
-HNSW::range_search(const Dataset& query,
+tl::expected<DatasetPtr, Error>
+HNSW::range_search(const DatasetPtr& query,
                    float radius,
                    const std::string& parameters,
                    BitsetPtr invalid) const {
@@ -284,8 +284,8 @@ HNSW::range_search(const Dataset& query,
 
     // cannot perform search on empty index
     if (empty_index_) {
-        Dataset ret;
-        ret.Dim(0).NumElements(1);
+        auto ret = Dataset::Make();
+        ret->Dim(0)->NumElements(1);
         return ret;
     }
 
@@ -296,9 +296,9 @@ HNSW::range_search(const Dataset& query,
 
     try {
         // check query vector
-        CHECK_ARGUMENT(query.GetNumElements() == 1, "query dataset should contain 1 vector only");
-        auto vector = query.GetFloat32Vectors();
-        int64_t query_dim = query.GetDim();
+        CHECK_ARGUMENT(query->GetNumElements() == 1, "query dataset should contain 1 vector only");
+        auto vector = query->GetFloat32Vectors();
+        int64_t query_dim = query->GetDim();
         CHECK_ARGUMENT(
             query_dim == dim_,
             fmt::format("query.dim({}) must be equal to index.dim({})", query_dim, dim_));
@@ -335,14 +335,14 @@ HNSW::range_search(const Dataset& query,
         }
 
         // return result
-        Dataset result;
+        auto result = Dataset::Make();
         if (results.size() == 0) {
-            result.Dim(0).NumElements(1);
+            result->Dim(0)->NumElements(1);
             return result;
         }
         int64_t* ids = new int64_t[results.size()];
         float* dists = new float[results.size()];
-        result.Dim(results.size()).NumElements(1).Ids(ids).Distances(dists);
+        result->Dim(results.size())->NumElements(1)->Ids(ids)->Distances(dists);
         for (int64_t j = results.size() - 1; j >= 0; --j) {
             dists[+j] = results.top().first;
             ids[j] = results.top().second;
@@ -553,7 +553,7 @@ HNSW::remove(int64_t id) {
 }
 
 tl::expected<uint32_t, Error>
-HNSW::feedback(const Dataset& query,
+HNSW::feedback(const DatasetPtr& query,
                int64_t k,
                const std::string& parameters,
                int64_t global_optimum_tag_id) {
@@ -568,7 +568,7 @@ HNSW::feedback(const Dataset& query,
     if (global_optimum_tag_id == std::numeric_limits<int64_t>::max()) {
         auto exact_result = this->brute_force(query, k);
         if (exact_result.has_value()) {
-            global_optimum_tag_id = exact_result->GetIds()[0];
+            global_optimum_tag_id = exact_result.value()->GetIds()[0];
         } else {
             LOG_ERROR_AND_RETURNS(ErrorType::INVALID_ARGUMENT,
                                   "failed to feedback(invalid argument): ",
@@ -587,15 +587,15 @@ HNSW::feedback(const Dataset& query,
 }
 
 tl::expected<uint32_t, Error>
-HNSW::feedback(const Dataset& result, int64_t global_optimum_tag_id, int64_t k) {
+HNSW::feedback(const DatasetPtr& result, int64_t global_optimum_tag_id, int64_t k) {
     if (not alg_hnsw->isValidLabel(global_optimum_tag_id)) {
         LOG_ERROR_AND_RETURNS(
             ErrorType::INVALID_ARGUMENT,
             "failed to feedback(invalid argument): global optimum tag id doesn't belong to index");
     }
 
-    auto tag_ids = result.GetIds();
-    k = std::min(k, result.GetDim());
+    auto tag_ids = result->GetIds();
+    k = std::min(k, result->GetDim());
     uint32_t successfully_feedback = 0;
 
     for (int i = 0; i < k; i++) {
@@ -612,27 +612,27 @@ HNSW::feedback(const Dataset& result, int64_t global_optimum_tag_id, int64_t k) 
     return successfully_feedback;
 }
 
-tl::expected<Dataset, Error>
-HNSW::brute_force(const Dataset& query, int64_t k) {
+tl::expected<DatasetPtr, Error>
+HNSW::brute_force(const DatasetPtr& query, int64_t k) {
     try {
         CHECK_ARGUMENT(k > 0, fmt::format("k({}) must be greater than 0", k));
-        CHECK_ARGUMENT(query.GetNumElements() == 1,
-                       fmt::format("query num({}) must equal to 1", query.GetNumElements()));
+        CHECK_ARGUMENT(query->GetNumElements() == 1,
+                       fmt::format("query num({}) must equal to 1", query->GetNumElements()));
         CHECK_ARGUMENT(
-            query.GetDim() == dim_,
-            fmt::format("query.dim({}) must be equal to index.dim({})", query.GetDim(), dim_));
+            query->GetDim() == dim_,
+            fmt::format("query.dim({}) must be equal to index.dim({})", query->GetDim(), dim_));
 
-        Dataset result;
+        auto result = Dataset::Make();
         int64_t* ids = new int64_t[k];
         float* dists = new float[k];
-        result.Ids(ids).Distances(dists).NumElements(k);
+        result->Ids(ids)->Distances(dists)->NumElements(k);
 
-        auto vector = query.GetFloat32Vectors();
+        auto vector = query->GetFloat32Vectors();
         std::priority_queue<std::pair<float, hnswlib::labeltype>> bf_result =
             alg_hnsw->bruteForce((const void*)vector, k);
-        result.Dim(std::min(k, (int64_t)bf_result.size()));
+        result->Dim(std::min(k, (int64_t)bf_result.size()));
 
-        for (int i = result.GetDim() - 1; i >= 0; i--) {
+        for (int i = result->GetDim() - 1; i >= 0; i--) {
             ids[i] = bf_result.top().second;
             dists[i] = bf_result.top().first;
             bf_result.pop();

@@ -41,12 +41,12 @@ main() {
 
     // Build index
     {
-        vsag::Dataset dataset;
-        dataset.Dim(dim)
-            .NumElements(max_elements)
-            .Ids(ids.get())
-            .Float32Vectors(data.get())
-            .Owner(false);
+        auto dataset = vsag::Dataset::Make();
+        dataset->Dim(dim)
+            ->NumElements(max_elements)
+            ->Ids(ids.get())
+            ->Float32Vectors(data.get())
+            ->Owner(false);
         if (const auto num = hnsw->Build(dataset); num.has_value()) {
             std::cout << "After Build(), Index constains: " << hnsw->GetNumElements() << std::endl;
         } else if (num.error().type == vsag::ErrorType::INTERNAL_ERROR) {
@@ -60,8 +60,8 @@ main() {
     float recall = 0;
     {
         for (int i = 0; i < max_elements; i++) {
-            vsag::Dataset query;
-            query.NumElements(1).Dim(dim).Float32Vectors(data.get() + i * dim).Owner(false);
+            auto query = vsag::Dataset::Make();
+            query->NumElements(1)->Dim(dim)->Float32Vectors(data.get() + i * dim)->Owner(false);
             // {
             //   "hnsw": {
             //     "ef_search": 200
@@ -78,8 +78,8 @@ main() {
                                                    max_elements,
                                                    data.get() + i * dim,
                                                    dim,
-                                                   result->GetIds(),
-                                                   result->GetDim());
+                                                   result.value()->GetIds(),
+                                                   result.value()->GetDim());
             } else if (result.error().type == vsag::ErrorType::INTERNAL_ERROR) {
                 std::cerr << "failed to perform knn search on index" << std::endl;
             }
@@ -98,12 +98,12 @@ main() {
     std::cout << "Finish remove" << std::endl;
 
     for (int i = 0; i < max_elements; ++i) {
-        vsag::Dataset incremental;
-        incremental.Dim(dim)
-            .NumElements(1)
-            .Ids(ids.get() + i)
-            .Float32Vectors(data.get() + i * dim)
-            .Owner(false);
+        auto incremental = vsag::Dataset::Make();
+        incremental->Dim(dim)
+            ->NumElements(1)
+            ->Ids(ids.get() + i)
+            ->Float32Vectors(data.get() + i * dim)
+            ->Owner(false);
         hnsw->Add(incremental);
     }
 
@@ -111,8 +111,8 @@ main() {
     recall = 0;
     {
         for (int i = 0; i < max_elements; i++) {
-            vsag::Dataset query;
-            query.NumElements(1).Dim(dim).Float32Vectors(data.get() + i * dim).Owner(false);
+            auto query = vsag::Dataset::Make();
+            query->NumElements(1)->Dim(dim)->Float32Vectors(data.get() + i * dim)->Owner(false);
             // {
             //   "hnsw": {
             //     "ef_search": 200
@@ -129,8 +129,8 @@ main() {
                                                    max_elements,
                                                    data.get() + i * dim,
                                                    dim,
-                                                   result->GetIds(),
-                                                   result->GetDim());
+                                                   result.value()->GetIds(),
+                                                   result.value()->GetDim());
             } else if (result.error().type == vsag::ErrorType::INTERNAL_ERROR) {
                 std::cerr << "failed to perform knn search on index" << std::endl;
             }

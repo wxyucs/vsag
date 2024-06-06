@@ -36,9 +36,9 @@ test_knn_recall(const vsag::IndexPtr& index,
 std::string
 generate_hnsw_build_parameters_string(const std::string& metric_type, int64_t dim);
 
-vsag::Dataset
-brute_force(const vsag::Dataset& query,
-            const vsag::Dataset& base,
+vsag::DatasetPtr
+brute_force(const vsag::DatasetPtr& query,
+            const vsag::DatasetPtr& base,
             int64_t k,
             const std::string& metric_type);
 

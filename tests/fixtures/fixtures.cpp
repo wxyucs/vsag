@@ -63,12 +63,12 @@ generate_index(const std::string& name,
                                                 .value())
                      .value();
 
-    vsag::Dataset base;
-    base.NumElements(num_vectors)
-        .Dim(dim)
-        .Ids(ids.data())
-        .Float32Vectors(vectors.data())
-        .Owner(false);
+    auto base = vsag::Dataset::Make();
+    base->NumElements(num_vectors)
+        ->Dim(dim)
+        ->Ids(ids.data())
+        ->Float32Vectors(vectors.data())
+        ->Owner(false);
     if (not index->Build(base).has_value()) {
         return nullptr;
     }
@@ -85,11 +85,11 @@ test_knn_recall(const vsag::IndexPtr& index,
                 std::vector<float>& vectors) {
     int64_t correct = 0;
     for (int64_t i = 0; i < num_vectors; ++i) {
-        vsag::Dataset query;
-        query.NumElements(1).Dim(dim).Float32Vectors(vectors.data() + i * dim).Owner(false);
+        auto query = vsag::Dataset::Make();
+        query->NumElements(1)->Dim(dim)->Float32Vectors(vectors.data() + i * dim)->Owner(false);
         auto result = index->KnnSearch(query, 10, search_parameters).value();
-        for (int64_t j = 0; j < result.GetDim(); ++j) {
-            if (i == result.GetIds()[j]) {
+        for (int64_t j = 0; j < result->GetDim(); ++j) {
+            if (i == result->GetIds()[j]) {
                 ++correct;
                 break;
             }
@@ -117,35 +117,35 @@ generate_hnsw_build_parameters_string(const std::string& metric_type, int64_t di
     return build_parameters;
 }
 
-vsag::Dataset
-brute_force(const vsag::Dataset& query,
-            const vsag::Dataset& base,
+vsag::DatasetPtr
+brute_force(const vsag::DatasetPtr& query,
+            const vsag::DatasetPtr& base,
             int64_t k,
             const std::string& metric_type) {
     assert(metric_type == "l2");
-    assert(query.GetDim() == base.GetDim());
-    assert(query.GetNumElements() == 1);
+    assert(query->GetDim() == base->GetDim());
+    assert(query->GetNumElements() == 1);
 
-    hnswlib::L2Space space(base.GetDim());
+    hnswlib::L2Space space(base->GetDim());
     auto fstdistfunc_ = space.get_dist_func();
 
-    vsag::Dataset result;
+    auto result = vsag::Dataset::Make();
     int64_t* ids = new int64_t[k];
     float* dists = new float[k];
-    result.Ids(ids).Distances(dists).NumElements(k);
+    result->Ids(ids)->Distances(dists)->NumElements(k);
 
     std::priority_queue<std::pair<float, int64_t>> bf_result;
 
-    for (uint32_t i = 0; i < base.GetNumElements(); i++) {
-        float dist = fstdistfunc_(query.GetFloat32Vectors(),
-                                  base.GetFloat32Vectors() + i * base.GetDim(),
+    for (uint32_t i = 0; i < base->GetNumElements(); i++) {
+        float dist = fstdistfunc_(query->GetFloat32Vectors(),
+                                  base->GetFloat32Vectors() + i * base->GetDim(),
                                   space.get_dist_func_param());
         if (bf_result.size() < k) {
-            bf_result.push({dist, base.GetIds()[i]});
+            bf_result.push({dist, base->GetIds()[i]});
         } else {
             if (dist < bf_result.top().first) {
                 bf_result.pop();
-                bf_result.push({dist, base.GetIds()[i]});
+                bf_result.push({dist, base->GetIds()[i]});
             }
         }
     }

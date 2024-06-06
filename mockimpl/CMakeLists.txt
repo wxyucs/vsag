@@ -1,6 +1,6 @@
 
-add_library (vsag_mockimpl SHARED vsag/simpleflat.cpp vsag/factory.cpp ../src/bitset_impl.cpp)
-add_library (vsag_mockimpl_static STATIC vsag/simpleflat.cpp vsag/factory.cpp ../src/bitset_impl.cpp)
+add_library (vsag_mockimpl SHARED vsag/simpleflat.cpp vsag/factory.cpp ../src/bitset_impl.cpp ../src/dataset_impl.cpp)
+add_library (vsag_mockimpl_static STATIC vsag/simpleflat.cpp vsag/factory.cpp ../src/bitset_impl.cpp ../src/dataset_impl.cpp)
 target_link_libraries (vsag_mockimpl roaring)
 target_link_libraries (vsag_mockimpl_static roaring)
 add_dependencies (vsag_mockimpl version_mockimpl roaring)

@@ -30,7 +30,7 @@ public:
       * @return IDs that failed to insert into the index
       */
     virtual tl::expected<std::vector<int64_t>, Error>
-    Build(const Dataset& base) = 0;
+    Build(const DatasetPtr& base) = 0;
 
     struct Checkpoint {
         BinarySet data;
@@ -45,7 +45,7 @@ public:
       * @return intermediate data of the current checkpoint
       */
     virtual tl::expected<Checkpoint, Error>
-    ContinueBuild(const Dataset& base, const BinarySet& binary_set) {
+    ContinueBuild(const DatasetPtr& base, const BinarySet& binary_set) {
         throw std::runtime_error("Index not support partial build");
     }
 
@@ -56,7 +56,7 @@ public:
       * @return IDs that failed to insert into the index
       */
     virtual tl::expected<std::vector<int64_t>, Error>
-    Add(const Dataset& base) {
+    Add(const DatasetPtr& base) {
         throw std::runtime_error("Index not support adding vectors");
     }
 
@@ -81,8 +81,8 @@ public:
       *                - num_elements: 1
       *                - ids, distances: length is (num_elements * k)
       */
-    virtual tl::expected<Dataset, Error>
-    KnnSearch(const Dataset& query,
+    virtual tl::expected<DatasetPtr, Error>
+    KnnSearch(const DatasetPtr& query,
               int64_t k,
               const std::string& parameters,
               BitsetPtr invalid = nullptr) const = 0;
@@ -98,8 +98,8 @@ public:
       *                - dim: the size of results
       *                - ids, distances: length is dim
       */
-    virtual tl::expected<Dataset, Error>
-    RangeSearch(const Dataset& query,
+    virtual tl::expected<DatasetPtr, Error>
+    RangeSearch(const DatasetPtr& query,
                 float radius,
                 const std::string& parameters,
                 BitsetPtr invalid = nullptr) const {
@@ -127,7 +127,7 @@ public:
      * @return result is the number of successful insertions into conjugate graph
      */
     virtual tl::expected<uint32_t, Error>
-    Feedback(const Dataset& query,
+    Feedback(const DatasetPtr& query,
              int64_t k,
              const std::string& parameters,
              int64_t global_optimum_tag_id = std::numeric_limits<int64_t>::max()) {

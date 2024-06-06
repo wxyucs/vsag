@@ -45,8 +45,11 @@ endif ()
 add_library(diskann STATIC ${DISKANN_SOURCES})
 set_property(TARGET diskann PROPERTY CXX_STANDARD 17)
 add_dependencies(diskann aio boost openblas)
-if (CMAKE_HOST_SYSTEM_PROCESSOR STREQUAL "x86_64" AND ENABLE_INTEL_MKL)
-  add_dependencies(diskann mkl)
+
+if(CMAKE_HOST_SYSTEM_PROCESSOR STREQUAL "x86_64" AND ENABLE_INTEL_MKL)
+  if(NOT MKL_PATH OR NOT OMP_PATH)
+    add_dependencies(diskann mkl)
+  endif()
 endif()
 target_link_libraries(diskann
   libaio.a
