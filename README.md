@@ -28,6 +28,9 @@ clean:                  ## Clear build/ directory.
 install: debug          ## Build and install the debug version of vsag.
 ```
 
+## Example CMake Project with VSAG
+https://code.alipay.com/octopus/vsag-cmake-example
+
 ## Example codes(hnsw index)
 ```cpp
 

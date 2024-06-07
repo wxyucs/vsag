@@ -48,7 +48,10 @@ public:
     GetKeys() const {
         std::vector<std::string> keys;
         keys.resize(data_.size());
-        transform(data_.begin(), data_.end(), keys.begin(), [](auto pair) { return pair.first; });
+        transform(data_.begin(),
+                  data_.end(),
+                  keys.begin(),
+                  [](std::pair<std::string, std::shared_ptr<Reader>> pair) { return pair.first; });
         return keys;
     }
 

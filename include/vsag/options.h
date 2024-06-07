@@ -72,10 +72,10 @@ private:
 
 private:
     // In a single query, the space size used to store disk vectors.
-    std::atomic<size_t> sector_size_ = 512;
+    std::atomic<size_t> sector_size_{512};
 
     // The size of the maximum memory allocated each time (default is 128MB)
-    std::atomic<size_t> block_size_limit_ = 128 * 1024 * 1024;
+    std::atomic<size_t> block_size_limit_{128 * 1024 * 1024};
 
     // The allocator will only be set once.
     Allocator* global_allocator_ = nullptr;
