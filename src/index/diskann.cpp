@@ -337,9 +337,7 @@ DiskANN::knn_search(const DatasetPtr& query,
                 {
                     std::lock_guard<std::mutex> lock(stats_mutex_);
                     result_queues_[STATSTIC_KNN_IO].Push(query_stats[i].n_ios);
-                    result_queues_[STATSTIC_KNN_HOP].Push(query_stats[i].n_hops);
                     result_queues_[STATSTIC_KNN_TIME].Push(time_cost);
-                    result_queues_[STATSTIC_KNN_CACHE_HIT].Push(query_stats[i].n_cache_hits);
                     result_queues_[STATSTIC_KNN_IO_TIME].Push(
                         (query_stats[i].io_us / query_stats[i].n_ios) / MACRO_TO_MILLI);
                 }

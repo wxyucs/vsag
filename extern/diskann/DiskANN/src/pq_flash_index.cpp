@@ -4,7 +4,7 @@
 #include <map>
 
 #include "common_includes.h"
-
+#include <vector>
 #include "timer.h"
 #include "pq_flash_index.h"
 #include "cosine_similarity.h"
@@ -1947,8 +1947,6 @@ int64_t PQFlashIndex<T, LabelT>::cached_beam_search_memory(const T *query, const
                                                  const uint32_t io_limit, const bool reorder,
                                                  QueryStats *stats)
 {
-    int32_t filter_num = 0;
-
     if (beam_width > MAX_N_SECTOR_READS)
         throw ANNException("Beamwidth can not be higher than MAX_N_SECTOR_READS", -1, __FUNCSIG__, __FILE__, __LINE__);
 
@@ -2023,13 +2021,9 @@ int64_t PQFlashIndex<T, LabelT>::cached_beam_search_memory(const T *query, const
         diskann::aggregate_coords(ids, n_ids, this->data, this->n_chunks, pq_coord_scratch);
         diskann::pq_dist_lookup(pq_coord_scratch, n_ids, this->n_chunks, pq_dists, dists_out);
     };
-    Timer query_timer, io_timer, cpu_timer;
 
     tsl::robin_set<uint64_t> &visited = query_scratch->visited;
-    NeighborPriorityQueue &retset = query_scratch->retset;
-    retset.reserve(l_search);
     std::vector<Neighbor> &full_retset = query_scratch->full_retset;
-
     uint32_t best_medoid = 0;
     float best_dist = std::numeric_limits<float>::max();
     for (uint64_t cur_m = 0; cur_m < num_medoids; cur_m++)
@@ -2044,86 +2038,41 @@ int64_t PQFlashIndex<T, LabelT>::cached_beam_search_memory(const T *query, const
     }
 
     compute_dists(&best_medoid, 1, dist_scratch);
-    retset.insert(Neighbor(best_medoid, dist_scratch[0]));
     visited.insert(best_medoid);
 
-    uint32_t cmps = 0;
-    uint32_t hops = 0;
-    uint32_t num_ios = 0;
+    uint64_t has_searched = 0;
+    std::priority_queue<Neighbor> candidate_queue;
+    candidate_queue.push(Neighbor(best_medoid, -dist_scratch[0]));
 
-    // cleared every iteration
-    std::vector<uint32_t> frontier;
-    frontier.reserve(2 * beam_width);
-    std::vector<std::pair<uint32_t, std::pair<uint32_t, uint32_t *>>> cached_nhoods;
-    cached_nhoods.reserve(2 * beam_width);
-
-    sector_scratch_idx = 0;
-    while (retset.has_unexpanded_node() && num_ios < io_limit)
+    while (has_searched < l_search)
     {
-        // clear iteration state
-        frontier.clear();
-        cached_nhoods.clear();
-        // find new beam
-        uint32_t num_seen = 0;
-        while (retset.has_unexpanded_node() && frontier.size() < beam_width && num_seen < beam_width)
+        auto nbr = candidate_queue.top();
+        full_retset.push_back({nbr.id, -nbr.distance});
+        candidate_queue.pop();
+        auto nohood_id = nbr.id;
+
+        uint32_t *node_nbrs = final_graph[nohood_id].data();
+        size_t nnbrs = final_graph[nohood_id].size();
+
+        std::vector<uint32_t> unseen_ids;
+        for (uint64_t m = 0; m < nnbrs; ++m)
         {
-            auto nbr = retset.closest_unexpanded();
-            full_retset.push_back(nbr);
-            num_seen++;
-            frontier.push_back(nbr.id);
-            if (this->count_visited_nodes)
+            uint32_t id = node_nbrs[m];
+            if (visited.insert(id).second)
             {
-                reinterpret_cast<std::atomic<uint32_t> &>(this->node_visit_counter[nbr.id].second).fetch_add(1);
+                unseen_ids.push_back(id);
+            }
+        }
+        if (unseen_ids.size() != 0) {
+            compute_dists(unseen_ids.data(), unseen_ids.size(), dist_scratch);
+            for (uint64_t i = 0; i < unseen_ids.size(); ++i)
+            {
+                float dist = dist_scratch[i];
+                candidate_queue.emplace(unseen_ids[i], -dist);
             }
         }
 
-        // read nhoods of frontier ids
-        if (!frontier.empty())
-        {
-            if (stats != nullptr)
-                stats->n_hops++;
-            for (uint64_t i = 0; i < frontier.size(); i++)
-            {
-                auto nohood_id = frontier[i];
-
-                uint32_t *node_nbrs = final_graph[nohood_id].data();
-                size_t nnbrs = final_graph[nohood_id].size();
-
-                // compute node_nbrs <-> query dist in PQ space
-                cpu_timer.reset();
-                compute_dists(final_graph[nohood_id].data(), final_graph[nohood_id].size(), dist_scratch);
-                if (stats != nullptr)
-                {
-                    stats->n_cmps += (uint32_t)nnbrs;
-                    stats->cpu_us += (float)cpu_timer.elapsed();
-                }
-
-                cpu_timer.reset();
-                // process prefetch-ed nhood
-                for (uint64_t m = 0; m < nnbrs; ++m)
-                {
-                    uint32_t id = node_nbrs[m];
-                    if (visited.insert(id).second)
-                    {
-                        cmps++;
-                        float dist = dist_scratch[m];
-                        if (stats != nullptr)
-                        {
-                            stats->n_cmps++;
-                        }
-
-                        Neighbor nn(id, dist);
-                        retset.insert(nn);
-                    }
-                }
-
-                if (stats != nullptr)
-                {
-                    stats->cpu_us += (float)cpu_timer.elapsed();
-                }
-            }
-        }
-        hops++;
+        has_searched ++;
     }
 
     // re-sort by distance
@@ -2148,9 +2097,16 @@ int64_t PQFlashIndex<T, LabelT>::cached_beam_search_memory(const T *query, const
                 }
                 loc ++;
             }
-
+#ifndef NDEBUG
+            Timer io_times;
+#endif
             reader->read(sorted_read_reqs, ctx);
-
+#ifndef NDEBUG
+            if (stats != nullptr) {
+                stats->io_us += (float) io_times.elapsed();
+                stats->n_ios += sorted_read_reqs.size();
+            }
+#endif
             for (int j = 0; j < sorted_read_reqs.size(); j ++)
             {
                 uint32_t id = ids[j];
@@ -2194,10 +2150,6 @@ int64_t PQFlashIndex<T, LabelT>::cached_beam_search_memory(const T *query, const
             }
         }
         result_size ++;
-    }
-    if (stats != nullptr)
-    {
-        stats->total_us = (float)query_timer.elapsed();
     }
     return result_size;
 }
