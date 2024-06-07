@@ -7,6 +7,11 @@ FetchContent_Declare(
     URL_HASH MD5=dc09168c94f90ea890257995f2c497a5
 )
 
-FetchContent_MakeAvailable(fmt)
+# exclude fmt in vsag installation
+FetchContent_GetProperties(fmt)
+if(NOT fmt_POPULATED)
+  FetchContent_Populate(fmt)
+  add_subdirectory(${fmt_SOURCE_DIR} ${fmt_BINARY_DIR} EXCLUDE_FROM_ALL)
+endif()
 
 include_directories(${fmt_SOURCE_DIR}/include)

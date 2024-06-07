@@ -16,4 +16,9 @@ if (NOT COMPILER_AVX512_SUPPORTED)
   set (ROARING_DISABLE_AVX512 ON)
 endif ()
 
-FetchContent_MakeAvailable(roaringbitmap)
+# exclude roaringbitmap in vsag installation
+FetchContent_GetProperties(roaringbitmap)
+if(NOT roaringbitmap_POPULATED)
+  FetchContent_Populate(roaringbitmap)
+  add_subdirectory(${roaringbitmap_SOURCE_DIR} ${roaringbitmap_BINARY_DIR} EXCLUDE_FROM_ALL)
+endif()
