@@ -7,4 +7,13 @@ FetchContent_Declare(
 
 set(ROARING_USE_CPM OFF)
 set(ENABLE_ROARING_TESTS OFF)
+
+if (NOT COMPILER_AVX_SUPPORTED)
+  set(ROARING_DISABLE_AVX ON)
+endif ()
+
+if (NOT COMPILER_AVX512_SUPPORTED)
+  set (ROARING_DISABLE_AVX512 ON)
+endif ()
+
 FetchContent_MakeAvailable(roaringbitmap)
