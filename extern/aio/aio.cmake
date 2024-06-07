@@ -28,3 +28,4 @@ ExternalProject_Add(
 
 include_directories(${install_dir}/usr/include)
 link_directories (${install_dir}/usr/lib)
+link_directories (${install_dir}/usr/lib64)

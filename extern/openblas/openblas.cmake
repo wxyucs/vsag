@@ -27,3 +27,7 @@ ExternalProject_Add(
     LOG_INSTALL TRUE
     DOWNLOAD_NO_PROGRESS 1
 )
+
+include_directories(${install_dir}/include)
+link_directories (${install_dir}/lib)
+link_directories (${install_dir}/lib64)
