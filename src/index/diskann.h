@@ -76,8 +76,9 @@ public:
     RangeSearch(const DatasetPtr& query,
                 float radius,
                 const std::string& parameters,
-                BitsetPtr invalid = nullptr) const override {
-        SAFE_CALL(return this->range_search(query, radius, parameters, invalid));
+                BitsetPtr invalid = nullptr,
+                int64_t limited_size = -1) const override {
+        SAFE_CALL(return this->range_search(query, radius, parameters, invalid, limited_size));
     }
 
 public:
@@ -139,7 +140,8 @@ private:
     range_search(const DatasetPtr& query,
                  float radius,
                  const std::string& parameters,
-                 BitsetPtr invalid = nullptr) const;
+                 BitsetPtr invalid,
+                 int64_t limited_size) const;
 
     tl::expected<BinarySet, Error>
     serialize() const;

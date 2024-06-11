@@ -249,6 +249,34 @@ TEST_CASE("range_search", "[diskann][ut]") {
     float radius = 9.9f;
     nlohmann::json params{{"diskann", {{"ef_search", 100}, {"beam_search", 4}, {"io_limit", 200}}}};
 
+    SECTION("successful case with smaller range_search_limit") {
+        int64_t range_search_limit = num_elements - 1;
+        auto result = index->RangeSearch(query, 1000, params.dump(), nullptr, range_search_limit);
+        REQUIRE(result.has_value());
+        REQUIRE((*result)->GetDim() == range_search_limit);
+    }
+
+    SECTION("successful case with larger range_search_limit") {
+        int64_t range_search_limit = num_elements + 1;
+        auto result = index->RangeSearch(query, 1000, params.dump(), nullptr, range_search_limit);
+        REQUIRE(result.has_value());
+        REQUIRE((*result)->GetDim() == num_elements);
+    }
+
+    SECTION("invalid parameter range_search_limit less than 0") {
+        int64_t range_search_limit = -1;
+        auto result = index->RangeSearch(query, 1000, params.dump(), nullptr, range_search_limit);
+        REQUIRE(result.has_value());
+        REQUIRE((*result)->GetDim() == num_elements);
+    }
+
+    SECTION("invalid parameter range_search_limit equals to 0") {
+        int64_t range_search_limit = 0;
+        auto result = index->RangeSearch(query, 1000, params.dump(), nullptr, range_search_limit);
+        REQUIRE_FALSE(result.has_value());
+        REQUIRE(result.error().type == vsag::ErrorType::INVALID_ARGUMENT);
+    }
+
     SECTION("index empty") {
         auto empty_index = std::make_shared<vsag::DiskANN>(diskann::Metric::L2,
                                                            "float32",

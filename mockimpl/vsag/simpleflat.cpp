@@ -128,7 +128,8 @@ tl::expected<DatasetPtr, Error>
 SimpleFlat::RangeSearch(const DatasetPtr& query,
                         float radius,
                         const std::string& parameters,
-                        BitsetPtr invalid) const {
+                        BitsetPtr invalid,
+                        int64_t limited_size) const {
     int64_t nq = query->GetNumElements();
     int64_t dim = query->GetDim();
     if (this->dim_ != dim) {
@@ -142,18 +143,23 @@ SimpleFlat::RangeSearch(const DatasetPtr& query,
     auto range_result = range_search(query->GetFloat32Vectors(), radius, invalid);
 
     auto result = Dataset::Make();
+    size_t target_size = range_result.size();
     if (range_result.size() == 0) {
         result->Dim(0)->NumElements(1);
         return result;
     }
 
-    int64_t* ids = new int64_t[range_result.size()];
-    float* dists = new float[range_result.size()];
-    for (int64_t kk = 0; kk < range_result.size(); ++kk) {
+    if (limited_size >= 1) {
+        target_size = std::min((size_t)limited_size, target_size);
+    }
+
+    int64_t* ids = new int64_t[target_size];
+    float* dists = new float[target_size];
+    for (int64_t kk = 0; kk < target_size; ++kk) {
         ids[kk] = range_result[range_result.size() - 1 - kk].second;
         dists[kk] = range_result[range_result.size() - 1 - kk].first;
     }
-    result->NumElements(1)->Dim(range_result.size())->Ids(ids)->Distances(dists);
+    result->NumElements(1)->Dim(target_size)->Ids(ids)->Distances(dists);
     return std::move(result);
 }
 

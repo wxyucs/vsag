@@ -30,7 +30,8 @@ public:
     RangeSearch(const DatasetPtr& query,
                 float radius,
                 const std::string& parameters,
-                BitsetPtr invalid = nullptr) const override;
+                BitsetPtr invalid = nullptr,
+                int64_t limited_size = -1) const override;
 
 public:
     tl::expected<BinarySet, Error>

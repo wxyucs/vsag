@@ -376,7 +376,8 @@ tl::expected<DatasetPtr, Error>
 DiskANN::range_search(const DatasetPtr& query,
                       float radius,
                       const std::string& parameters,
-                      BitsetPtr invalid) const {
+                      BitsetPtr invalid,
+                      int64_t limited_size) const {
     SlowTaskTimer t("diskann rangesearch", 200);
 
     // cannot perform search on empty index
@@ -403,6 +404,10 @@ DiskANN::range_search(const DatasetPtr& query,
         // check radius
         CHECK_ARGUMENT(radius >= 0, fmt::format("radius({}) must be greater equal than 0", radius))
         CHECK_ARGUMENT(query_num == 1, fmt::format("query.num({}) must be equal to 1", query_num));
+
+        // check limited_size
+        CHECK_ARGUMENT(limited_size != 0,
+                       fmt::format("limited_size({}) must not be equal to 0", limited_size))
 
         // check search parameters
         auto params = DiskannSearchParameters::FromJson(parameters);
@@ -466,21 +471,24 @@ DiskANN::range_search(const DatasetPtr& query,
         }
 
         int64_t k = labels.size();
+        size_t target_size = k;
 
         auto result = Dataset::Make();
-        result->Dim(0)->NumElements(query_num);
         if (k == 0) {
             return std::move(result);
         }
+        if (limited_size >= 1) {
+            target_size = std::min((size_t)limited_size, target_size);
+        }
 
-        auto dis = new float[k];
-        auto ids = new int64_t[k];
-        for (int i = 0; i < k; ++i) {
+        auto dis = new float[target_size];
+        auto ids = new int64_t[target_size];
+        for (int i = 0; i < target_size; ++i) {
             ids[i] = static_cast<int64_t>(labels[i]);
             dis[i] = range_distances[i];
         }
 
-        result->NumElements(query_num)->Dim(k)->Distances(dis)->Ids(ids);
+        result->NumElements(query_num)->Dim(target_size)->Distances(dis)->Ids(ids);
         return std::move(result);
     } catch (const std::invalid_argument& e) {
         LOG_ERROR_AND_RETURNS(ErrorType::INVALID_ARGUMENT,

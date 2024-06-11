@@ -279,7 +279,8 @@ tl::expected<DatasetPtr, Error>
 HNSW::range_search(const DatasetPtr& query,
                    float radius,
                    const std::string& parameters,
-                   BitsetPtr invalid) const {
+                   BitsetPtr invalid,
+                   int64_t limited_size) const {
     SlowTaskTimer t("hnsw rangesearch", 20);
 
     // cannot perform search on empty index
@@ -305,6 +306,10 @@ HNSW::range_search(const DatasetPtr& query,
 
         // check radius
         CHECK_ARGUMENT(radius >= 0, fmt::format("radius({}) must be greater equal than 0", radius))
+
+        // check limited_size
+        CHECK_ARGUMENT(limited_size != 0,
+                       fmt::format("limited_size({}) must not be equal to 0", limited_size))
 
         // check search parameters
         auto params = HnswSearchParameters::FromJson(parameters);
@@ -336,16 +341,22 @@ HNSW::range_search(const DatasetPtr& query,
 
         // return result
         auto result = Dataset::Make();
+        size_t target_size = results.size();
         if (results.size() == 0) {
             result->Dim(0)->NumElements(1);
             return result;
         }
-        int64_t* ids = new int64_t[results.size()];
-        float* dists = new float[results.size()];
-        result->Dim(results.size())->NumElements(1)->Ids(ids)->Distances(dists);
+        if (limited_size >= 1) {
+            target_size = std::min((size_t)limited_size, target_size);
+        }
+        int64_t* ids = new int64_t[target_size];
+        float* dists = new float[target_size];
+        result->Dim(target_size)->NumElements(1)->Ids(ids)->Distances(dists);
         for (int64_t j = results.size() - 1; j >= 0; --j) {
-            dists[+j] = results.top().first;
-            ids[j] = results.top().second;
+            if (j < target_size) {
+                dists[j] = results.top().first;
+                ids[j] = results.top().second;
+            }
             results.pop();
         }
 

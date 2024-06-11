@@ -92,6 +92,10 @@ public:
       *
       * @param query should contains dim, num_elements and vectors
       * @param radius of search, determines which results will be returned
+      * @param limited_size of search result size.
+      *                - limited_size <= 0 : no limit
+      *                - limited_size == 0 : error
+      *                - limited_size >= 1 : limit result size to limited_size
       * @param invalid represents whether an element is filteing out by pre-filter
       * @return result contains
       *                - num_elements: 1
@@ -102,7 +106,8 @@ public:
     RangeSearch(const DatasetPtr& query,
                 float radius,
                 const std::string& parameters,
-                BitsetPtr invalid = nullptr) const {
+                BitsetPtr invalid = nullptr,
+                int64_t limited_size = -1) const {
         throw std::runtime_error("Index not support range search");
     }
 

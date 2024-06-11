@@ -130,7 +130,7 @@ TEST_CASE("range_search", "[ut][hnsw]") {
 
     auto dataset = vsag::Dataset::Make();
     dataset->Dim(dim)
-        ->NumElements(1)
+        ->NumElements(num_elements)
         ->Ids(ids.data())
         ->Float32Vectors(vectors.data())
         ->Owner(false);
@@ -143,6 +143,34 @@ TEST_CASE("range_search", "[ut][hnsw]") {
     nlohmann::json params{
         {"hnsw", {{"ef_search", 100}}},
     };
+
+    SECTION("successful case with smaller range_search_limit") {
+        int64_t range_search_limit = num_elements - 1;
+        auto result = index->RangeSearch(query, 100, params.dump(), nullptr, range_search_limit);
+        REQUIRE(result.has_value());
+        REQUIRE((*result)->GetDim() == range_search_limit);
+    }
+
+    SECTION("successful case with larger range_search_limit") {
+        int64_t range_search_limit = num_elements + 1;
+        auto result = index->RangeSearch(query, 100, params.dump(), nullptr, range_search_limit);
+        REQUIRE(result.has_value());
+        REQUIRE((*result)->GetDim() == num_elements);
+    }
+
+    SECTION("invalid parameter range_search_limit less than 0") {
+        int64_t range_search_limit = -1;
+        auto result = index->RangeSearch(query, 1000, params.dump(), nullptr, range_search_limit);
+        REQUIRE(result.has_value());
+        REQUIRE((*result)->GetDim() == num_elements);
+    }
+
+    SECTION("invalid parameter range_search_limit equals to 0") {
+        int64_t range_search_limit = 0;
+        auto result = index->RangeSearch(query, 1000, params.dump(), nullptr, range_search_limit);
+        REQUIRE_FALSE(result.has_value());
+        REQUIRE(result.error().type == vsag::ErrorType::INVALID_ARGUMENT);
+    }
 
     SECTION("invalid parameter radius equals to 0") {
         auto query = vsag::Dataset::Make();
