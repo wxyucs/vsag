@@ -2,13 +2,13 @@
 #include "hnsw.h"
 
 #include <fmt/format-inl.h>
-#include <hnswlib/hnswlib.h>
 
 #include <cstdint>
 #include <exception>
 #include <nlohmann/json.hpp>
 #include <stdexcept>
 
+#include "../algorithm/hnswlib/hnswlib.h"
 #include "../common.h"
 #include "../logger.h"
 #include "../utils.h"

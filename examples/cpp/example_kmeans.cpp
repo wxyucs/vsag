@@ -1,4 +1,4 @@
-#include <hnswlib/hnswlib.h>
+
 #include <vsag/vsag.h>
 
 #include <iostream>
@@ -50,31 +50,6 @@ ip_kmeans() {
               << vsag::kmeans_clustering(dim, max_elements, clusters, data, centroids, "ip")
               << std::endl;
 
-    hnswlib::InnerProductSpace l2(dim);
-    hnswlib::DISTFUNC distfunc = l2.get_dist_func();
-    std::vector<std::vector<int>> data_id;
-    for (int i = 0; i < clusters; ++i) {
-        data_id.push_back(std::vector<int>());
-    }
-    for (int i = 0; i < max_elements; ++i) {
-        float distance = 10000;
-        int id = 0;
-        for (int l = 0; l < clusters; ++l) {
-            float tmp_distance = distfunc(data + i * dim, centroids + l * dim, &dim);
-            if (tmp_distance < distance) {
-                id = l;
-                distance = tmp_distance;
-            }
-        }
-        data_id[id].push_back(i);
-    }
-
-    for (int i = 0; i < clusters; ++i) {
-        std::cout << "ip cluster " << i << ":" << data_id[i].size() << std::endl;
-    }
-
-    std::cout << "end ip kmeans" << std::endl;
-
     return 0;
 }
 
@@ -98,31 +73,6 @@ l2_kmeans() {
     std::cout << "loss:"
               << vsag::kmeans_clustering(dim, max_elements, clusters, data, centroids, "l2")
               << std::endl;
-
-    hnswlib::L2Space l2(dim);
-    hnswlib::DISTFUNC distfunc = l2.get_dist_func();
-    std::vector<std::vector<int>> data_id;
-    for (int i = 0; i < clusters; ++i) {
-        data_id.push_back(std::vector<int>());
-    }
-    for (int i = 0; i < max_elements; ++i) {
-        float distance = 10000;
-        int id = 0;
-        for (int l = 0; l < clusters; ++l) {
-            float tmp_distance = distfunc(data + i * dim, centroids + l * dim, &dim);
-            if (tmp_distance < distance) {
-                id = l;
-                distance = tmp_distance;
-            }
-        }
-        data_id[id].push_back(i);
-    }
-
-    for (int i = 0; i < clusters; ++i) {
-        std::cout << "l2 cluster " << i << ":" << data_id[i].size() << std::endl;
-    }
-
-    std::cout << "end l2 kmeans" << std::endl;
     return 0;
 }
 

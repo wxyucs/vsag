@@ -1,9 +1,9 @@
 #pragma once
 
-#include <mutex>
-#include <deque>
 #include <cstring>
+#include <deque>
 #include <functional>
+#include <mutex>
 
 namespace vsag {
 
@@ -16,25 +16,25 @@ deallocate(void* p);
 extern void*
 reallocate(void* p, size_t size);
 
-} // namespace vsag
-
+}  // namespace vsag
 
 namespace hnswlib {
 typedef unsigned short int vl_type;
 
 class VisitedList {
- public:
+public:
     vl_type curV;
-    vl_type *mass;
+    vl_type* mass;
     unsigned int numelements;
 
     VisitedList(int numelements1) {
         curV = -1;
         numelements = numelements1;
-        mass = (vl_type *) vsag::allocate(numelements * sizeof(vl_type));
+        mass = (vl_type*)vsag::allocate(numelements * sizeof(vl_type));
     }
 
-    void reset() {
+    void
+    reset() {
         curV++;
         if (curV == 0) {
             memset(mass, 0, sizeof(vl_type) * numelements);
@@ -42,7 +42,9 @@ class VisitedList {
         }
     }
 
-    ~VisitedList() { vsag::deallocate(mass); }
+    ~VisitedList() {
+        vsag::deallocate(mass);
+    }
 };
 ///////////////////////////////////////////////////////////
 //
@@ -51,21 +53,21 @@ class VisitedList {
 /////////////////////////////////////////////////////////
 
 class VisitedListPool {
-    std::deque<VisitedList *> pool;
+    std::deque<VisitedList*> pool;
     std::mutex poolguard;
     int numelements;
 
- public:
+public:
     VisitedListPool(int initmaxpools, int numelements1) {
         numelements = numelements1;
-        for (int i = 0; i < initmaxpools; i++)
-            pool.push_front(new VisitedList(numelements));
+        for (int i = 0; i < initmaxpools; i++) pool.push_front(new VisitedList(numelements));
     }
 
-    VisitedList *getFreeVisitedList() {
-        VisitedList *rez;
+    VisitedList*
+    getFreeVisitedList() {
+        VisitedList* rez;
         {
-            std::unique_lock <std::mutex> lock(poolguard);
+            std::unique_lock<std::mutex> lock(poolguard);
             if (pool.size() > 0) {
                 rez = pool.front();
                 pool.pop_front();
@@ -77,20 +79,20 @@ class VisitedListPool {
         return rez;
     }
 
-    void releaseVisitedList(VisitedList *vl) {
-        std::unique_lock <std::mutex> lock(poolguard);
+    void
+    releaseVisitedList(VisitedList* vl) {
+        std::unique_lock<std::mutex> lock(poolguard);
         pool.push_front(vl);
     }
 
     ~VisitedListPool() {
         while (pool.size()) {
-            VisitedList *rez = pool.front();
+            VisitedList* rez = pool.front();
             pool.pop_front();
             delete rez;
         }
     }
 };
-
 
 class BlockManager {
 public:
@@ -127,8 +129,8 @@ public:
         return blocks_[block_index] + offset_in_block + offset;
     }
 
-
-    bool resize(size_t new_max_elements) {
+    bool
+    resize(size_t new_max_elements) {
         if (new_max_elements < max_elements_) {
             throw std::runtime_error("new_max_elements is less than max_elements_");
         }
@@ -142,7 +144,8 @@ public:
             // need to be padded, the last block should be converted from a remaining_block to a
             // full_block; otherwise, the size of the remaining_block should be increased to make
             // it a larger remaining_block.
-            if (!blocks_.empty() && blocks_.back() != nullptr && block_lens_.back() != block_size_) {
+            if (!blocks_.empty() && blocks_.back() != nullptr &&
+                block_lens_.back() != block_size_) {
                 char* last_block = blocks_.back();
 
                 size_t new_last_block_size = append_more_block ? block_size_ : new_remaining_size;
@@ -170,10 +173,10 @@ public:
         } catch (const std::bad_alloc&) {
             return false;
         }
-
     }
 
-    bool serialize(char* & buffer) {
+    bool
+    serialize(char*& buffer) {
         size_t offset = 0;
         for (int i = 0; i < blocks_.size(); ++i) {
             size_t current_block_size = block_lens_[i];
@@ -184,7 +187,8 @@ public:
         return true;
     }
 
-    bool serialize(std::ostream& ofs) {
+    bool
+    serialize(std::ostream& ofs) {
         try {
             for (int i = 0; i < blocks_.size(); ++i) {
                 size_t current_block_size = block_lens_[i];
@@ -196,7 +200,8 @@ public:
         return true;
     }
 
-    void deserialize(std::function<void(uint64_t, uint64_t, void*)> read_func, uint64_t cursor) {
+    void
+    deserialize(std::function<void(uint64_t, uint64_t, void*)> read_func, uint64_t cursor) {
         size_t offset = 0;
 
         for (size_t i = 0; i < blocks_.size(); ++i) {
@@ -205,7 +210,8 @@ public:
         }
     }
 
-    bool deserialize(std::istream& ifs) {
+    bool
+    deserialize(std::istream& ifs) {
         try {
             for (size_t i = 0; i < blocks_.size(); ++i) {
                 size_t current_block_size = 0;
@@ -222,7 +228,8 @@ public:
         return true;
     }
 
-    size_t getSize() {
+    size_t
+    getSize() {
         return max_elements_ * size_data_per_element_;
     }
 

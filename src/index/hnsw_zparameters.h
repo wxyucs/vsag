@@ -1,9 +1,9 @@
 #pragma once
 
-#include <hnswlib/hnswlib.h>
-
 #include <memory>
 #include <string>
+
+#include "../algorithm/hnswlib/hnswlib.h"
 
 namespace vsag {
 

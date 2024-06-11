@@ -3,9 +3,10 @@
 
 namespace vsag {
 
-extern hnswlib::DISTFUNC GetInnerProductDistanceFunc(size_t dim);
+extern hnswlib::DISTFUNC
+GetInnerProductDistanceFunc(size_t dim);
 
-} // namespace vsag
+}  // namespace vsag
 
 namespace hnswlib {
 class InnerProductSpace : public SpaceInterface {
@@ -13,26 +14,30 @@ class InnerProductSpace : public SpaceInterface {
     size_t data_size_;
     size_t dim_;
 
- public:
+public:
     InnerProductSpace(size_t dim) {
         fstdistfunc_ = vsag::GetInnerProductDistanceFunc(dim);
         dim_ = dim;
         data_size_ = dim * sizeof(float);
     }
 
-    size_t get_data_size() override {
+    size_t
+    get_data_size() override {
         return data_size_;
     }
 
-    DISTFUNC get_dist_func() override {
+    DISTFUNC
+    get_dist_func() override {
         return fstdistfunc_;
     }
 
-    void *get_dist_func_param() override {
+    void*
+    get_dist_func_param() override {
         return &dim_;
     }
 
-    ~InnerProductSpace() {}
+    ~InnerProductSpace() {
+    }
 };
 
 }  // namespace hnswlib

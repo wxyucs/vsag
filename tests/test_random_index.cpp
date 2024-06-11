@@ -1,7 +1,3 @@
-//
-// Created by root on 11/15/23.
-//
-#include <hnswlib/hnswlib.h>
 #include <spdlog/spdlog.h>
 
 #include <catch2/catch_test_macros.hpp>

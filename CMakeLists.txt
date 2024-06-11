@@ -121,7 +121,6 @@ include (extern/hdf5/hdf5.cmake)
 include (extern/thread_pool/thread_pool.cmake)
 include (extern/roaringbitmap/roaringbitmap.cmake)
 
-include_directories (extern/hnswlib)
 include_directories (${CMAKE_CURRENT_BINARY_DIR}/spdlog/install/include)
 include_directories (include)
 

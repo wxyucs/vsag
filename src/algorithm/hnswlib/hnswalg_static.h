@@ -3,6 +3,7 @@
 #include <assert.h>
 #include <pq.h>
 #include <stdlib.h>
+
 #include <atomic>
 #include <cstdint>
 #include <cstring>
@@ -85,7 +86,7 @@ public:
     float error_quantile = 0.995, err_quantile_value = 0.0;
     typedef std::vector<std::vector<std::vector<float>>> CodeBook;
     CodeBook pq_book;
-//    Eigen::MatrixXf A_;
+    //    Eigen::MatrixXf A_;
 
     bool is_trained_infer = true, use_node_centroid = true, is_trained_pq = false;
 
@@ -122,7 +123,7 @@ public:
         ef_construction_ = std::max(ef_construction, M_);
         ef_ = 10;
 
-        element_levels_ = (int *) vsag::allocate(max_elements * sizeof(int));
+        element_levels_ = (int*)vsag::allocate(max_elements * sizeof(int));
 
         level_generator_.seed(random_seed);
         update_probability_generator_.seed(random_seed + 1);
@@ -133,7 +134,8 @@ public:
         label_offset_ = size_links_level0_ + data_size_;
         offsetLevel0_ = 0;
 
-        data_level0_memory_ = new BlockManager(max_elements_, size_data_per_element_, block_size_limit);
+        data_level0_memory_ =
+            new BlockManager(max_elements_, size_data_per_element_, block_size_limit);
 
         cur_element_count_ = 0;
 
@@ -143,7 +145,7 @@ public:
         enterpoint_node_ = -1;
         maxlevel_ = -1;
 
-        linkLists_ = (char**) vsag::allocate(sizeof(void*) * max_elements_);
+        linkLists_ = (char**)vsag::allocate(sizeof(void*) * max_elements_);
         if (linkLists_ == nullptr)
             throw std::runtime_error(
                 "Not enough memory: HierarchicalNSW failed to allocate linklists");
@@ -234,8 +236,9 @@ public:
         return num_deleted_;
     }
 
-    float getDistanceByLabel(labeltype label, const void *data_point) override {
-        std::unique_lock <std::mutex> lock_table(label_lookup_lock);
+    float
+    getDistanceByLabel(labeltype label, const void* data_point) override {
+        std::unique_lock<std::mutex> lock_table(label_lookup_lock);
 
         auto search = label_lookup_.find(label);
         if (search == label_lookup_.end()) {
@@ -248,8 +251,9 @@ public:
         return dist;
     }
 
-    bool isValidLabel(labeltype label) override {
-        std::unique_lock <std::mutex> lock_table(label_lookup_lock);
+    bool
+    isValidLabel(labeltype label) override {
+        std::unique_lock<std::mutex> lock_table(label_lookup_lock);
         bool is_valid = (label_lookup_.find(label) != label_lookup_.end());
         lock_table.unlock();
         return is_valid;
@@ -315,7 +319,7 @@ public:
 
             for (size_t j = 0; j < size; j++) {
                 tableint candidate_id = *(datal + j);
-//                    if (candidate_id == 0) continue;
+                //                    if (candidate_id == 0) continue;
                 size_t pre_l = std::min(j, size - 2);
                 auto tmp_data_ptr3 = getDataByInternalId(*(datal + pre_l + 1));
 #ifdef USE_SSE
@@ -356,21 +360,30 @@ public:
                         std::vector<std::pair<float, tableint>>,
                         CompareByFirst>
     searchBaseLayerPQSIMDinfer(tableint ep_id,
-                           const void* data_point,
-                           float*& dist_map,
-                           size_t ef,
-                           size_t k,
-                           BaseFilterFunctor* isIdAllowed = nullptr) const {
-        VisitedList *vl = visited_list_pool_->getFreeVisitedList();
-        vl_type *visited_array = vl->mass;
+                               const void* data_point,
+                               float*& dist_map,
+                               size_t ef,
+                               size_t k,
+                               BaseFilterFunctor* isIdAllowed = nullptr) const {
+        VisitedList* vl = visited_list_pool_->getFreeVisitedList();
+        vl_type* visited_array = vl->mass;
         vl_type visited_array_tag = vl->curV;
 
         // answers        - the KNN set R1
-        std::priority_queue<std::pair<float, tableint>, std::vector<std::pair<float, tableint>>, CompareByFirst> answers;
+        std::priority_queue<std::pair<float, tableint>,
+                            std::vector<std::pair<float, tableint>>,
+                            CompareByFirst>
+            answers;
         // top_candidates - the result set R2
-        std::priority_queue<std::pair<float, tableint>, std::vector<std::pair<float, tableint>>, CompareByFirst> top_candidates;
+        std::priority_queue<std::pair<float, tableint>,
+                            std::vector<std::pair<float, tableint>>,
+                            CompareByFirst>
+            top_candidates;
         // candidate_set  - the search set S
-        std::priority_queue<std::pair<float, tableint>, std::vector<std::pair<float, tableint>>, CompareByFirst> candidate_set;
+        std::priority_queue<std::pair<float, tableint>,
+                            std::vector<std::pair<float, tableint>>,
+                            CompareByFirst>
+            candidate_set;
 
         float lowerBound;
         float lowerBoundcan;
@@ -403,8 +416,8 @@ public:
 
             // Fetch the smallest object in S.
             tableint current_node_id = current_node_pair.second;
-            int *data = (int *) get_linklist0(current_node_id);
-            size_t size = getListCount((linklistsizeint *) data);
+            int* data = (int*)get_linklist0(current_node_id);
+            size_t size = getListCount((linklistsizeint*)data);
             if (collect_metrics) {
                 metric_hops++;
                 metric_distance_computations += size;
@@ -422,14 +435,14 @@ public:
                     ids.push_back(candidate_id);
                 }
             }
-            while(ids.size()%4) ids.push_back(0);
+            while (ids.size() % 4) ids.push_back(0);
             res.resize(ids.size());
-            pq_scan(ids.data(),res.data(),dist_map,ids.size());
+            pq_scan(ids.data(), res.data(), dist_map, ids.size());
             for (size_t j = 0; j < not_vis_count; j++) {
                 int candidate_id = ids[j];
                 // If the result set is not full, then calculate the exact distance. (i.e., assume the distance threshold to be infinity)
                 if (answers.size() < k) {
-                    char *currObj1 = (getDataByInternalId(candidate_id));
+                    char* currObj1 = (getDataByInternalId(candidate_id));
                     float dist = fstdistfunc_(data_point, currObj1, dist_func_param_);
                     if (!has_deletions || !isMarkedDeleted(candidate_id)) {
                         candidate_set.emplace(-dist, candidate_id);
@@ -454,7 +467,7 @@ public:
                         if (!top_candidates.empty())
                             lowerBoundcan = top_candidates.top().first;
                     } else {
-                        char *currObj1 = (getDataByInternalId(candidate_id));
+                        char* currObj1 = (getDataByInternalId(candidate_id));
                         float dist = fstdistfunc_(data_point, currObj1, dist_func_param_);
                         candidate_set.emplace(-dist, candidate_id);
                         if (!has_deletions || !isMarkedDeleted(candidate_id)) {
@@ -488,16 +501,25 @@ public:
                            size_t ef,
                            size_t k,
                            BaseFilterFunctor* isIdAllowed = nullptr) const {
-        VisitedList *vl = visited_list_pool_->getFreeVisitedList();
-        vl_type *visited_array = vl->mass;
+        VisitedList* vl = visited_list_pool_->getFreeVisitedList();
+        vl_type* visited_array = vl->mass;
         vl_type visited_array_tag = vl->curV;
 
         // answers        - the KNN set R1
-        std::priority_queue<std::pair<float, tableint>, std::vector<std::pair<float, tableint>>, CompareByFirst> answers;
+        std::priority_queue<std::pair<float, tableint>,
+                            std::vector<std::pair<float, tableint>>,
+                            CompareByFirst>
+            answers;
         // top_candidates - the result set R2
-        std::priority_queue<std::pair<float, tableint>, std::vector<std::pair<float, tableint>>, CompareByFirst> top_candidates;
+        std::priority_queue<std::pair<float, tableint>,
+                            std::vector<std::pair<float, tableint>>,
+                            CompareByFirst>
+            top_candidates;
         // candidate_set  - the search set S
-        std::priority_queue<std::pair<float, tableint>, std::vector<std::pair<float, tableint>>, CompareByFirst> candidate_set;
+        std::priority_queue<std::pair<float, tableint>,
+                            std::vector<std::pair<float, tableint>>,
+                            CompareByFirst>
+            candidate_set;
 
         float lowerBound;
         float lowerBoundcan;
@@ -530,13 +552,12 @@ public:
 
             // Fetch the smallest object in S.
             tableint current_node_id = current_node_pair.second;
-            int *data = (int *) get_linklist0(current_node_id);
-            size_t size = getListCount((linklistsizeint *) data);
+            int* data = (int*)get_linklist0(current_node_id);
+            size_t size = getListCount((linklistsizeint*)data);
             if (collect_metrics) {
                 metric_hops++;
                 metric_distance_computations += size;
             }
-
 
             // Enumerate all the neighbors of the object and view them as candidates of KNNs.
             for (size_t j = 1; j <= size; j++) {
@@ -546,7 +567,7 @@ public:
 
                     // If the KNN set is not full, then calculate the exact distance. (i.e., assume the distance threshold to be infinity)
                     if (answers.size() < k) {
-                        char *currObj1 = (getDataByInternalId(candidate_id));
+                        char* currObj1 = (getDataByInternalId(candidate_id));
                         float dist = fstdistfunc_(data_point, currObj1, dist_func_param_);
 
                         if (!has_deletions || !isMarkedDeleted(candidate_id)) {
@@ -571,7 +592,7 @@ public:
                             if (!top_candidates.empty())
                                 lowerBoundcan = top_candidates.top().first;
                         } else {
-                            char *currObj1 = (getDataByInternalId(candidate_id));
+                            char* currObj1 = (getDataByInternalId(candidate_id));
                             float dist = fstdistfunc_(data_point, currObj1, dist_func_param_);
                             candidate_set.emplace(-dist, candidate_id);
                             if (!has_deletions || !isMarkedDeleted(candidate_id)) {
@@ -596,105 +617,105 @@ public:
         return answers;
     }
 
-//    template <bool has_deletions, bool collect_metrics = false>
-//    std::priority_queue<std::pair<float, tableint>,
-//                        std::vector<std::pair<float, tableint>>,
-//                        CompareByFirst>
-//    searchBaseLayerST(tableint ep_id,
-//                      const void* data_point,
-//                      float radius,
-//                      BaseFilterFunctor* isIdAllowed = nullptr) const {
-//        VisitedList* vl = visited_list_pool_->getFreeVisitedList();
-//        vl_type* visited_array = vl->mass;
-//        vl_type visited_array_tag = vl->curV;
-//
-//        std::priority_queue<std::pair<float, tableint>,
-//                            std::vector<std::pair<float, tableint>>,
-//                            CompareByFirst>
-//            top_candidates;
-//        std::priority_queue<std::pair<float, tableint>,
-//                            std::vector<std::pair<float, tableint>>,
-//                            CompareByFirst>
-//            candidate_set;
-//
-//        float lowerBound;
-//        if ((!has_deletions || !isMarkedDeleted(ep_id)) &&
-//            ((!isIdAllowed) || (*isIdAllowed)(getExternalLabel(ep_id)))) {
-//            float dist = fstdistfunc_(data_point, getDataByInternalId(ep_id), dist_func_param_);
-//            lowerBound = dist;
-//            if (dist < radius)
-//                top_candidates.emplace(dist, ep_id);
-//            candidate_set.emplace(-dist, ep_id);
-//        } else {
-//            lowerBound = std::numeric_limits<float>::max();
-//            candidate_set.emplace(-lowerBound, ep_id);
-//        }
-//
-//        visited_array[ep_id] = visited_array_tag;
-//        uint64_t visited_count = 0;
-//
-//        while (!candidate_set.empty()) {
-//            std::pair<float, tableint> current_node_pair = candidate_set.top();
-//
-//            candidate_set.pop();
-//
-//            tableint current_node_id = current_node_pair.second;
-//            int* data = (int*)get_linklist0(current_node_id);
-//            size_t size = getListCount((linklistsizeint*)data);
-//            //                bool cur_node_deleted = isMarkedDeleted(current_node_id);
-//            if (collect_metrics) {
-//                metric_hops++;
-//                metric_distance_computations += size;
-//            }
-//
-//#ifdef USE_SSE
-//            _mm_prefetch((char*)(visited_array + *(data + 1)), _MM_HINT_T0);
-//            _mm_prefetch((char*)(visited_array + *(data + 1) + 64), _MM_HINT_T0);
-//            _mm_prefetch(data_level0_memory_ + (*(data + 1)) * size_data_per_element_ + offsetData_,
-//                         _MM_HINT_T0);
-//            _mm_prefetch((char*)(data + 2), _MM_HINT_T0);
-//#endif
-//
-//            for (size_t j = 1; j <= size; j++) {
-//                int candidate_id = *(data + j);
-////                    if (candidate_id == 0) continue;
-//#ifdef USE_SSE
-//                _mm_prefetch((char*)(visited_array + *(data + j + 1)), _MM_HINT_T0);
-//                _mm_prefetch(
-//                    data_level0_memory_ + (*(data + j + 1)) * size_data_per_element_ + offsetData_,
-//                    _MM_HINT_T0);  ////////////
-//#endif
-//                if (!(visited_array[candidate_id] == visited_array_tag)) {
-//                    visited_array[candidate_id] = visited_array_tag;
-//                    ++visited_count;
-//
-//                    char* currObj1 = (getDataByInternalId(candidate_id));
-//                    float dist = fstdistfunc_(data_point, currObj1, dist_func_param_);
-//
-//                    if (visited_count < ef_ || dist < radius || lowerBound > dist) {
-//                        candidate_set.emplace(-dist, candidate_id);
-//#ifdef USE_SSE
-//                        _mm_prefetch(data_level0_memory_ +
-//                                         candidate_set.top().second * size_data_per_element_ +
-//                                         offsetLevel0_,  ///////////
-//                                     _MM_HINT_T0);       ////////////////////////
-//#endif
-//
-//                        if ((!has_deletions || !isMarkedDeleted(candidate_id)) &&
-//                            ((!isIdAllowed) || (*isIdAllowed)(getExternalLabel(candidate_id))))
-//                            if (dist < radius)
-//                                top_candidates.emplace(dist, candidate_id);
-//
-//                        if (!top_candidates.empty())
-//                            lowerBound = top_candidates.top().first;
-//                    }
-//                }
-//            }
-//        }
-//
-//        visited_list_pool_->releaseVisitedList(vl);
-//        return top_candidates;
-//    }
+    //    template <bool has_deletions, bool collect_metrics = false>
+    //    std::priority_queue<std::pair<float, tableint>,
+    //                        std::vector<std::pair<float, tableint>>,
+    //                        CompareByFirst>
+    //    searchBaseLayerST(tableint ep_id,
+    //                      const void* data_point,
+    //                      float radius,
+    //                      BaseFilterFunctor* isIdAllowed = nullptr) const {
+    //        VisitedList* vl = visited_list_pool_->getFreeVisitedList();
+    //        vl_type* visited_array = vl->mass;
+    //        vl_type visited_array_tag = vl->curV;
+    //
+    //        std::priority_queue<std::pair<float, tableint>,
+    //                            std::vector<std::pair<float, tableint>>,
+    //                            CompareByFirst>
+    //            top_candidates;
+    //        std::priority_queue<std::pair<float, tableint>,
+    //                            std::vector<std::pair<float, tableint>>,
+    //                            CompareByFirst>
+    //            candidate_set;
+    //
+    //        float lowerBound;
+    //        if ((!has_deletions || !isMarkedDeleted(ep_id)) &&
+    //            ((!isIdAllowed) || (*isIdAllowed)(getExternalLabel(ep_id)))) {
+    //            float dist = fstdistfunc_(data_point, getDataByInternalId(ep_id), dist_func_param_);
+    //            lowerBound = dist;
+    //            if (dist < radius)
+    //                top_candidates.emplace(dist, ep_id);
+    //            candidate_set.emplace(-dist, ep_id);
+    //        } else {
+    //            lowerBound = std::numeric_limits<float>::max();
+    //            candidate_set.emplace(-lowerBound, ep_id);
+    //        }
+    //
+    //        visited_array[ep_id] = visited_array_tag;
+    //        uint64_t visited_count = 0;
+    //
+    //        while (!candidate_set.empty()) {
+    //            std::pair<float, tableint> current_node_pair = candidate_set.top();
+    //
+    //            candidate_set.pop();
+    //
+    //            tableint current_node_id = current_node_pair.second;
+    //            int* data = (int*)get_linklist0(current_node_id);
+    //            size_t size = getListCount((linklistsizeint*)data);
+    //            //                bool cur_node_deleted = isMarkedDeleted(current_node_id);
+    //            if (collect_metrics) {
+    //                metric_hops++;
+    //                metric_distance_computations += size;
+    //            }
+    //
+    //#ifdef USE_SSE
+    //            _mm_prefetch((char*)(visited_array + *(data + 1)), _MM_HINT_T0);
+    //            _mm_prefetch((char*)(visited_array + *(data + 1) + 64), _MM_HINT_T0);
+    //            _mm_prefetch(data_level0_memory_ + (*(data + 1)) * size_data_per_element_ + offsetData_,
+    //                         _MM_HINT_T0);
+    //            _mm_prefetch((char*)(data + 2), _MM_HINT_T0);
+    //#endif
+    //
+    //            for (size_t j = 1; j <= size; j++) {
+    //                int candidate_id = *(data + j);
+    ////                    if (candidate_id == 0) continue;
+    //#ifdef USE_SSE
+    //                _mm_prefetch((char*)(visited_array + *(data + j + 1)), _MM_HINT_T0);
+    //                _mm_prefetch(
+    //                    data_level0_memory_ + (*(data + j + 1)) * size_data_per_element_ + offsetData_,
+    //                    _MM_HINT_T0);  ////////////
+    //#endif
+    //                if (!(visited_array[candidate_id] == visited_array_tag)) {
+    //                    visited_array[candidate_id] = visited_array_tag;
+    //                    ++visited_count;
+    //
+    //                    char* currObj1 = (getDataByInternalId(candidate_id));
+    //                    float dist = fstdistfunc_(data_point, currObj1, dist_func_param_);
+    //
+    //                    if (visited_count < ef_ || dist < radius || lowerBound > dist) {
+    //                        candidate_set.emplace(-dist, candidate_id);
+    //#ifdef USE_SSE
+    //                        _mm_prefetch(data_level0_memory_ +
+    //                                         candidate_set.top().second * size_data_per_element_ +
+    //                                         offsetLevel0_,  ///////////
+    //                                     _MM_HINT_T0);       ////////////////////////
+    //#endif
+    //
+    //                        if ((!has_deletions || !isMarkedDeleted(candidate_id)) &&
+    //                            ((!isIdAllowed) || (*isIdAllowed)(getExternalLabel(candidate_id))))
+    //                            if (dist < radius)
+    //                                top_candidates.emplace(dist, candidate_id);
+    //
+    //                        if (!top_candidates.empty())
+    //                            lowerBound = top_candidates.top().first;
+    //                    }
+    //                }
+    //            }
+    //        }
+    //
+    //        visited_list_pool_->releaseVisitedList(vl);
+    //        return top_candidates;
+    //    }
 
     void
     getNeighborsByHeuristic2(std::priority_queue<std::pair<float, tableint>,
@@ -743,7 +764,6 @@ public:
     get_linklist0(tableint internal_id) const {
         return (linklistsizeint*)(data_level0_memory_->getElementPtr(internal_id, offsetLevel0_));
     }
-
 
     linklistsizeint*
     get_linklist(tableint internal_id, int level) const {
@@ -898,14 +918,15 @@ public:
         delete visited_list_pool_;
         visited_list_pool_ = new VisitedListPool(1, new_max_elements);
 
-        element_levels_ = (int *) vsag::reallocate(element_levels_, new_max_elements * sizeof(int));
+        element_levels_ = (int*)vsag::reallocate(element_levels_, new_max_elements * sizeof(int));
         std::vector<std::mutex>(new_max_elements).swap(link_list_locks_);
 
         // Reallocate base layer
         data_level0_memory_->resize(new_max_elements);
 
         // Reallocate all other layers
-        char** linkLists_new = (char**) vsag::reallocate(linkLists_, sizeof(void*) * new_max_elements);
+        char** linkLists_new =
+            (char**)vsag::reallocate(linkLists_, sizeof(void*) * new_max_elements);
         if (linkLists_new == nullptr)
             throw std::runtime_error(
                 "Not enough memory: resizeIndex failed to allocate other layers");
@@ -981,15 +1002,15 @@ public:
             }
         }
 
-        writeBinaryToMem(dest, (char *)pq_map, max_elements_ * pq_chunk * sizeof(uint8_t));
+        writeBinaryToMem(dest, (char*)pq_map, max_elements_ * pq_chunk * sizeof(uint8_t));
 
         for (auto& chunk : pq_book) {
             for (auto& cluster : chunk) {
-                writeBinaryToMem(dest, (char *) cluster.data(), pq_sub_dim * sizeof(float));
+                writeBinaryToMem(dest, (char*)cluster.data(), pq_sub_dim * sizeof(float));
             }
         }
 
-        writeBinaryToMem(dest, (char *)node_cluster_dist_, max_elements_ * sizeof(float));
+        writeBinaryToMem(dest, (char*)node_cluster_dist_, max_elements_ * sizeof(float));
         // output.close();
     }
 
@@ -1057,7 +1078,8 @@ public:
     }
 
     // save index to a file stream
-    void saveIndex(std::ostream &out_stream) override {
+    void
+    saveIndex(std::ostream& out_stream) override {
         writeBinaryPOD(out_stream, offsetLevel0_);
         writeBinaryPOD(out_stream, max_elements_);
         writeBinaryPOD(out_stream, cur_element_count_);
@@ -1080,54 +1102,55 @@ public:
         data_level0_memory_->serialize(out_stream);
 
         for (size_t i = 0; i < cur_element_count_; i++) {
-            unsigned int linkListSize = element_levels_[i] > 0 ? size_links_per_element_ * element_levels_[i] : 0;
+            unsigned int linkListSize =
+                element_levels_[i] > 0 ? size_links_per_element_ * element_levels_[i] : 0;
             writeBinaryPOD(out_stream, linkListSize);
             if (linkListSize) {
                 out_stream.write(linkLists_[i], linkListSize);
             }
         }
 
-        out_stream.write((char *)pq_map, max_elements_ * pq_chunk * sizeof(uint8_t));
+        out_stream.write((char*)pq_map, max_elements_ * pq_chunk * sizeof(uint8_t));
 
         for (auto& chunk : pq_book) {
             for (auto& cluster : chunk) {
-                out_stream.write((char *) cluster.data(), pq_sub_dim * sizeof(float));
+                out_stream.write((char*)cluster.data(), pq_sub_dim * sizeof(float));
             }
         }
-        out_stream.write((char *)node_cluster_dist_, max_elements_ * sizeof(float));
+        out_stream.write((char*)node_cluster_dist_, max_elements_ * sizeof(float));
     }
 
     void
     saveIndex(const std::string& location) override {
         throw std::runtime_error("static hnsw does not support save index");
-//        std::ofstream output(location, std::ios::binary);
-//        std::streampos position;
-//
-//        writeBinaryPOD(output, offsetLevel0_);
-//        writeBinaryPOD(output, max_elements_);
-//        writeBinaryPOD(output, cur_element_count_);
-//        writeBinaryPOD(output, size_data_per_element_);
-//        writeBinaryPOD(output, label_offset_);
-//        writeBinaryPOD(output, offsetData_);
-//        writeBinaryPOD(output, maxlevel_);
-//        writeBinaryPOD(output, enterpoint_node_);
-//        writeBinaryPOD(output, maxM_);
-//
-//        writeBinaryPOD(output, maxM0_);
-//        writeBinaryPOD(output, M_);
-//        writeBinaryPOD(output, mult_);
-//        writeBinaryPOD(output, ef_construction_);
-//
-//        output.write(data_level0_memory_, cur_element_count_ * size_data_per_element_);
-//
-//        for (size_t i = 0; i < cur_element_count_; i++) {
-//            unsigned int linkListSize =
-//                element_levels_[i] > 0 ? size_links_per_element_ * element_levels_[i] : 0;
-//            writeBinaryPOD(output, linkListSize);
-//            if (linkListSize)
-//                output.write(linkLists_[i], linkListSize);
-//        }
-//        output.close();
+        //        std::ofstream output(location, std::ios::binary);
+        //        std::streampos position;
+        //
+        //        writeBinaryPOD(output, offsetLevel0_);
+        //        writeBinaryPOD(output, max_elements_);
+        //        writeBinaryPOD(output, cur_element_count_);
+        //        writeBinaryPOD(output, size_data_per_element_);
+        //        writeBinaryPOD(output, label_offset_);
+        //        writeBinaryPOD(output, offsetData_);
+        //        writeBinaryPOD(output, maxlevel_);
+        //        writeBinaryPOD(output, enterpoint_node_);
+        //        writeBinaryPOD(output, maxM_);
+        //
+        //        writeBinaryPOD(output, maxM0_);
+        //        writeBinaryPOD(output, M_);
+        //        writeBinaryPOD(output, mult_);
+        //        writeBinaryPOD(output, ef_construction_);
+        //
+        //        output.write(data_level0_memory_, cur_element_count_ * size_data_per_element_);
+        //
+        //        for (size_t i = 0; i < cur_element_count_; i++) {
+        //            unsigned int linkListSize =
+        //                element_levels_[i] > 0 ? size_links_per_element_ * element_levels_[i] : 0;
+        //            writeBinaryPOD(output, linkListSize);
+        //            if (linkListSize)
+        //                output.write(linkLists_[i], linkListSize);
+        //        }
+        //        output.close();
     }
 
     template <typename T>
@@ -1250,7 +1273,7 @@ public:
                 linkLists_[i] = nullptr;
             } else {
                 element_levels_[i] = linkListSize / size_links_per_element_;
-                linkLists_[i] = (char*) vsag::allocate(linkListSize);
+                linkLists_[i] = (char*)vsag::allocate(linkListSize);
                 if (linkLists_[i] == nullptr)
                     throw std::runtime_error(
                         "Not enough memory: loadIndex failed to allocate linklist");
@@ -1267,28 +1290,29 @@ public:
                     deleted_elements.insert(i);
             }
         }
-        pq_map = (uint8_t *) vsag::allocate(max_elements_ * pq_chunk * sizeof(uint8_t));
-        read_func(cursor, max_elements_ * pq_chunk * sizeof(uint8_t), (char *) pq_map);
+        pq_map = (uint8_t*)vsag::allocate(max_elements_ * pq_chunk * sizeof(uint8_t));
+        read_func(cursor, max_elements_ * pq_chunk * sizeof(uint8_t), (char*)pq_map);
         cursor += max_elements_ * pq_chunk * sizeof(uint8_t);
 
         pq_book.resize(pq_chunk);
-        for (auto &chunk : pq_book) {
+        for (auto& chunk : pq_book) {
             chunk.resize(pq_cluster);
-            for (auto &cluster : chunk) {
+            for (auto& cluster : chunk) {
                 cluster.resize(pq_sub_dim);
-                read_func(cursor, pq_sub_dim * sizeof(float), (char *)cluster.data());
+                read_func(cursor, pq_sub_dim * sizeof(float), (char*)cluster.data());
                 cursor += pq_sub_dim * sizeof(float);
             }
         }
 
-        node_cluster_dist_ = (float *) vsag::allocate(max_elements_ * sizeof(float));
-        read_func(cursor, max_elements_ * sizeof(float), (char *)node_cluster_dist_);
+        node_cluster_dist_ = (float*)vsag::allocate(max_elements_ * sizeof(float));
+        read_func(cursor, max_elements_ * sizeof(float), (char*)node_cluster_dist_);
         cursor += max_elements_ * sizeof(float);
         return;
     }
 
     // load index from a file stream
-    void loadIndex(std::istream &in_stream, SpaceInterface *s, size_t max_elements_i = 0) override {
+    void
+    loadIndex(std::istream& in_stream, SpaceInterface* s, size_t max_elements_i = 0) override {
         auto beg_pos = in_stream.tellg();
 
         readBinaryPOD(in_stream, offsetLevel0_);
@@ -1354,7 +1378,6 @@ public:
         std::vector<std::mutex>(max_elements).swap(link_list_locks_);
         std::vector<std::mutex>(MAX_LABEL_OPERATION_LOCKS).swap(label_op_locks_);
 
-
         revSize_ = 1.0 / mult_;
         ef_ = 10;
         for (size_t i = 0; i < cur_element_count_; i++) {
@@ -1366,9 +1389,10 @@ public:
                 linkLists_[i] = nullptr;
             } else {
                 element_levels_[i] = linkListSize / size_links_per_element_;
-                linkLists_[i] = (char *) malloc(linkListSize);
+                linkLists_[i] = (char*)malloc(linkListSize);
                 if (linkLists_[i] == nullptr)
-                    throw std::runtime_error("Not enough memory: loadIndex failed to allocate linklist");
+                    throw std::runtime_error(
+                        "Not enough memory: loadIndex failed to allocate linklist");
                 in_stream.read(linkLists_[i], linkListSize);
             }
         }
@@ -1376,23 +1400,25 @@ public:
         for (size_t i = 0; i < cur_element_count_; i++) {
             if (isMarkedDeleted(i)) {
                 num_deleted_ += 1;
-                if (allow_replace_deleted_) deleted_elements.insert(i);
+                if (allow_replace_deleted_)
+                    deleted_elements.insert(i);
             }
         }
-        pq_map = (uint8_t *) vsag::allocate(max_elements_ * pq_chunk * sizeof(uint8_t));;
-        in_stream.read((char *) pq_map, max_elements_ * pq_chunk * sizeof(uint8_t));
+        pq_map = (uint8_t*)vsag::allocate(max_elements_ * pq_chunk * sizeof(uint8_t));
+        ;
+        in_stream.read((char*)pq_map, max_elements_ * pq_chunk * sizeof(uint8_t));
 
         pq_book.resize(pq_chunk);
-        for (auto &chunk : pq_book) {
+        for (auto& chunk : pq_book) {
             chunk.resize(pq_cluster);
-            for (auto &cluster : chunk) {
+            for (auto& cluster : chunk) {
                 cluster.resize(pq_sub_dim);
-                in_stream.read((char *)cluster.data(), pq_sub_dim * sizeof(float));
+                in_stream.read((char*)cluster.data(), pq_sub_dim * sizeof(float));
             }
         }
 
-        node_cluster_dist_ = (float *) vsag::allocate(max_elements_ * sizeof(float));
-        in_stream.read((char *)node_cluster_dist_, max_elements_ * sizeof(float));
+        node_cluster_dist_ = (float*)vsag::allocate(max_elements_ * sizeof(float));
+        in_stream.read((char*)node_cluster_dist_, max_elements_ * sizeof(float));
 
         return;
     }
@@ -1507,10 +1533,11 @@ public:
         return;
     }
 
-    const float* getDataByLabel(labeltype label) const override {
+    const float*
+    getDataByLabel(labeltype label) const override {
         std::lock_guard<std::mutex> lock_label(getLabelOpMutex(label));
 
-        std::unique_lock <std::mutex> lock_table(label_lookup_lock);
+        std::unique_lock<std::mutex> lock_table(label_lookup_lock);
         auto search = label_lookup_.find(label);
         if (search == label_lookup_.end() || isMarkedDeleted(search->second)) {
             throw std::runtime_error("Label not found");
@@ -1519,11 +1546,10 @@ public:
         lock_table.unlock();
 
         char* data_ptrv = getDataByInternalId(internalId);
-        float* data_ptr = (float*) data_ptrv;
+        float* data_ptr = (float*)data_ptrv;
 
         return data_ptr;
     }
-
 
     /*
     * Checks the first 16 bits of the memory to see if the element is marked deleted.
@@ -1554,7 +1580,6 @@ public:
         }
         return true;
     }
-
 
     tableint
     addPoint(const void* data_point, labeltype label, int level) {
@@ -1591,17 +1616,14 @@ public:
         tableint currObj = enterpoint_node_;
         tableint enterpoint_copy = enterpoint_node_;
 
-        memset(
-            data_level0_memory_->getElementPtr(cur_c, offsetLevel0_),
-               0,
-               size_data_per_element_);
+        memset(data_level0_memory_->getElementPtr(cur_c, offsetLevel0_), 0, size_data_per_element_);
 
         // Initialisation of the data and label
         memcpy(getExternalLabeLp(cur_c), &label, sizeof(labeltype));
         memcpy(getDataByInternalId(cur_c), data_point, data_size_);
 
         if (curlevel) {
-            linkLists_[cur_c] = (char*) vsag::allocate(size_links_per_element_ * curlevel + 1);
+            linkLists_[cur_c] = (char*)vsag::allocate(size_links_per_element_ * curlevel + 1);
             if (linkLists_[cur_c] == nullptr)
                 throw std::runtime_error("Not enough memory: addPoint failed to allocate linklist");
             memset(linkLists_[cur_c], 0, size_links_per_element_ * curlevel + 1);
@@ -1704,8 +1726,7 @@ public:
                     tableint cand = datal[i];
                     if (cand < 0 || cand > max_elements_)
                         throw std::runtime_error("cand error");
-                    float d =
-                        fstdistfunc_(query_data, getDataByInternalId(cand), dist_func_param_);
+                    float d = fstdistfunc_(query_data, getDataByInternalId(cand), dist_func_param_);
                     if (d < curdist) {
                         curdist = d;
                         currObj = cand;
@@ -1720,19 +1741,19 @@ public:
                             CompareByFirst>
             top_candidates;
         if (num_deleted_) {
-//            if (!is_trained_infer)
-//                top_candidates = searchBaseLayerST<true, true>(
-//                    currObj, query_data, std::max(ef_, k), isIdAllowed);
-//            else
-                top_candidates = searchBaseLayerPQSIMDinfer<true, true>(
-                    currObj, query_data, dist_map, std::max(ef_, k), k, isIdAllowed);
+            //            if (!is_trained_infer)
+            //                top_candidates = searchBaseLayerST<true, true>(
+            //                    currObj, query_data, std::max(ef_, k), isIdAllowed);
+            //            else
+            top_candidates = searchBaseLayerPQSIMDinfer<true, true>(
+                currObj, query_data, dist_map, std::max(ef_, k), k, isIdAllowed);
         } else {
-//            if (!is_trained_infer)
-//                top_candidates = searchBaseLayerST<false, true>(
-//                    currObj, query_data, std::max(ef_, k), isIdAllowed);
-//            else
-                top_candidates = searchBaseLayerPQSIMDinfer<true, true>(
-                    currObj, query_data, dist_map,  std::max(ef_, k), k, isIdAllowed);
+            //            if (!is_trained_infer)
+            //                top_candidates = searchBaseLayerST<false, true>(
+            //                    currObj, query_data, std::max(ef_, k), isIdAllowed);
+            //            else
+            top_candidates = searchBaseLayerPQSIMDinfer<true, true>(
+                currObj, query_data, dist_map, std::max(ef_, k), k, isIdAllowed);
         }
 
         while (top_candidates.size() > k) {
@@ -1752,69 +1773,70 @@ public:
                 float radius,
                 BaseFilterFunctor* isIdAllowed = nullptr) const override {
         std::runtime_error("static hnsw does not support range search");
-//        std::priority_queue<std::pair<float, labeltype>> result;
-//        if (cur_element_count_ == 0)
-//            return result;
-//
-//        tableint currObj = enterpoint_node_;
-//        float curdist =
-//            fstdistfunc_(query_data, getDataByInternalId(enterpoint_node_), dist_func_param_);
-//
-//        for (int level = maxlevel_; level > 0; level--) {
-//            bool changed = true;
-//            while (changed) {
-//                changed = false;
-//                unsigned int* data;
-//
-//                data = (unsigned int*)get_linklist(currObj, level);
-//                int size = getListCount(data);
-//                metric_hops++;
-//                metric_distance_computations += size;
-//
-//                tableint* datal = (tableint*)(data + 1);
-//                for (int i = 0; i < size; i++) {
-//                    tableint cand = datal[i];
-//                    if (cand < 0 || cand > max_elements_)
-//                        throw std::runtime_error("cand error");
-//                    float d = fstdistfunc_(query_data, getDataByInternalId(cand), dist_func_param_);
-//
-//                    if (d < curdist) {
-//                        curdist = d;
-//                        currObj = cand;
-//                        changed = true;
-//                    }
-//                }
-//            }
-//        }
-//
-//        std::priority_queue<std::pair<float, tableint>,
-//                            std::vector<std::pair<float, tableint>>,
-//                            CompareByFirst>
-//            top_candidates;
-//        if (num_deleted_) {
-//            throw std::runtime_error(
-//                "not support perform range search on a index that deleted some vectors");
-//        } else {
-//            top_candidates =
-//                searchBaseLayerST<false, true>(currObj, query_data, radius, isIdAllowed);
-//            // std::cout << "top_candidates.size(): " << top_candidates.size() << std::endl;
-//        }
-//
-//        // while (top_candidates.size() > k) {
-//        //     top_candidates.pop();
-//        // }
-//        while (top_candidates.size() > 0) {
-//            std::pair<float, tableint> rez = top_candidates.top();
-//            result.push(std::pair<float, labeltype>(rez.first, getExternalLabel(rez.second)));
-//            top_candidates.pop();
-//        }
-//
-//        // std::cout << "hnswalg::result.size(): " << result.size() << std::endl;
-//        return result;
+        //        std::priority_queue<std::pair<float, labeltype>> result;
+        //        if (cur_element_count_ == 0)
+        //            return result;
+        //
+        //        tableint currObj = enterpoint_node_;
+        //        float curdist =
+        //            fstdistfunc_(query_data, getDataByInternalId(enterpoint_node_), dist_func_param_);
+        //
+        //        for (int level = maxlevel_; level > 0; level--) {
+        //            bool changed = true;
+        //            while (changed) {
+        //                changed = false;
+        //                unsigned int* data;
+        //
+        //                data = (unsigned int*)get_linklist(currObj, level);
+        //                int size = getListCount(data);
+        //                metric_hops++;
+        //                metric_distance_computations += size;
+        //
+        //                tableint* datal = (tableint*)(data + 1);
+        //                for (int i = 0; i < size; i++) {
+        //                    tableint cand = datal[i];
+        //                    if (cand < 0 || cand > max_elements_)
+        //                        throw std::runtime_error("cand error");
+        //                    float d = fstdistfunc_(query_data, getDataByInternalId(cand), dist_func_param_);
+        //
+        //                    if (d < curdist) {
+        //                        curdist = d;
+        //                        currObj = cand;
+        //                        changed = true;
+        //                    }
+        //                }
+        //            }
+        //        }
+        //
+        //        std::priority_queue<std::pair<float, tableint>,
+        //                            std::vector<std::pair<float, tableint>>,
+        //                            CompareByFirst>
+        //            top_candidates;
+        //        if (num_deleted_) {
+        //            throw std::runtime_error(
+        //                "not support perform range search on a index that deleted some vectors");
+        //        } else {
+        //            top_candidates =
+        //                searchBaseLayerST<false, true>(currObj, query_data, radius, isIdAllowed);
+        //            // std::cout << "top_candidates.size(): " << top_candidates.size() << std::endl;
+        //        }
+        //
+        //        // while (top_candidates.size() > k) {
+        //        //     top_candidates.pop();
+        //        // }
+        //        while (top_candidates.size() > 0) {
+        //            std::pair<float, tableint> rez = top_candidates.top();
+        //            result.push(std::pair<float, labeltype>(rez.first, getExternalLabel(rez.second)));
+        //            top_candidates.pop();
+        //        }
+        //
+        //        // std::cout << "hnswalg::result.size(): " << result.size() << std::endl;
+        //        return result;
         return {};
     }
 
-    std::priority_queue<std::pair<float, labeltype>> bruteForce(const void* data_point, int64_t k) override {
+    std::priority_queue<std::pair<float, labeltype>>
+    bruteForce(const void* data_point, int64_t k) override {
         std::priority_queue<std::pair<float, labeltype>> results;
         for (uint32_t i = 0; i < cur_element_count_; i++) {
             float dist = fstdistfunc_(data_point, getDataByInternalId(i), dist_func_param_);
@@ -1890,51 +1912,52 @@ public:
         in.close();
     }
 
-//    void load_project_matrix(const char *filename) {
-//        float *raw_data;
-//        unsigned origin_dim, project_dim;
-//        load_float_data(filename, raw_data, origin_dim, project_dim);
-//        A_ = Eigen::MatrixXf(origin_dim, project_dim);
-//        for (int i = 0; i < origin_dim; i++) {
-//            for (int j = 0; j < project_dim; j++) {
-//                A_(i, j) = raw_data[i * project_dim + j]; // load the matrix
-//            }
-//        }
-//    }
+    //    void load_project_matrix(const char *filename) {
+    //        float *raw_data;
+    //        unsigned origin_dim, project_dim;
+    //        load_float_data(filename, raw_data, origin_dim, project_dim);
+    //        A_ = Eigen::MatrixXf(origin_dim, project_dim);
+    //        for (int i = 0; i < origin_dim; i++) {
+    //            for (int j = 0; j < project_dim; j++) {
+    //                A_(i, j) = raw_data[i * project_dim + j]; // load the matrix
+    //            }
+    //        }
+    //    }
 
-    void load_product_codebook(const char *filename) {
+    void
+    load_product_codebook(const char* filename) {
         std::ifstream in(filename, std::ios::binary);
-        in.read((char *) &pq_chunk, sizeof(unsigned));
-        in.read((char *) &pq_cluster, sizeof(unsigned));
-        in.read((char *) &pq_sub_dim, sizeof(unsigned));
-        std::cerr << "sub vec:: " << pq_chunk << " sub cluster:: " << pq_cluster << " sub dim:: "
-                  << pq_sub_dim << std::endl;
+        in.read((char*)&pq_chunk, sizeof(unsigned));
+        in.read((char*)&pq_cluster, sizeof(unsigned));
+        in.read((char*)&pq_sub_dim, sizeof(unsigned));
+        std::cerr << "sub vec:: " << pq_chunk << " sub cluster:: " << pq_cluster
+                  << " sub dim:: " << pq_sub_dim << std::endl;
         pq_book.resize(pq_chunk);
         for (int i = 0; i < pq_chunk; i++) {
             pq_book[i].resize(pq_cluster);
             for (int j = 0; j < pq_cluster; j++) {
                 pq_book[i][j].resize(pq_sub_dim);
-                in.read((char *) pq_book[i][j].data(), sizeof(float) * pq_sub_dim);
+                in.read((char*)pq_book[i][j].data(), sizeof(float) * pq_sub_dim);
             }
         }
         is_trained_pq = true;
         pq_dim = pq_chunk * pq_sub_dim;
     }
 
-//    void project_vector(float *raw_data, unsigned num) const {
-//        Eigen::MatrixXf Q(num, pq_dim);
-//        for (int i = 0; i < num; i++) {
-//            for (int j = 0; j < pq_dim; j++) {
-//                Q(i, j) = raw_data[i * pq_dim + j];
-//            }
-//        }
-//        Q = Q * A_;
-//        for (int i = 0; i < num; i++) {
-//            for (int j = 0; j < pq_dim; j++) {
-//                raw_data[i * pq_dim + j] = Q(i, j);
-//            }
-//        }
-//    }
+    //    void project_vector(float *raw_data, unsigned num) const {
+    //        Eigen::MatrixXf Q(num, pq_dim);
+    //        for (int i = 0; i < num; i++) {
+    //            for (int j = 0; j < pq_dim; j++) {
+    //                Q(i, j) = raw_data[i * pq_dim + j];
+    //            }
+    //        }
+    //        Q = Q * A_;
+    //        for (int i = 0; i < num; i++) {
+    //            for (int j = 0; j < pq_dim; j++) {
+    //                raw_data[i * pq_dim + j] = Q(i, j);
+    //            }
+    //        }
+    //    }
 
     void
     get_knn_error_quantile(
@@ -1967,7 +1990,8 @@ public:
 #pragma omp parallel for
         for (int i = 0; i < num; i++) {
             for (int j = 0; j < k; j++) {
-                float app_dist = naive_product_dist(train_knn[i * k + j].second, train_data + i * dim);
+                float app_dist =
+                    naive_product_dist(train_knn[i * k + j].second, train_data + i * dim);
                 error_distribution[i * k + j] = app_dist - train_knn[i * k + j].first;
             }
         }
@@ -1980,9 +2004,9 @@ public:
     encode_hnsw_data_with_codebook(int left_range, int right_range) {
         assert(is_trained_pq);
         is_trained_infer = true;
-        pq_map = (uint8_t *) vsag::allocate(max_elements_ * pq_chunk * sizeof(uint8_t));
+        pq_map = (uint8_t*)vsag::allocate(max_elements_ * pq_chunk * sizeof(uint8_t));
         if (use_node_centroid)
-            node_cluster_dist_ = (float *) vsag::allocate(max_elements_ * sizeof(float));
+            node_cluster_dist_ = (float*)vsag::allocate(max_elements_ * sizeof(float));
         double ave_encode_loss = 0.0;
 #pragma omp parallel for
         for (int i = left_range; i < right_range; i++) {
@@ -2063,7 +2087,7 @@ public:
     }
 
     void
-    calc_dist_map(float* query, float*&dist_mp) const {
+    calc_dist_map(float* query, float*& dist_mp) const {
         for (unsigned i = 0; i < pq_chunk; i++) {
             for (unsigned j = 0; j < pq_cluster; j++) {
                 dist_mp[i * pq_cluster + j] =
@@ -2212,77 +2236,77 @@ public:
 
     //The default processing length is a multiple of 4, if not, add 0
     void
-    pq_scan(const int* id, float* res, float* &dist_mp, unsigned num) const {
-        for (int i = 0; i < num; i+=4) {
-//#ifdef USE_AVX512
-//            if (i + 16 < num) {
-//                __m512 candidate_dist;
-//                const uint8_t* const pqcode0 = pq_map + id[i] * pq_chunk;
-//                const uint8_t* const pqcode1 = pq_map + id[i + 1] * pq_chunk;
-//                const uint8_t* const pqcode2 = pq_map + id[i + 2] * pq_chunk;
-//                const uint8_t* const pqcode3 = pq_map + id[i + 3] * pq_chunk;
-//                const uint8_t* const pqcode4 = pq_map + id[i + 4] * pq_chunk;
-//                const uint8_t* const pqcode5 = pq_map + id[i + 5] * pq_chunk;
-//                const uint8_t* const pqcode6 = pq_map + id[i + 6] * pq_chunk;
-//                const uint8_t* const pqcode7 = pq_map + id[i + 7] * pq_chunk;
-//                const uint8_t* const pqcode8 = pq_map + id[i + 8] * pq_chunk;
-//                const uint8_t* const pqcode9 = pq_map + id[i + 9] * pq_chunk;
-//                const uint8_t* const pqcode10 = pq_map + id[i + 10] * pq_chunk;
-//                const uint8_t* const pqcode11 = pq_map + id[i + 11] * pq_chunk;
-//                const uint8_t* const pqcode12 = pq_map + id[i + 12] * pq_chunk;
-//                const uint8_t* const pqcode13 = pq_map + id[i + 13] * pq_chunk;
-//                const uint8_t* const pqcode14 = pq_map + id[i + 14] * pq_chunk;
-//                const uint8_t* const pqcode15 = pq_map + id[i + 15] * pq_chunk;
-//                axv16_product_map_dist(pqcode0,
-//                                       pqcode1,
-//                                       pqcode2,
-//                                       pqcode3,
-//                                       pqcode4,
-//                                       pqcode5,
-//                                       pqcode6,
-//                                       pqcode7,
-//                                       pqcode8,
-//                                       pqcode9,
-//                                       pqcode10,
-//                                       pqcode11,
-//                                       pqcode12,
-//                                       pqcode13,
-//                                       pqcode14,
-//                                       pqcode15,
-//                                       dist_mp,
-//                                       candidate_dist);
-//                _mm512_storeu_ps(res + i, candidate_dist);
-//                i += 16;
-//                continue;
-//            }
-//#endif
-//
-//#ifdef USE_AVX
-//            if (i + 8 < num) {
-//                __m256 candidate_dist;
-//                const uint8_t* const pqcode0 = pq_map + id[i] * pq_chunk;
-//                const uint8_t* const pqcode1 = pq_map + id[i + 1] * pq_chunk;
-//                const uint8_t* const pqcode2 = pq_map + id[i + 2] * pq_chunk;
-//                const uint8_t* const pqcode3 = pq_map + id[i + 3] * pq_chunk;
-//                const uint8_t* const pqcode4 = pq_map + id[i + 4] * pq_chunk;
-//                const uint8_t* const pqcode5 = pq_map + id[i + 5] * pq_chunk;
-//                const uint8_t* const pqcode6 = pq_map + id[i + 6] * pq_chunk;
-//                const uint8_t* const pqcode7 = pq_map + id[i + 7] * pq_chunk;
-//                axv8_product_map_dist(pqcode0,
-//                                      pqcode1,
-//                                      pqcode2,
-//                                      pqcode3,
-//                                      pqcode4,
-//                                      pqcode5,
-//                                      pqcode6,
-//                                      pqcode7,
-//                                      dist_mp,
-//                                      candidate_dist);
-//                _mm256_storeu_ps(res + i, candidate_dist);
-//                i += 8;
-//                continue;
-//            }
-//#endif
+    pq_scan(const int* id, float* res, float*& dist_mp, unsigned num) const {
+        for (int i = 0; i < num; i += 4) {
+            //#ifdef USE_AVX512
+            //            if (i + 16 < num) {
+            //                __m512 candidate_dist;
+            //                const uint8_t* const pqcode0 = pq_map + id[i] * pq_chunk;
+            //                const uint8_t* const pqcode1 = pq_map + id[i + 1] * pq_chunk;
+            //                const uint8_t* const pqcode2 = pq_map + id[i + 2] * pq_chunk;
+            //                const uint8_t* const pqcode3 = pq_map + id[i + 3] * pq_chunk;
+            //                const uint8_t* const pqcode4 = pq_map + id[i + 4] * pq_chunk;
+            //                const uint8_t* const pqcode5 = pq_map + id[i + 5] * pq_chunk;
+            //                const uint8_t* const pqcode6 = pq_map + id[i + 6] * pq_chunk;
+            //                const uint8_t* const pqcode7 = pq_map + id[i + 7] * pq_chunk;
+            //                const uint8_t* const pqcode8 = pq_map + id[i + 8] * pq_chunk;
+            //                const uint8_t* const pqcode9 = pq_map + id[i + 9] * pq_chunk;
+            //                const uint8_t* const pqcode10 = pq_map + id[i + 10] * pq_chunk;
+            //                const uint8_t* const pqcode11 = pq_map + id[i + 11] * pq_chunk;
+            //                const uint8_t* const pqcode12 = pq_map + id[i + 12] * pq_chunk;
+            //                const uint8_t* const pqcode13 = pq_map + id[i + 13] * pq_chunk;
+            //                const uint8_t* const pqcode14 = pq_map + id[i + 14] * pq_chunk;
+            //                const uint8_t* const pqcode15 = pq_map + id[i + 15] * pq_chunk;
+            //                axv16_product_map_dist(pqcode0,
+            //                                       pqcode1,
+            //                                       pqcode2,
+            //                                       pqcode3,
+            //                                       pqcode4,
+            //                                       pqcode5,
+            //                                       pqcode6,
+            //                                       pqcode7,
+            //                                       pqcode8,
+            //                                       pqcode9,
+            //                                       pqcode10,
+            //                                       pqcode11,
+            //                                       pqcode12,
+            //                                       pqcode13,
+            //                                       pqcode14,
+            //                                       pqcode15,
+            //                                       dist_mp,
+            //                                       candidate_dist);
+            //                _mm512_storeu_ps(res + i, candidate_dist);
+            //                i += 16;
+            //                continue;
+            //            }
+            //#endif
+            //
+            //#ifdef USE_AVX
+            //            if (i + 8 < num) {
+            //                __m256 candidate_dist;
+            //                const uint8_t* const pqcode0 = pq_map + id[i] * pq_chunk;
+            //                const uint8_t* const pqcode1 = pq_map + id[i + 1] * pq_chunk;
+            //                const uint8_t* const pqcode2 = pq_map + id[i + 2] * pq_chunk;
+            //                const uint8_t* const pqcode3 = pq_map + id[i + 3] * pq_chunk;
+            //                const uint8_t* const pqcode4 = pq_map + id[i + 4] * pq_chunk;
+            //                const uint8_t* const pqcode5 = pq_map + id[i + 5] * pq_chunk;
+            //                const uint8_t* const pqcode6 = pq_map + id[i + 6] * pq_chunk;
+            //                const uint8_t* const pqcode7 = pq_map + id[i + 7] * pq_chunk;
+            //                axv8_product_map_dist(pqcode0,
+            //                                      pqcode1,
+            //                                      pqcode2,
+            //                                      pqcode3,
+            //                                      pqcode4,
+            //                                      pqcode5,
+            //                                      pqcode6,
+            //                                      pqcode7,
+            //                                      dist_mp,
+            //                                      candidate_dist);
+            //                _mm256_storeu_ps(res + i, candidate_dist);
+            //                i += 8;
+            //                continue;
+            //            }
+            //#endif
 
 #ifdef USE_SSE
             __m128 candidate_dist;

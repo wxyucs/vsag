@@ -1,7 +1,5 @@
 #pragma once
 
-#include <hnswlib/hnswlib.h>
-
 #include <cstdint>
 #include <map>
 #include <memory>
@@ -12,6 +10,7 @@
 #include <utility>
 #include <vector>
 
+#include "../algorithm/hnswlib/hnswlib.h"
 #include "../common.h"
 #include "../impl/conjugate_graph.h"
 #include "../logger.h"

@@ -4,9 +4,15 @@
 #include <cstdint>
 #include <string>
 
-#include "../extern/hnswlib/hnswlib/hnswlib.h"
 #include "fmt/format.h"
 #include "vsag/dataset.h"
+
+namespace vsag {
+
+extern float
+L2Sqr(const void* pVect1v, const void* pVect2v, const void* qty_ptr);
+
+}
 
 namespace fixtures {
 
@@ -126,9 +132,6 @@ brute_force(const vsag::DatasetPtr& query,
     assert(query->GetDim() == base->GetDim());
     assert(query->GetNumElements() == 1);
 
-    hnswlib::L2Space space(base->GetDim());
-    auto fstdistfunc_ = space.get_dist_func();
-
     auto result = vsag::Dataset::Make();
     int64_t* ids = new int64_t[k];
     float* dists = new float[k];
@@ -136,10 +139,10 @@ brute_force(const vsag::DatasetPtr& query,
 
     std::priority_queue<std::pair<float, int64_t>> bf_result;
 
+    size_t dim = query->GetDim();
     for (uint32_t i = 0; i < base->GetNumElements(); i++) {
-        float dist = fstdistfunc_(query->GetFloat32Vectors(),
-                                  base->GetFloat32Vectors() + i * base->GetDim(),
-                                  space.get_dist_func_param());
+        float dist = vsag::L2Sqr(
+            query->GetFloat32Vectors(), base->GetFloat32Vectors() + i * base->GetDim(), &dim);
         if (bf_result.size() < k) {
             bf_result.push({dist, base->GetIds()[i]});
         } else {

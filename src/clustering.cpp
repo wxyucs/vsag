@@ -9,13 +9,13 @@
 
 #include "clustering.h"
 
-#include <hnswlib/hnswlib.h>
-
 #include <cinttypes>
 #include <cmath>
 #include <cstdio>
 #include <random>
 #include <string>
+
+#include "algorithm/hnswlib/hnswlib.h"
 
 namespace vsag {
 

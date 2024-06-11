@@ -5,8 +5,17 @@
 #include <cmath>
 #include <random>
 
-#include "hnswlib/hnswlib.h"
 #include "vsag/vsag.h"
+
+namespace vsag {
+
+extern float
+L2Sqr(const void* pVect1v, const void* pVect2v, const void* qty_ptr);
+
+extern float
+InnerProductDistance(const void* pVect1, const void* pVect2, const void* qty_ptr);
+
+}  // namespace vsag
 
 float
 fvec_norm_L2sqr(const float* x, size_t d) {
@@ -51,8 +60,6 @@ TEST_CASE("InnerProduct", "[ft][Kmeans]") {
 
     float loss = vsag::kmeans_clustering(dim, max_elements, clusters, data, centroids, "ip");
 
-    hnswlib::InnerProductSpace l2(dim);
-    hnswlib::DISTFUNC distfunc = l2.get_dist_func();
     std::vector<std::vector<int>> data_id;
     for (int i = 0; i < clusters; ++i) {
         data_id.push_back(std::vector<int>());
@@ -61,7 +68,8 @@ TEST_CASE("InnerProduct", "[ft][Kmeans]") {
         float distance = 10000;
         int id = 0;
         for (int l = 0; l < clusters; ++l) {
-            float tmp_distance = distfunc(data + i * dim, centroids + l * dim, &dim);
+            float tmp_distance =
+                vsag::InnerProductDistance(data + i * dim, centroids + l * dim, &dim);
             if (tmp_distance < distance) {
                 id = l;
                 distance = tmp_distance;
@@ -101,8 +109,6 @@ TEST_CASE("L2", "[ft][Kmeans]") {
     float* centroids = new float[dim * clusters];
     float loss = vsag::kmeans_clustering(dim, max_elements, clusters, data, centroids, "l2");
 
-    hnswlib::L2Space l2(dim);
-    hnswlib::DISTFUNC distfunc = l2.get_dist_func();
     std::vector<std::vector<int>> data_id;
     for (int i = 0; i < clusters; ++i) {
         data_id.push_back(std::vector<int>());
@@ -111,7 +117,7 @@ TEST_CASE("L2", "[ft][Kmeans]") {
         float distance = 10000;
         int id = 0;
         for (int l = 0; l < clusters; ++l) {
-            float tmp_distance = distfunc(data + i * dim, centroids + l * dim, &dim);
+            float tmp_distance = vsag::L2Sqr(data + i * dim, centroids + l * dim, &dim);
             if (tmp_distance < distance) {
                 id = l;
                 distance = tmp_distance;
