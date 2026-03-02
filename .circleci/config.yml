@@ -33,14 +33,28 @@ jobs:
           name: prepare_env_and_create_swap_file
           command: |
             sudo apt update
-            sudo apt install -y gfortran python3-dev libomp-15-dev gcc make cmake g++ lcov libaio-dev libcurl4-openssl-dev ninja-build 
+            sudo apt install -y gfortran python3-dev libomp-15-dev gcc make cmake g++ lcov libaio-dev libcurl4-openssl-dev ninja-build
             sudo apt-get install -y libopenblas-dev
             sudo dd if=/dev/zero of=.swapfile bs=2M count=2048
             sudo chmod 600 .swapfile
             sudo mkswap .swapfile
             sudo swapon .swapfile
       - run:
-          command: export CMAKE_GENERATOR="Ninja" && export VSAG_ENABLE_INTEL_MKL=OFF && export COMPILE_JOBS=4 && make test_parallel
+          name: build
+          command: |
+            export CMAKE_GENERATOR="Ninja"
+            export VSAG_ENABLE_INTEL_MKL=OFF
+            export COMPILE_JOBS=4
+            cmake -B./build -DCMAKE_BUILD_TYPE=Sanitize -DENABLE_ASAN=OFF -DENABLE_CCACHE=OFF -G "Ninja" -S.
+            cmake --build ./build --parallel 4
+          no_output_timeout: 50m
+      - run:
+          name: test
+          command: |
+            export CMAKE_GENERATOR="Ninja"
+            export VSAG_ENABLE_INTEL_MKL=OFF
+            export COMPILE_JOBS=4
+            make tests
           no_output_timeout: 50m
       - run:
           name: remove_swap_file
@@ -65,14 +79,28 @@ jobs:
           name: prepare_env_and_create_swap_file
           command: |
             sudo apt update
-            sudo apt install -y gfortran python3-dev libomp-15-dev gcc make cmake g++ lcov libaio-dev libcurl4-openssl-dev ninja-build 
+            sudo apt install -y gfortran python3-dev libomp-15-dev gcc make cmake g++ lcov libaio-dev libcurl4-openssl-dev ninja-build
             sudo apt-get install -y libopenblas-dev
             sudo dd if=/dev/zero of=.swapfile bs=2M count=2048
             sudo chmod 600 .swapfile
             sudo mkswap .swapfile
             sudo swapon .swapfile
       - run:
-          command: export CMAKE_GENERATOR="Ninja" && export VSAG_ENABLE_INTEL_MKL=OFF && export COMPILE_JOBS=4 && make test_parallel
+          name: build
+          command: |
+            export CMAKE_GENERATOR="Ninja"
+            export VSAG_ENABLE_INTEL_MKL=OFF
+            export COMPILE_JOBS=4
+            cmake -B./build -DCMAKE_BUILD_TYPE=Sanitize -DENABLE_ASAN=OFF -DENABLE_CCACHE=OFF -G "Ninja" -S.
+            cmake --build ./build --parallel 4
+          no_output_timeout: 50m
+      - run:
+          name: test
+          command: |
+            export CMAKE_GENERATOR="Ninja"
+            export VSAG_ENABLE_INTEL_MKL=OFF
+            export COMPILE_JOBS=4
+            make tests
           no_output_timeout: 50m
       - run:
           name: remove_swap_file

@@ -51,35 +51,15 @@ debug:                   ## Build vsag with debug options.
 	cmake ${VSAG_CMAKE_ARGS} -B${DEBUG_BUILD_DIR} -DCMAKE_BUILD_TYPE=Debug -DENABLE_ASAN=OFF -DENABLE_CCACHE=ON
 	cmake --build ${DEBUG_BUILD_DIR} --parallel ${COMPILE_JOBS}
 
-.PHONY: test
-test:                    ## Build and run unit tests.
-	cmake ${VSAG_CMAKE_ARGS} -B${DEBUG_BUILD_DIR} -DCMAKE_BUILD_TYPE=Debug -DENABLE_CCACHE=ON
-	cmake --build ${DEBUG_BUILD_DIR} --parallel ${COMPILE_JOBS}
-	./build/tests/unittests -d yes ${UT_FILTER} --allow-running-no-tests ${UT_SHARD}
-	./build/tests/functests -d yes ${UT_FILTER} --allow-running-no-tests ${UT_SHARD}
-	./build/mockimpl/tests_mockimpl -d yes ${UT_FILTER} --allow-running-no-tests ${UT_SHARD}
-
 .PHONY: asan
 asan:                    ## Build with AddressSanitizer option.
 	cmake ${VSAG_CMAKE_ARGS} -B${DEBUG_BUILD_DIR} -DCMAKE_BUILD_TYPE=Sanitize -DENABLE_ASAN=ON -DENABLE_TSAN=OFF -DENABLE_CCACHE=ON
 	cmake --build ${DEBUG_BUILD_DIR} --parallel ${COMPILE_JOBS}
 
-.PHONY: test_asan
-test_asan: asan          ## Run unit tests with AddressSanitizer option.
-	./build/tests/unittests -d yes ${UT_FILTER} --allow-running-no-tests ${UT_SHARD}
-	./build/tests/functests -d yes ${UT_FILTER} --allow-running-no-tests ${UT_SHARD}
-	./build/mockimpl/tests_mockimpl -d yes ${UT_FILTER} --allow-running-no-tests ${UT_SHARD}
-
 .PHONY: tsan
 tsan:                    ## Build with ThreadSanitizer option.
 	cmake ${VSAG_CMAKE_ARGS} -B${DEBUG_BUILD_DIR} -DCMAKE_BUILD_TYPE=Sanitize -DENABLE_ASAN=OFF -DENABLE_TSAN=ON -DENABLE_CCACHE=ON
 	cmake --build ${DEBUG_BUILD_DIR} --parallel ${COMPILE_JOBS}
-
-.PHONY: test_tsan
-test_tsan: tsan          ## Run unit tests with ThreadSanitizer option.
-	./build/tests/unittests -d yes ${UT_FILTER} --allow-running-no-tests ${UT_SHARD}
-	./build/tests/functests -d yes ${UT_FILTER} --allow-running-no-tests ${UT_SHARD}
-	./build/mockimpl/tests_mockimpl -d yes ${UT_FILTER} --allow-running-no-tests ${UT_SHARD}
 
 .PHONY: clean
 clean:                   ## Clear build/ directory.
@@ -104,20 +84,14 @@ lint:                    ## Check coding styles defined in `.clang-tidy`.
 fix-lint:                ## Fix coding style issues in-place via clang-apply-replacements, use it be careful!!!
 	@./scripts/linters/run-clang-tidy.py -p build-release/ -use-color -source-filter '^.*vsag\/src.*(?<!_test)\.cpp$$' -j ${COMPILE_JOBS} -fix
 
-.PHONY: test_parallel
-test_parallel:           ## Run all tests parallel (used in CI).
-	cmake ${VSAG_CMAKE_ARGS} -B${DEBUG_BUILD_DIR} -DCMAKE_BUILD_TYPE=Sanitize -DENABLE_ASAN=OFF -DENABLE_CCACHE=OFF
-	cmake --build ${DEBUG_BUILD_DIR} --parallel ${COMPILE_JOBS}
-	@./scripts/testing/test_parallel_bg.sh
+.PHONY: test
+test:                    ## Run a single test case. Usage: make test CASE=test_name
+	./build/tests/unittests -d yes ${UT_FILTER} --allow-running-no-tests ${UT_SHARD}
+	./build/tests/functests -d yes ${UT_FILTER} --allow-running-no-tests ${UT_SHARD}
 	./build/mockimpl/tests_mockimpl -d yes ${UT_FILTER} --allow-running-no-tests ${UT_SHARD}
 
-.PHONY: test_asan_parallel
-test_asan_parallel: asan ## Run unit tests parallel with AddressSanitizer option.
-	@./scripts/testing/test_parallel_bg.sh
-	./build/mockimpl/tests_mockimpl -d yes ${UT_FILTER} --allow-running-no-tests ${UT_SHARD}
-
-.PHONY: test_tsan_parallel
-test_tsan_parallel: tsan ## Run unit tests parallel with ThreadSanitizer option.
+.PHONY: tests
+tests:                   ## Run all tests in parallel.
 	@./scripts/testing/test_parallel_bg.sh
 	./build/mockimpl/tests_mockimpl -d yes ${UT_FILTER} --allow-running-no-tests ${UT_SHARD}
 
