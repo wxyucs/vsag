@@ -34,6 +34,7 @@ public:
     bool dist_support_neon = false;
     bool dist_support_sve = false;
     bool dist_support_avx512vpopcntdq = false;
+    bool dist_support_amx = false;
     bool runtime_has_sse = false;
     bool runtime_has_avx = false;
     bool runtime_has_avx2 = false;
@@ -44,6 +45,7 @@ public:
     bool runtime_has_neon = false;
     bool runtime_has_sve = false;
     bool runtime_has_avx512vpopcntdq = false;
+    bool runtime_has_amx = false;
 
     static bool is_inited;
 
@@ -131,6 +133,20 @@ public:
         return ret;
     }
 
+    static inline bool
+    SupportAMX() {
+        Init();
+        bool ret = false;
+#if defined(ENABLE_AMX)
+        ret = true;
+#endif
+        // AMX requires both tile support and at least one of int8/bf16/fp16
+        ret &= cpuinfo_has_x86_amx_tile();
+        ret &= (cpuinfo_has_x86_amx_int8() || cpuinfo_has_x86_amx_bf16() ||
+                cpuinfo_has_x86_amx_fp16());
+        return ret;
+    }
+
     [[nodiscard]] std::string
     sse() const {
         return status_to_string(dist_support_sse, runtime_has_sse);
@@ -179,6 +195,11 @@ public:
     [[nodiscard]] std::string
     avx512vpopcntdq() const {
         return status_to_string(dist_support_avx512vpopcntdq, runtime_has_avx512vpopcntdq);
+    }
+
+    [[nodiscard]] std::string
+    amx() const {
+        return status_to_string(dist_support_amx, runtime_has_amx);
     }
 
     static std::string

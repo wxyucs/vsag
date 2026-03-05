@@ -71,6 +71,16 @@ setup_simd() {
     ret.dist_support_avx512vpopcntdq = true;
 #endif
 
+    if (cpuinfo_has_x86_amx_tile() &&
+        (cpuinfo_has_x86_amx_int8() || cpuinfo_has_x86_amx_bf16() || cpuinfo_has_x86_amx_fp16())) {
+        ret.runtime_has_amx = true;
+#ifdef ENABLE_AMX
+    }
+#else
+    }
+    ret.dist_support_amx = true;
+#endif
+
     if (cpuinfo_has_arm_neon()) {
         ret.runtime_has_neon = true;
 #ifndef ENABLE_NEON

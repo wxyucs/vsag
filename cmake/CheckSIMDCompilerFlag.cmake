@@ -21,6 +21,14 @@ try_compile(COMPILER_AVX512VPOPCNTDQ_SUPPORTED
     OUTPUT_VARIABLE COMPILE_OUTPUT
     )
 
+file(WRITE ${CMAKE_BINARY_DIR}/instructions_test_amx.cpp "#include <immintrin.h>\nint main() { _tile_zero(0); return 0; }")
+try_compile(COMPILER_AMX_SUPPORTED
+    ${CMAKE_BINARY_DIR}/instructions_test_amx
+    ${CMAKE_BINARY_DIR}/instructions_test_amx.cpp
+    COMPILE_DEFINITIONS "-mamx-tile"
+    OUTPUT_VARIABLE COMPILE_OUTPUT
+    )
+
 file(WRITE ${CMAKE_BINARY_DIR}/instructions_test_avx512.cpp "#include <immintrin.h>\nint main() { __m512 a, b; a = _mm512_sub_ps(a, b); return 0; }")
 try_compile(COMPILER_AVX512_SUPPORTED
     ${CMAKE_BINARY_DIR}/instructions_test_avx512
@@ -82,6 +90,14 @@ file(WRITE ${CMAKE_BINARY_DIR}/instructions_test_avx512vpopcntdq.cpp "#include <
 try_compile(RUNTIME_AVX512VPOPCNTDQ_SUPPORTED
     ${CMAKE_BINARY_DIR}/instructions_test_avx512vpopcntdq
     ${CMAKE_BINARY_DIR}/instructions_test_avx512vpopcntdq.cpp
+    COMPILE_DEFINITIONS "-march=native"
+    OUTPUT_VARIABLE COMPILE_OUTPUT
+    )
+
+file(WRITE ${CMAKE_BINARY_DIR}/instructions_test_amx.cpp "#include <immintrin.h>\nint main() { _tile_zero(0); return 0; }")
+try_compile(RUNTIME_AMX_SUPPORTED
+    ${CMAKE_BINARY_DIR}/instructions_test_amx
+    ${CMAKE_BINARY_DIR}/instructions_test_amx.cpp
     COMPILE_DEFINITIONS "-march=native"
     OUTPUT_VARIABLE COMPILE_OUTPUT
     )
@@ -150,6 +166,9 @@ endif ()
 if (COMPILER_AVX512VPOPCNTDQ_SUPPORTED)
   set (COMPILER_SUPPORTED "${COMPILER_SUPPORTED} AVX512VPOPCNTDQ")
 endif ()
+if (COMPILER_AMX_SUPPORTED)
+  set (COMPILER_SUPPORTED "${COMPILER_SUPPORTED} AMX")
+endif ()
 if (COMPILER_NEON_SUPPORTED)
   set (COMPILER_SUPPORTED "${COMPILER_SUPPORTED} NEON")
 endif ()
@@ -175,6 +194,9 @@ if (RUNTIME_AVX512_SUPPORTED)
 endif ()
 if (RUNTIME_AVX512VPOPCNTDQ_SUPPORTED)
   set (RUNTIME_SUPPORTED "${RUNTIME_SUPPORTED} AVX512VPOPCNTDQ")
+endif ()
+if (RUNTIME_AMX_SUPPORTED)
+  set (RUNTIME_SUPPORTED "${RUNTIME_SUPPORTED} AMX")
 endif ()
 if (RUNTIME_NEON_SUPPORTED)
   set (RUNTIME_SUPPORTED "${RUNTIME_SUPPORTED} NEON")
@@ -207,6 +229,10 @@ endif ()
 if (NOT DISABLE_AVX512VPOPCNTDQ_FORCE AND COMPILER_AVX512VPOPCNTDQ_SUPPORTED AND DIST_CONTAINS_AVX512)
   set (DIST_CONTAINS_AVX512VPOPCNTDQ ON)
   set (DIST_CONTAINS_INSTRUCTIONS "${DIST_CONTAINS_INSTRUCTIONS} AVX512VPOPCNTDQ")
+endif ()
+if (NOT DISABLE_AMX_FORCE AND COMPILER_AMX_SUPPORTED AND DIST_CONTAINS_AVX512)
+  set (DIST_CONTAINS_AMX ON)
+  set (DIST_CONTAINS_INSTRUCTIONS "${DIST_CONTAINS_INSTRUCTIONS} AMX")
 endif ()
 if (NOT DISABLE_NEON_FORCE AND COMPILER_NEON_SUPPORTED)
   set (DIST_CONTAINS_NEON ON)
