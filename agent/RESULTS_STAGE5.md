@@ -91,8 +91,38 @@ prompt (or a verifier tool) to echo numbers verbatim from the last
 - Local copies: `/tmp/smoke-stage5.log`, `/tmp/smoke-stage5.json`
   (147-line JSON trace + 38-line ANSI-stripped console log)
 
+## Dual-provider gate (mirrors Stage-1 spike)
+
+The same goal was re-run with `--provider copilot` (model
+`gpt-4o`, GitHub Copilot Chat). Same pod, same dataset, fresh
+index registry. Three tool dispatches plus the closing summary:
+
+| Metric          | DeepSeek (`deepseek-chat`) | Copilot (`gpt-4o`) |
+|-----------------|--------------------------:|-------------------:|
+| build_seconds   | 962.67                    | 964.24             |
+| num_queries     | 10,000                    | 10,000             |
+| recall@10       | 0.9946                    | 0.9945             |
+| mean latency    | 1.392 ms                  | 1.383 ms           |
+| p95 latency     | 1.637 ms                  | 1.618 ms           |
+| p99 latency     | 1.729 ms                  | 1.695 ms           |
+| QPS             | 712.2                     | 717.1              |
+| LLM steps       | 4 (1.49 + 1.78 + 2.32 + 2.44 s) | 4 (2.33 + 2.35 + 3.09 + 4.25 s) |
+| QPS in summary  | 7,122 (10× wrong)         | 717.1 (correct)    |
+
+Copilot's `gpt-4o` reproduced the run within noise on every metric
+and reported the QPS verbatim. The DeepSeek 10× misreport in the
+final paragraph appears to be model-specific. The trace JSON is
+authoritative either way.
+
+Copilot artifacts:
+
+- `/workspace/logs/smoke-stage5-copilot.log` (pod)
+- `/workspace/logs/smoke-stage5-copilot.json` (pod)
+- `/tmp/smoke-stage5-copilot.{log,json}` (local)
+
 ## Status
 
-Stage 5 gate: **PASS**. Recall is within tolerance, the agent loop
-runs unattended end-to-end against real `pyvsag` on real SIFT-1M, and
-the trace writer captures every tool call with arguments and results.
+Stage 5 gate: **PASS** under both providers. Recall is within
+tolerance for DeepSeek and Copilot, the agent loop runs unattended
+end-to-end against real `pyvsag` on real SIFT-1M, and the trace
+writer captures every tool call with arguments and results.
