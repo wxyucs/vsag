@@ -1,0 +1,129 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 780 460" font-family="-apple-system, BlinkMacSystemFont, 'PingFang SC', 'Microsoft YaHei', 'Segoe UI', Helvetica, Arial, sans-serif" font-size="12">
+  <title>HGraph 磁盘检索流程</title>
+  <desc>HGraph 在磁盘部署下的一次查询流程：①查询向量进入；②多层图遍历（顶层贪心下降，第 0 层用 ef_search 束搜索），只读取内存中的 base 量化码与 graph 邻接表；③得到约 factor × topk 个候选；④Reorder 精排，读取磁盘上的 precise 全精度 fp32 对候选重新打分（仅 use_reorder=true 时发生）；⑤返回 topk 结果。图遍历命中内存、延迟稳定；磁盘 I/O 只发生在末尾对少量候选做精排。</desc>
+
+  <defs>
+    <marker id="ar-flow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#334155"/>
+    </marker>
+    <marker id="ar-mem" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#5c7cfa"/>
+    </marker>
+    <marker id="ar-disk" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#e8590c"/>
+    </marker>
+  </defs>
+
+  <style>
+    .title    { fill: #1a1a1a; font-size: 16px; font-weight: 600; }
+    .subtitle { fill: #6b7280; font-size: 12px; }
+    .lane-lbl { fill: #475569; font-size: 12px; font-weight: 600; letter-spacing: 0.4px; }
+    .sub      { fill: #6b7280; font-size: 11px; }
+    .mem-band { fill: #eef2ff; stroke: #5c7cfa; stroke-width: 1.2; }
+    .disk-band{ fill: #fff4e6; stroke: #e8590c; stroke-width: 1.2; }
+    .mem-chip { fill: #ffffff; stroke: #5c7cfa; stroke-width: 1; }
+    .disk-chip{ fill: #ffffff; stroke: #e8590c; stroke-width: 1; }
+    .chip-main{ fill: #1f2937; font-size: 12px; font-weight: 600; }
+    .chip-sub { fill: #94a3b8; font-size: 10.5px; }
+    .stepbox      { fill: #ffffff; stroke: #cbd5e1; stroke-width: 1.3; }
+    .stepbox-mem  { fill: #eef2ff; stroke: #5c7cfa; stroke-width: 1.5; }
+    .stepbox-disk { fill: #fff4e6; stroke: #e8590c; stroke-width: 1.5; }
+    .stepbox-out  { fill: #ebfbee; stroke: #2f9e44; stroke-width: 1.5; }
+    .step-main    { fill: #1f2937; font-size: 13px; font-weight: 600; }
+    .step-mem-m   { fill: #364fc7; font-size: 13px; font-weight: 600; }
+    .step-disk-m  { fill: #c2410c; font-size: 13px; font-weight: 600; }
+    .step-out-m   { fill: #2b8a3e; font-size: 13px; font-weight: 600; }
+    .step-sub     { fill: #6b7280; font-size: 11px; }
+    .badge    { fill: #475569; stroke: #ffffff; stroke-width: 2; }
+    .badge-t  { fill: #ffffff; font-size: 11px; font-weight: 700; }
+    .flow     { stroke: #334155; stroke-width: 2; fill: none; }
+    .read-mem { stroke: #5c7cfa; stroke-width: 1.8; fill: none; stroke-dasharray: 5 3; }
+    .read-disk{ stroke: #e8590c; stroke-width: 1.8; fill: none; stroke-dasharray: 5 3; }
+    .read-mem-t { fill: #4263eb; font-size: 11px; font-weight: 600; }
+    .read-disk-t{ fill: #d9480f; font-size: 11px; font-weight: 600; }
+    .note     { fill: #475569; font-size: 12px; }
+    .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+  </style>
+
+  <!-- Header -->
+  <text class="title"    x="40" y="40">HGraph 磁盘检索流程</text>
+  <text class="subtitle" x="40" y="60">图遍历命中内存 · 精排命中磁盘 · query → 候选 → reorder → topk</text>
+
+  <!-- ============ Memory lane ============ -->
+  <rect class="mem-band" x="40" y="86" width="700" height="64" rx="10"/>
+  <text class="lane-lbl" x="56" y="106">内存 (Memory)</text>
+  <text class="sub"      x="56" y="126">图遍历高频读取</text>
+
+  <rect class="mem-chip" x="292" y="98" width="190" height="40" rx="8"/>
+  <text class="chip-main" x="387" y="116" text-anchor="middle">base 量化码</text>
+  <text class="chip-sub mono" x="387" y="131" text-anchor="middle">block_memory_io</text>
+
+  <rect class="mem-chip" x="500" y="98" width="210" height="40" rx="8"/>
+  <text class="chip-main" x="605" y="116" text-anchor="middle">graph 邻接表</text>
+  <text class="chip-sub mono" x="605" y="131" text-anchor="middle">block_memory_io / mmap_io</text>
+
+  <!-- ============ Read connectors ============ -->
+  <!-- step 2 reads from memory -->
+  <line class="read-mem" x1="252" y1="150" x2="252" y2="214" marker-end="url(#ar-mem)"/>
+  <text class="read-mem-t" x="262" y="176">读 base 量化码</text>
+  <text class="read-mem-t" x="262" y="194">+ graph 邻接表</text>
+
+  <!-- step 4 reads from disk -->
+  <line class="read-disk" x1="528" y1="287" x2="528" y2="350" marker-end="url(#ar-disk)"/>
+  <text class="read-disk-t" x="538" y="312">读 precise</text>
+  <text class="read-disk-t" x="538" y="330">全精度 fp32</text>
+
+  <!-- ============ Step boxes ============ -->
+  <!-- S1: query -->
+  <rect class="stepbox" x="54" y="217" width="120" height="70" rx="10"/>
+  <circle class="badge" cx="70" cy="224" r="11"/>
+  <text class="badge-t" x="70" y="228" text-anchor="middle">1</text>
+  <text class="step-main" x="114" y="250" text-anchor="middle">查询 q</text>
+  <text class="step-sub"  x="114" y="270" text-anchor="middle">query 向量</text>
+
+  <!-- S2: graph traversal (memory) -->
+  <rect class="stepbox-mem" x="192" y="217" width="120" height="70" rx="10"/>
+  <circle class="badge" cx="208" cy="224" r="11"/>
+  <text class="badge-t" x="208" y="228" text-anchor="middle">2</text>
+  <text class="step-mem-m" x="252" y="250" text-anchor="middle">图遍历</text>
+  <text class="step-sub"   x="252" y="270" text-anchor="middle">下降 + ef_search 束</text>
+
+  <!-- S3: candidates -->
+  <rect class="stepbox" x="330" y="217" width="120" height="70" rx="10"/>
+  <circle class="badge" cx="346" cy="224" r="11"/>
+  <text class="badge-t" x="346" y="228" text-anchor="middle">3</text>
+  <text class="step-main" x="390" y="250" text-anchor="middle">候选集</text>
+  <text class="step-sub"  x="390" y="270" text-anchor="middle">≈ factor × topk</text>
+
+  <!-- S4: reorder (disk) -->
+  <rect class="stepbox-disk" x="468" y="217" width="120" height="70" rx="10"/>
+  <circle class="badge" cx="484" cy="224" r="11"/>
+  <text class="badge-t" x="484" y="228" text-anchor="middle">4</text>
+  <text class="step-disk-m" x="528" y="250" text-anchor="middle">Reorder 精排</text>
+  <text class="step-sub"    x="528" y="270" text-anchor="middle">全精度重打分</text>
+
+  <!-- S5: results -->
+  <rect class="stepbox-out" x="606" y="217" width="120" height="70" rx="10"/>
+  <circle class="badge" cx="622" cy="224" r="11"/>
+  <text class="badge-t" x="622" y="228" text-anchor="middle">5</text>
+  <text class="step-out-m" x="666" y="250" text-anchor="middle">Top-k 结果</text>
+  <text class="step-sub"   x="666" y="270" text-anchor="middle">返回最近邻</text>
+
+  <!-- ============ Flow arrows between steps ============ -->
+  <line class="flow" x1="174" y1="252" x2="190" y2="252" marker-end="url(#ar-flow)"/>
+  <line class="flow" x1="312" y1="252" x2="328" y2="252" marker-end="url(#ar-flow)"/>
+  <line class="flow" x1="450" y1="252" x2="466" y2="252" marker-end="url(#ar-flow)"/>
+  <line class="flow" x1="588" y1="252" x2="604" y2="252" marker-end="url(#ar-flow)"/>
+
+  <!-- ============ Disk lane ============ -->
+  <rect class="disk-band" x="40" y="352" width="700" height="72" rx="10"/>
+  <text class="lane-lbl" x="56" y="372">磁盘 (SSD · NVMe)</text>
+  <text class="sub"      x="56" y="392">仅 use_reorder=true 时读取</text>
+
+  <rect class="disk-chip" x="292" y="362" width="418" height="46" rx="8"/>
+  <text class="chip-main" x="501" y="384" text-anchor="middle">precise 全精度 fp32</text>
+  <text class="chip-sub mono" x="501" y="400" text-anchor="middle">async_io / mmap_io  +  precise_file_path</text>
+
+  <!-- ============ Takeaway ============ -->
+  <text class="note" x="40" y="446">图遍历只读内存里的量化码与邻接表，延迟稳定；磁盘 I/O 仅发生在末尾对少量候选做精排。</text>
+</svg>

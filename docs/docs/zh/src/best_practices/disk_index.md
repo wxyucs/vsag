@@ -82,6 +82,10 @@ IO 后端一览：
 
 ### HGraph + 磁盘（图索引路线）
 
+HGraph 把数据拆成三部分，每部分都能单独指定 IO 后端、分别落到内存或磁盘：
+
+![HGraph 磁盘分层架构：base 量化码留内存，graph 邻接表可内存或 mmap，precise 全精度 fp32 下沉 SSD](../figures/best_practices/hgraph-disk-layout.svg)
+
 推荐的“内存精简”配置：`base` 量化码留内存做导航，全精度 `precise` 下沉磁盘并开启 `use_reorder`：
 
 ```json
@@ -106,6 +110,10 @@ IO 后端一览：
 ```json
 {"hgraph": {"ef_search": 200}}
 ```
+
+检索时的数据流如下：图遍历只读内存中的量化码与邻接表，磁盘 I/O 仅发生在末尾对少量候选做精排：
+
+![HGraph 磁盘检索流程：查询经图遍历（读内存 base/graph）得到候选，再 reorder 读磁盘 precise 全精度返回 topk](../figures/best_practices/hgraph-disk-search-flow.svg)
 
 内存仍然吃紧时，可进一步把**图**也下沉到 `mmap_io`（依赖页缓存，建议配合预热）：
 
