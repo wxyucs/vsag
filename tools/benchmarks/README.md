@@ -1,7 +1,7 @@
 # Per-vector SQ8 comparison
 
 Build `sq8_per_vector_benchmark` with `VSAG_ENABLE_TOOLS=ON make release COMPILE_JOBS=32`.
-Install `h5py`, `numpy`, and `matplotlib` in an isolated Python environment. Obtain the
+Use Python 3.11 or later and install `h5py`, `numpy`, and `matplotlib` in an isolated environment. Obtain the
 public [GIST-960 Euclidean HDF5 dataset](https://ann-benchmarks.com/gist-960-euclidean.hdf5)
 and run:
 

@@ -60,7 +60,14 @@ Recall is identical across the three repeats of each configuration. Every QPS en
 
 ## Reproduce
 
-See the [runner instructions](../README.md). After building with tools enabled and installing the isolated Python dependencies:
+See the [runner instructions](../README.md). Analysis used Python 3.14.4, h5py 3.16.0, NumPy 2.5.3 and Matplotlib 3.11.2. Python 3.11 or later is required by the runner. The measured build command was:
+
+```sh
+make release COMPILE_JOBS=32 VSAG_ENABLE_TESTS=ON VSAG_ENABLE_TOOLS=ON \
+  EXTRA_DEFINED='-U*SUPPORTED* -DCMAKE_CXX_FLAGS=-Wno-error=stringop-overflow'
+```
+
+With the isolated Python dependencies installed:
 
 ```sh
 python tools/benchmarks/sq8_per_vector.py \

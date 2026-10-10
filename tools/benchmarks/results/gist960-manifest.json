@@ -86,5 +86,11 @@
   "index_sha256": {
     "sq8.index": "56564f83a50bbff8f4c452437e7b50507a46667f61ded88c9654664aba69b7ae",
     "sq8_per_vector.index": "1f6a8ee26a365774a2756cf0198b46e489dfd4120c8a2e27d8915267ee969dbe"
+  },
+  "analysis_dependencies": {
+    "python": "3.14.4",
+    "h5py": "3.16.0",
+    "numpy": "2.5.3",
+    "matplotlib": "3.11.2"
   }
 }
