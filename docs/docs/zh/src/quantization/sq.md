@@ -81,3 +81,11 @@
 - [Uniform 标量量化（SQ4 / SQ8 Uniform）](sq_uniform.md)
 - [量化变换](../advanced/quantization_transform.md)
 - [量化总览](./)
+
+## 逐向量 SQ8（仅支持 L2）
+
+对于 float32 L2 向量，将 HGraph 的 `base_quantization_type` 设为 `sq8_per_vector`。每个库向量独立保存 FP32 最小值和量化步长，以及每维一个字节的编码（共 `dim + 8` 字节，无填充）。编码四舍五入到 [0, 255]，常量向量的步长为零。查询保留 FP32，使用非对称距离计算（ADC）。编码间距离使用两个向量各自的元数据重建数值。不支持 IP、余弦距离或变换包装。
+
+它不同于 `sq8`（逐维训练范围）和 `sq8_uniform`（整个数据集共用一个训练范围，且量化查询）。现有量化器及其序列化格式保持不变。新格式需要支持 `sq8_per_vector` 的版本。元数据访问不要求地址对齐。
+
+为了直接比较量化误差，对 `sq8` 和 `sq8_per_vector` 都设置 `use_reorder: false`。完整 GIST-960 可复现实验脚本位于 `tools/benchmarks/sq8_per_vector.py`；显式预热全部查询后测量三次，报告 QPS 中位数、范围及同召回率线性插值，不外推不可达目标。两种量化器分别构图，因此比较包含构图差异。

@@ -23,7 +23,9 @@
 #include <cstring>
 #include <memory>
 
+#include "kernels/sq8_per_vector_compute.h"
 #include "simd.h"
+#include "sq8_per_vector_simd.h"
 constexpr auto
 generate_bit_lookup_table() {
     std::array<std::array<uint8_t, 8>, 256> table{};
@@ -1660,4 +1662,15 @@ InverseNormalizeWithCentroid(
 #endif
 }
 
+}  // namespace vsag::sve
+
+namespace vsag::sve {
+float
+SQ8PerVectorComputeL2Sqr(const float* query, const uint8_t* codes, uint64_t dim) {
+    return generic::SQ8PerVectorComputeL2Sqr(query, codes, dim);
+}
+float
+SQ8PerVectorComputeCodesL2Sqr(const uint8_t* a, const uint8_t* b, uint64_t dim) {
+    return generic::SQ8PerVectorComputeCodesL2Sqr(a, b, dim);
+}
 }  // namespace vsag::sve

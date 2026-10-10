@@ -1,0 +1,2 @@
+add_executable (sq8_per_vector_benchmark sq8_per_vector.cpp)
+target_link_libraries (sq8_per_vector_benchmark PRIVATE vsag)

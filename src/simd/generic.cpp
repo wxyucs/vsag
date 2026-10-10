@@ -15,11 +15,13 @@
 
 #include <cstring>
 
+#include "kernels/sq8_per_vector_compute.h"
 #include "simd.h"
 #include "simd/int8_simd.h"
 #include "simd/kernels/kernels.h"
 #include "simd/kernels/rabitq_pack.h"
 #include "simd/traits/simd_traits_generic.h"
+#include "sq8_per_vector_simd.h"
 #include "utils/float_utils.h"
 
 namespace vsag::generic {
@@ -1383,4 +1385,16 @@ FHTRotate(float* data, uint64_t dim_) {
     }
 }
 
+}  // namespace vsag::generic
+
+namespace vsag::generic {
+float
+SQ8PerVectorComputeL2Sqr(const float* query, const uint8_t* codes, uint64_t dim) {
+    return simd::SQ8PerVectorL2<simd::SQ8Traits<simd::GenericSQ8Tag>, true>(
+        query, nullptr, codes, dim);
+}
+float
+SQ8PerVectorComputeCodesL2Sqr(const uint8_t* a, const uint8_t* b, uint64_t dim) {
+    return simd::SQ8PerVectorL2<simd::SQ8Traits<simd::GenericSQ8Tag>, false>(nullptr, a, b, dim);
+}
 }  // namespace vsag::generic

@@ -30,7 +30,9 @@ avx_reduce_add_ps(__m256 a) {
 #include <cmath>
 #include <cstdint>
 
+#include "kernels/sq8_per_vector_compute.h"
 #include "simd.h"
+#include "sq8_per_vector_simd.h"
 
 namespace vsag::avx {
 
@@ -857,4 +859,23 @@ InverseNormalizeWithCentroid(
 #endif
 }
 
+}  // namespace vsag::avx
+
+namespace vsag::avx {
+float
+SQ8PerVectorComputeL2Sqr(const float* query, const uint8_t* codes, uint64_t dim) {
+#if defined(ENABLE_AVX)
+    return simd::SQ8PerVectorL2<simd::SQ8Traits<simd::AvxSQ8Tag>, true>(query, nullptr, codes, dim);
+#else
+    return generic::SQ8PerVectorComputeL2Sqr(query, codes, dim);
+#endif
+}
+float
+SQ8PerVectorComputeCodesL2Sqr(const uint8_t* a, const uint8_t* b, uint64_t dim) {
+#if defined(ENABLE_AVX)
+    return simd::SQ8PerVectorL2<simd::SQ8Traits<simd::AvxSQ8Tag>, false>(nullptr, a, b, dim);
+#else
+    return generic::SQ8PerVectorComputeCodesL2Sqr(a, b, dim);
+#endif
+}
 }  // namespace vsag::avx

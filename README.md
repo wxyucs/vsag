@@ -625,3 +625,5 @@ VSAG referenced the following works during its implementation:
 
 ## License
 [Apache License 2.0](./LICENSE)
+
+HGraph also supports [per-vector SQ8 with FP32-query L2 distances](docs/docs/en/src/quantization/sq.md#per-vector-sq8-l2-only) via `base_quantization_type: "sq8_per_vector"`.

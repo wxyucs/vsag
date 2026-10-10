@@ -48,7 +48,7 @@ HGraph places its build parameters under the generic `index_param` key (see
 | `max_degree` | 16–48 | Maximum out-degree per node |
 | `ef_construction` | 200–500 | Candidate set size during build; larger = higher recall, slower build |
 | `alpha` | `1.0` | Final robust-pruning factor; PiPNN requires a finite value at least `1.0` |
-| `base_quantization_type` | `fp32` / `fp16` / `bf16` / `sq8` / `sq4` / `pq` | Quantization of the base storage — see the [Quantization chapter](../quantization/) for all supported values |
+| `base_quantization_type` | `fp32` / `fp16` / `bf16` / `sq8` / `sq8_per_vector` (L2) / `sq4` / `pq` | Quantization of the base storage — see the [Quantization chapter](../quantization/) for all supported values |
 | `use_reverse_edges` | `false` | Track incoming neighbors for O(1) reverse-edge lookup; roughly doubles edge storage and is unsupported with compressed graph storage |
 | `label_remap_type` | `pg` | Label-map implementation: `pg` (default) or `robin` |
 | `reorder_source` | `precise` | Reorder from the `precise` store or directly from `base`; RaBitQ x+y split, including `tq_chain="mrle, rabitq"`, selects `base` automatically |

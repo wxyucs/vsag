@@ -1,3 +1,4 @@
+
 // Copyright 2024-present the vsag project
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,8 +15,22 @@
 
 #pragma once
 
-#include "half_precision_quantizer_parameter.h"
-#include "scalar_quantizer_parameter.h"
-#include "sq4_uniform_quantizer_parameter.h"
-#include "sq8_per_vector_quantizer_parameter.h"
-#include "sq8_uniform_quantizer_parameter.h"
+#include "inner_string_params.h"
+#include "quantization/quantizer_parameter.h"
+
+namespace vsag {
+class SQ8PerVectorQuantizerParameter : public QuantizerParameter {
+public:
+    SQ8PerVectorQuantizerParameter() : QuantizerParameter(QUANTIZATION_TYPE_VALUE_SQ8_PER_VECTOR) {
+    }
+    void
+    FromJson(const JsonType& json) override {
+    }
+    [[nodiscard]] JsonType
+    ToJson() const override {
+        JsonType json;
+        json[TYPE_KEY].SetString(this->GetTypeName());
+        return json;
+    }
+};
+}  // namespace vsag

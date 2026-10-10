@@ -1,3 +1,4 @@
+
 // Copyright 2024-present the vsag project
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -12,10 +13,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#pragma once
+#include "sq8_per_vector_simd.h"
 
-#include "half_precision_quantizer_parameter.h"
-#include "scalar_quantizer_parameter.h"
-#include "sq4_uniform_quantizer_parameter.h"
-#include "sq8_per_vector_quantizer_parameter.h"
-#include "sq8_uniform_quantizer_parameter.h"
+#include "simd_dispatch.h"
+namespace vsag {
+VSAG_DEFINE_SIMD_DISPATCH(SQ8PerVectorComputeL2Sqr, SQ8PerVectorComputeType);
+VSAG_DEFINE_SIMD_DISPATCH(SQ8PerVectorComputeCodesL2Sqr, SQ8PerVectorComputeCodesType);
+}  // namespace vsag

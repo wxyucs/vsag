@@ -19,9 +19,11 @@
 #include <cstring>
 #include <limits>
 
+#include "kernels/sq8_per_vector_compute.h"
 #include "simd.h"
 #include "simd/int8_simd.h"
 #include "simd/kernels/rabitq_pack.h"
+#include "sq8_per_vector_simd.h"
 #include "vsag/attribute.h"
 
 #if defined(ENABLE_AVX2)
@@ -2094,4 +2096,24 @@ InverseNormalizeWithCentroid(
 #endif
 }
 
+}  // namespace vsag::avx2
+
+namespace vsag::avx2 {
+float
+SQ8PerVectorComputeL2Sqr(const float* query, const uint8_t* codes, uint64_t dim) {
+#if defined(ENABLE_AVX2)
+    return simd::SQ8PerVectorL2<simd::SQ8Traits<simd::Avx2SQ8Tag>, true>(
+        query, nullptr, codes, dim);
+#else
+    return generic::SQ8PerVectorComputeL2Sqr(query, codes, dim);
+#endif
+}
+float
+SQ8PerVectorComputeCodesL2Sqr(const uint8_t* a, const uint8_t* b, uint64_t dim) {
+#if defined(ENABLE_AVX2)
+    return simd::SQ8PerVectorL2<simd::SQ8Traits<simd::Avx2SQ8Tag>, false>(nullptr, a, b, dim);
+#else
+    return generic::SQ8PerVectorComputeCodesL2Sqr(a, b, dim);
+#endif
+}
 }  // namespace vsag::avx2

@@ -20,7 +20,7 @@ default.
    NSW-style insertion (`graph_type: "nsw"`, the default), ODescent
    (`graph_type: "odescent"`), or PiPNN (`graph_type: "pipnn"`).
 2. **Quantization.** The base storage is compressed with a configurable quantizer
-   (`base_quantization_type` — `fp32`, `fp16`, `bf16`, `sq8`, `sq4`, `sq8_uniform`, `sq4_uniform`,
+   (`base_quantization_type` — `fp32`, `fp16`, `bf16`, `sq8`, `sq8_per_vector` (L2), `sq4`, `sq8_uniform`, `sq4_uniform`,
    `pq`, `pqfs`, `rabitq`, `tq`). Optionally, a second high-precision copy is kept
    (`use_reorder: true` with `precise_quantization_type`) and used to re-rank the
    candidates returned by the coarse search.
@@ -64,7 +64,7 @@ most users need; the exhaustive list is in [Index Parameters](../resources/index
 
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
-| `base_quantization_type` | string | — (required) | `fp32`, `fp16`, `bf16`, `sq8`, `sq4`, `sq8_uniform`, `sq4_uniform`, `pq`, `pqfs`, `rabitq`, `tq` — see the [Quantization chapter](../quantization/) for per-quantizer details |
+| `base_quantization_type` | string | — (required) | `fp32`, `fp16`, `bf16`, `sq8`, `sq8_per_vector` (L2), `sq4`, `sq8_uniform`, `sq4_uniform`, `pq`, `pqfs`, `rabitq`, `tq` — see the [Quantization chapter](../quantization/) for per-quantizer details |
 | `max_degree` | int | `64` | Maximum out-degree per graph node |
 | `ef_construction` | int | `400` | Candidate list size during build (higher = better recall, slower build) |
 | `alpha` | float | `1.0` | Final robust-pruning factor; PiPNN requires a finite value at least `1.0`. |

@@ -85,3 +85,11 @@ the integer codes back to per-dimension scaled floats.
 - [Scalar Uniform (SQ4 / SQ8 Uniform)](sq_uniform.md)
 - [Transform Quantizer](../advanced/quantization_transform.md)
 - [Quantization overview](./)
+
+## Per-vector SQ8 (L2 only)
+
+Set HGraph `base_quantization_type` to `sq8_per_vector` for float32 L2 vectors. Each database vector stores its own FP32 minimum and quantization step followed by one byte per dimension (`dim + 8` bytes, without padding). Values are rounded to the nearest code in [0, 255]; constant vectors use step zero. Queries remain FP32, and distances use asymmetric distance computation (ADC). Code-to-code distances reconstruct both vectors with their independent metadata. IP, cosine and transform wrappers are rejected.
+
+This is distinct from `sq8` (trained per-dimension bounds) and `sq8_uniform` (one trained dataset-wide range and quantized queries). Existing quantizers and their serialized formats are unchanged. The new format requires a version that supports `sq8_per_vector`. Metadata is accessed without alignment requirements.
+
+For a comparison that exposes quantization error, set `use_reorder: false` for both `sq8` and `sq8_per_vector`. The reproducible full GIST-960 runner is `tools/benchmarks/sq8_per_vector.py`; it reports three repetitions after an explicit full-query warmup, median QPS and its range, and matched-recall interpolation without extrapolation. Graphs are built separately, so the comparison includes changes in graph construction.

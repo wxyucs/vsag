@@ -20,6 +20,7 @@
 #include "quantization/int8_quantizer.h"
 #include "quantization/quantizer_adapter.h"
 #include "quantization/quantizer_headers.h"
+#include "quantization/scalar_quantization/sq8_per_vector_quantizer.h"
 #include "quantization/transform_quantization/transform_quantizer_parameter.h"
 #include "rabitq_split_datacell_factory.h"
 
@@ -99,6 +100,11 @@ MakeFlattenDataCellInstance(const FlattenInterfaceParamPtr& param,
         actual_quantization = tq_param->GetBottomQuantizationName();
     }
 
+    if (actual_quantization == QUANTIZATION_TYPE_VALUE_SQ8_PER_VECTOR) {
+        const bool supported = metric == MetricType::METRIC_TYPE_L2SQR && !is_transform_quantizer;
+        CHECK_ARGUMENT(supported, "sq8_per_vector supports only L2 without transforms");
+        return MakeFlattenDataCellInstance<SQ8PerVectorQuantizer, IOTmpl>(param, common_param);
+    }
     if (actual_quantization == QUANTIZATION_TYPE_VALUE_SQ8) {
         return MakeFlattenDataCellInstanceWithTQ<SQ8Quantizer<metric>, IOTmpl, metric>(
             param, common_param, is_transform_quantizer);

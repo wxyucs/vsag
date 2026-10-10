@@ -16,7 +16,7 @@ HGraph 都是推荐的默认索引。
    `max_degree` 预算内的最近邻。构图算法可以是 NSW 风格插入（`graph_type: "nsw"`，默认）、
    ODescent（`graph_type: "odescent"`）或 PiPNN（`graph_type: "pipnn"`）。
 2. **量化。** 底层存储使用可配置的量化器进行压缩（`base_quantization_type` —
-   `fp32`、`fp16`、`bf16`、`sq8`、`sq4`、`sq8_uniform`、`sq4_uniform`、`pq`、`pqfs`、`rabitq`、`tq`）。
+   `fp32`、`fp16`、`bf16`、`sq8`、`sq8_per_vector`（仅 L2）、`sq4`、`sq8_uniform`、`sq4_uniform`、`pq`、`pqfs`、`rabitq`、`tq`）。
    可选地再保留一份高精度副本（`use_reorder: true` 搭配 `precise_quantization_type`），
    用于对粗排结果进行重打分。
 3. **搜索。** 自顶向下在图上做贪心 beam search，扩展候选集到 `ef_search` 个节点；如启用精排，
@@ -58,7 +58,7 @@ auto result = index->KnnSearch(
 
 | 参数 | 类型 | 默认值 | 说明 |
 |------|------|--------|------|
-| `base_quantization_type` | string | —（必填） | `fp32`、`fp16`、`bf16`、`sq8`、`sq4`、`sq8_uniform`、`sq4_uniform`、`pq`、`pqfs`、`rabitq`、`tq` —— 各量化器细节见[量化章节](../quantization/) |
+| `base_quantization_type` | string | —（必填） | `fp32`、`fp16`、`bf16`、`sq8`、`sq8_per_vector`（仅 L2）、`sq4`、`sq8_uniform`、`sq4_uniform`、`pq`、`pqfs`、`rabitq`、`tq` —— 各量化器细节见[量化章节](../quantization/) |
 | `max_degree` | int | `64` | 图节点最大出度 |
 | `ef_construction` | int | `400` | 构建阶段的候选集大小（越大召回越高，构建越慢） |
 | `alpha` | float | `1.0` | 最终 robust pruning 的系数；PiPNN 要求有限且不小于 `1.0` |
