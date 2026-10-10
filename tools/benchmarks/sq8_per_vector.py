@@ -42,6 +42,7 @@ def prepare(dataset, output):
 
 
 def summarize(output):
+    os.environ.setdefault('MPLCONFIGDIR', str(output / '.matplotlib'))
     import matplotlib
     matplotlib.use('Agg')
     import matplotlib.pyplot as plt
@@ -69,7 +70,8 @@ def summarize(output):
                            [r['qps_max'] - r['qps'] for r in rows]],
                      marker='o', label=quantizer, capsize=3)
     plt.xlabel('Recall@10')
-    plt.ylabel('Queries / second (one search thread)')
+    plt.yscale('log')
+    plt.ylabel('Queries / second (log scale; one search thread)')
     plt.title('GIST-960: HGraph, FP32-query ADC, no reranking')
     plt.grid(alpha=.3)
     plt.legend()

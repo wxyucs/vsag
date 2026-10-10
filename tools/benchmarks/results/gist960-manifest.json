@@ -1,0 +1,90 @@
+{
+  "source_commit": "869762498fb1fb38541b9a9a4aa3400457064635",
+  "binary_sha256": "eb580bd7d7ce62c5ac2115766726c7b7052238485f892ba7afe98f7dc912b1d0",
+  "library_sha256": "6882e609ff939eb18c158de3fd912978d2d28e5c1957db0e3f976cde507f4d85",
+  "cpu": 24,
+  "ef_search": "10,20,40,80,120,200,210,400,450,800,1600,3200,6400,12800",
+  "warmup_passes": 1,
+  "repetitions": 3,
+  "graph_level_seed": 2021,
+  "train_sample_count": 1000000,
+  "graph_type": "nsw",
+  "build_threads": 16,
+  "max_degree": 32,
+  "ef_construction": 200,
+  "query_threads": 1,
+  "reranking": false,
+  "preprocessing": "none",
+  "baseline_training": "unchanged deterministic stride sample, up to 100000 vectors",
+  "comparison": "end-to-end separately constructed graphs; parallel build is not deterministic",
+  "dataset": {
+    "source": "https://ann-benchmarks.com/gist-960-euclidean.hdf5",
+    "bytes": 3844648288,
+    "sha256": "8e95831936bfdbfa0a56086942e2cf98cd703517c67f985914183eb4cdbf026a",
+    "shapes": {
+      "distances": [
+        1000,
+        100
+      ],
+      "neighbors": [
+        1000,
+        100
+      ],
+      "test": [
+        1000,
+        960
+      ],
+      "train": [
+        1000000,
+        960
+      ]
+    }
+  },
+  "cpu_model": "AMD EPYC 9T24 96-Core Processor",
+  "logical_cpus": 192,
+  "compiler": "GCC 15.2.0",
+  "build_type": "Release",
+  "distance_isa": "AVX-512",
+  "build_flags": [
+    "-O3",
+    "-DNDEBUG",
+    "-Ofast",
+    "-Wno-error=stringop-overflow"
+  ],
+  "footprint": {
+    "sq8": {
+      "build_seconds": 72.1527,
+      "memory_bytes": 1296536000,
+      "serialized_bytes": 1114096388
+    },
+    "sq8_per_vector": {
+      "build_seconds": 63.2044,
+      "memory_bytes": 1296535952,
+      "serialized_bytes": 1122071487
+    }
+  },
+  "exhaustive_adc_reference": {
+    "sq8": {
+      "quantizer": "sq8",
+      "base_count": 1000000,
+      "query_count": 1000,
+      "threads": 16,
+      "hits": 9328,
+      "recall": 0.9328,
+      "method": "exhaustive FP32-query ADC; ties by ID; no QPS claim"
+    },
+    "sq8_per_vector": {
+      "quantizer": "sq8_per_vector",
+      "base_count": 1000000,
+      "query_count": 1000,
+      "threads": 16,
+      "hits": 9927,
+      "recall": 0.9927,
+      "method": "exhaustive FP32-query ADC; ties by ID; no QPS claim"
+    }
+  },
+  "index_sha256": {
+    "sq8.index": "56564f83a50bbff8f4c452437e7b50507a46667f61ded88c9654664aba69b7ae",
+    "sq8_per_vector.index": "1f6a8ee26a365774a2756cf0198b46e489dfd4120c8a2e27d8915267ee969dbe"
+  }
+}

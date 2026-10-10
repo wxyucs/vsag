@@ -1,0 +1,4 @@
+{"dtype":"float32","metric_type":"l2","dim":960,
+            "index_param":{"base_quantization_type":"sq8","use_reorder":false,
+            "max_degree":32,"ef_construction":200,"build_thread_count":16,
+            "graph_type":"nsw","train_sample_count":1000000}}
