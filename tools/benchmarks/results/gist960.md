@@ -81,3 +81,13 @@ taskset -c 4-19 build-release/tools/benchmarks/sq8_adc_reference /path/to/result
 ```
 
 Data, extracted inputs, indexes and large logs remain runtime artifacts. The small manifest, raw timing rows and plots are committed here. This result covers float32 L2 on this x86-64 machine; no reranking, query quantization, concurrent-throughput or ARM-performance claim is made.
+
+## Validation and limitations
+
+Focused Release tests for the feature and existing SQ8/SQ8Uniform passed 10 cases and 6,762,477 assertions. The final current-source instrumented unit replay passed 1,151 cases and 85,530,716 assertions, with one CUDA-dependent case skipped because no CUDA device was available. The standard non-daily functional run passed all 434 cases and 16,570,144 assertions (including 180 HGraph cases); soft recall and memory-estimate warnings were retained in the runtime logs.
+
+The standard production-source coverage collector reports **52,445 / 62,099 lines (84.45%)**, below the repository's required 90%. This requirement is **not satisfied** by this run; no threshold or exclusion was changed. New per-vector production files account for 95 / 100 covered lines, including all lines in the implementation `.cpp` and distance kernel. Functional counters from unchanged objects were retained; stale counters for recompiled objects were replaced by the final current-source unit replay. This is combined unit/functional coverage, not unit-only coverage. A clean-base coverage comparison was not performed.
+
+The aggregate Release unit run was not fully passing: 1,144 cases passed, seven failed and one was skipped. The failures occur in unchanged nonfinite-input checks (Pyramid, search sessions, SQ4 uniform and SINDI) and a SINDI serialization tolerance check. The repository uses `-Ofast`; its effect on finite-value checks is relevant, but clean-base causation was not independently established. GCC 15 also emitted `stringop-overflow` in unchanged Pyramid tests; the build retained this warning with `-Wno-error=stringop-overflow`.
+
+clang-format 15, changed-line production clang-tidy 15, documentation checks and diff checks passed. ARM execution is unverified. The broader Release failures and unmet whole-library coverage requirement remain validation limitations.
