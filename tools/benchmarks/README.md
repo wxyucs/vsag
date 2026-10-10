@@ -17,7 +17,7 @@ It validates HDF5 shapes and ground-truth indices and records the source URL, by
 SHA-256. It writes about 4 GB of extracted inputs plus the two serialized indexes.
 
 The comparison uses HGraph L2 with `max_degree=32`, `ef_construction=200`, 16 build threads,
-`use_reorder=false`, and the built-in graph level seed 2021. Baseline `sq8` training is unchanged:
+`use_reorder=false`, `graph_type="nsw"`, `train_sample_count=1000000`, and the built-in graph level seed 2021. The explicit full training population bypasses HGraph's otherwise unseeded random reservoir. Baseline `sq8` training is unchanged:
 a deterministic stride sample of up to 100,000 vectors. Parallel construction may vary with
 scheduling, and each quantizer constructs its own graph. This measures the full index behavior,
 not distances on a shared graph.
@@ -37,3 +37,11 @@ See the [English](../../docs/docs/en/src/quantization/sq.md) and
 If more search effort is needed, reuse the saved indexes and append new common points with
 `--search-only --ef 1600,3200` and the same other arguments. Do not repeat existing `ef_search`
 values in an extension. `--plot-only` regenerates summaries and plots from raw CSV.
+
+For an exhaustive quantization accuracy reference, run `sq8_adc_reference DATA_DIR sq8`
+and `sq8_adc_reference DATA_DIR sq8_per_vector` using the extracted inputs. Each evaluates
+all database codes for every official query, using the actual quantizers and FP32 ADC.
+It uses 16 threads and reports recall only; it is separate from the single-thread QPS curve.
+Ties are resolved by increasing ID. This is not a strict mathematical upper bound on
+approximate-search recall: omitting a quantization-induced false positive can occasionally
+improve recall against the original-vector ground truth.

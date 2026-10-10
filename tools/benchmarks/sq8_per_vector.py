@@ -136,7 +136,7 @@ def main():
         hardware=subprocess.check_output(['lscpu'], text=True),
         compiler=subprocess.check_output(['g++', '--version'], text=True),
         ef_search=args.ef, warmup_passes=1, repetitions=3,
-        graph_level_seed=2021, build_threads=16, max_degree=32, ef_construction=200,
+        graph_level_seed=2021, train_sample_count=1_000_000, graph_type="nsw", build_threads=16, max_degree=32, ef_construction=200,
         query_threads=1, reranking=False, preprocessing='none',
         baseline_training='unchanged deterministic stride sample, up to 100000 vectors',
         comparison='end-to-end separately constructed graphs; parallel build is not deterministic')

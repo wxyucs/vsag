@@ -60,7 +60,8 @@ main(int argc, char** argv) {
         const std::string config = R"({"dtype":"float32","metric_type":"l2","dim":960,
             "index_param":{"base_quantization_type":")" +
                                    type + R"(","use_reorder":false,
-            "max_degree":32,"ef_construction":200,"build_thread_count":16}})";
+            "max_degree":32,"ef_construction":200,"build_thread_count":16,
+            "graph_type":"nsw","train_sample_count":1000000}})";
         std::ofstream(dir + "/" + type + "-build.json") << config << '\n';
         auto made = vsag::Factory::CreateIndex("hgraph", config);
         if (!made.has_value()) {
