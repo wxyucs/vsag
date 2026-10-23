@@ -1,0 +1,22 @@
+name: Team Queue Prototype
+
+on:
+  push:
+    branches: ['codex/team-ci-queue-probe-*']
+
+permissions:
+  contents: read
+
+concurrency:
+  group: team-probe-ref-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  team:
+    concurrency:
+      group: team-queue-prototype
+      queue: max
+      cancel-in-progress: false
+    uses: ./.github/workflows/team-queue-prototype-worker.yml
+    with:
+      hold-seconds: 90

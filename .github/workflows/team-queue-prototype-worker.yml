@@ -1,0 +1,56 @@
+name: Team Queue Prototype Worker
+
+on:
+  workflow_call:
+    inputs:
+      hold-seconds:
+        type: number
+        required: true
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      HOLD_SECONDS: ${{ inputs.hold-seconds }}
+    steps:
+      - name: Mark build window
+        run: |
+          set -euo pipefail
+          [[ "$HOLD_SECONDS" =~ ^[0-9]+$ ]]
+          test "$HOLD_SECONDS" -le 120
+          printf 'BUILD_START run=%s attempt=%s time=%s\n' "$GITHUB_RUN_ID" "$GITHUB_RUN_ATTEMPT" "$(date -u +%s)"
+          sleep "$HOLD_SECONDS"
+          printf 'BUILD_END run=%s attempt=%s time=%s\n' "$GITHUB_RUN_ID" "$GITHUB_RUN_ATTEMPT" "$(date -u +%s)"
+  test:
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    strategy:
+      fail-fast: false
+      max-parallel: 4
+      matrix:
+        shard: [1, 2, 3, 4]
+    env:
+      SHARD: ${{ matrix.shard }}
+    steps:
+      - name: Mark consumer window
+        run: |
+          printf 'TEST_START run=%s shard=%s time=%s\n' "$GITHUB_RUN_ID" "$SHARD" "$(date -u +%s)"
+          sleep 10
+          printf 'TEST_END run=%s shard=%s time=%s\n' "$GITHUB_RUN_ID" "$SHARD" "$(date -u +%s)"
+  summary:
+    needs: [build, test]
+    if: always()
+    runs-on: ubuntu-latest
+    env:
+      BUILD: ${{ needs.build.result }}
+      TEST: ${{ needs.test.result }}
+    steps:
+      - run: |
+          test "$BUILD" = success
+          test "$TEST" = success
+          printf 'RUN_END run=%s attempt=%s time=%s\n' "$GITHUB_RUN_ID" "$GITHUB_RUN_ATTEMPT" "$(date -u +%s)"
