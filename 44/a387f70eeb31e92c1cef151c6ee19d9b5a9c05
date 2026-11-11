@@ -1,0 +1,48 @@
+scripts/linters/check-struct-names.py
+  s_3248531dc89b3e::t_3dfce001baa152 18-20,145
+  s_3248531dc89b3e::t_9b5bf7e6d35d83 135-136,138-139,141
+docs/agents/ci-routing.md
+  s_3248531dc89b3e::t_c10ff8e73716f3 459-478
+scripts/linters/test_struct_names.py
+  s_3248531dc89b3e::t_d39c6e6549459d 1-5
+tests/scripts/check_struct_names_test.py
+  s_3248531dc89b3e::t_771961ac5b1848 5,15,17-18,40-59
+.github/actions/asan-build-and-test-build-asan-aarch64/action.yml
+  s_3248531dc89b3e::t_52e0e1cb6a053b 14-26
+.clang-tidy
+  s_3248531dc89b3e::t_6371ce2c215b98 72-73
+docs/agents/coding-standards.md
+  s_3248531dc89b3e::t_c43f84792cd2aa 50-58
+scripts/ci/monitor_build.py
+  s_3248531dc89b3e::t_da7a13d6bee332 154
+  s_3248531dc89b3e::t_52e0e1cb6a053b 1-3,5-56,68-90,93-112,114-130,132-152,160-162,164-172,175-181,186-193,198-201,203-213
+  s_3248531dc89b3e::t_cdc2e184f4fac0 57-67
+  s_3248531dc89b3e::t_1cd5f187aaf45d 113
+  s_3248531dc89b3e::t_c9b2deafb8a272 202
+  s_3248531dc89b3e::t_305a4456467149 4,91-92,153,155-159,163,173,182-185,194-197
+  s_3248531dc89b3e::t_041f3962220151 131,174
+tests/scripts/test_asan_artifact_workflow.py
+  s_3248531dc89b3e::t_c9b2deafb8a272 121-131
+  s_3248531dc89b3e::t_cdc2e184f4fac0 214-237
+  s_3248531dc89b3e::t_c10ff8e73716f3 89-120,132-213,238-248,259-270
+  s_3248531dc89b3e::t_d5c3a9effa2e0c 2,6-10
+  s_3248531dc89b3e::t_072d6e85c4f4c9 16,249-258
+src/simd/CMakeLists.txt
+  s_3248531dc89b3e::t_52e0e1cb6a053b 64-66,68
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "44a387f70eeb31e92c1cef151c6ee19d9b5a9c05",
+  "prompts": {},
+  "sessions": {
+    "s_3248531dc89b3e": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a161c8-51a2-7a01-af0f-657cb33884e9",
+        "model": "gpt-6-astra"
+      },
+      "human_author": null
+    }
+  }
+}
