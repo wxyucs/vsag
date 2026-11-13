@@ -294,15 +294,16 @@ BasicSearcher::search_impl(const GraphInterfacePtr& graph,
             graph->Prefetch(candidate_set->Top().second, 0);
         }
 
-        count_no_visited = visit(graph,
-                                 vl,
-                                 current_node_pair,
-                                 inner_search_param.is_inner_id_allowed,
-                                 skip_strategy.get(),
-                                 to_be_visited_rid,
-                                 to_be_visited_id,
-                                 neighbors,
-                                 mode == KNN_SEARCH ? &deferred_ids : nullptr);
+        count_no_visited = visit(
+            graph,
+            vl,
+            current_node_pair,
+            inner_search_param.is_inner_id_allowed,
+            skip_strategy.get(),
+            to_be_visited_rid,
+            to_be_visited_id,
+            neighbors,
+            mode == KNN_SEARCH and inner_search_param.min_results > 0 ? &deferred_ids : nullptr);
 
         dist_cmp += count_no_visited;
 
@@ -505,15 +506,16 @@ BasicSearcher::search_impl(const GraphInterfacePtr& graph,
             graph->Prefetch(candidate_set->Top().second, 0);
         }
 
-        count_no_visited = visit(graph,
-                                 vl,
-                                 current_node_pair,
-                                 inner_search_param.is_inner_id_allowed,
-                                 skip_strategy.get(),
-                                 to_be_visited_rid,
-                                 to_be_visited_id,
-                                 neighbors,
-                                 mode == KNN_SEARCH ? &deferred_ids : nullptr);
+        count_no_visited = visit(
+            graph,
+            vl,
+            current_node_pair,
+            inner_search_param.is_inner_id_allowed,
+            skip_strategy.get(),
+            to_be_visited_rid,
+            to_be_visited_id,
+            neighbors,
+            mode == KNN_SEARCH and inner_search_param.min_results > 0 ? &deferred_ids : nullptr);
 
         flatten->Query(line_dists.data(), computer, to_be_visited_id.data(), count_no_visited, ctx);
         dist_cmp += count_no_visited;

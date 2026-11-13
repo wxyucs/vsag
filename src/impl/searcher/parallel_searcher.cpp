@@ -281,16 +281,17 @@ ParallelSearcher::search_impl(const GraphInterfacePtr& graph,
             candidate_set->Pop();
         }
 
-        count_no_visited = visit(graph,
-                                 vl,
-                                 node_pair,
-                                 inner_search_param.is_inner_id_allowed,
-                                 skip_strategy.get(),
-                                 to_be_visited_rid,
-                                 to_be_visited_id,
-                                 neighbors,
-                                 num_explore_nodes,
-                                 mode == KNN_SEARCH ? &deferred_ids : nullptr);
+        count_no_visited = visit(
+            graph,
+            vl,
+            node_pair,
+            inner_search_param.is_inner_id_allowed,
+            skip_strategy.get(),
+            to_be_visited_rid,
+            to_be_visited_id,
+            neighbors,
+            num_explore_nodes,
+            mode == KNN_SEARCH and inner_search_param.min_results > 0 ? &deferred_ids : nullptr);
 
         dist_cmp += count_no_visited;
         num_points.store(0, std::memory_order_relaxed);
