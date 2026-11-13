@@ -592,11 +592,15 @@ HierarchicalNSW::searchBaseLayerST(InnerIdType ep_id,
             return false;
         }
         size_t rescue_end = std::min(deferred.size(), deferred_pos + std::max<size_t>(ef, 1));
+        const size_t rescue_begin = deferred_pos;
         for (; deferred_pos < rescue_end; ++deferred_pos) {
             InnerIdType rescued_id = deferred[deferred_pos];
             float dist =
                 fstdistfunc_(data_point, getDataByInternalId(rescued_id), dist_func_param_);
             candidate_set.emplace(-dist, rescued_id);
+        }
+        if (collect_metrics) {
+            metric_distance_computations_ += rescue_end - rescue_begin;
         }
         return true;
     };
